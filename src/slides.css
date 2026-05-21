@@ -261,11 +261,11 @@
 .closing-grid {
   display: grid;
   grid-template-columns: repeat(8, 1.5in);
-  grid-auto-rows: 0.75in;
+  grid-auto-rows: 0.95in;
   column-gap: 0.07in;
-  row-gap: 0.06in;
+  row-gap: 0.16in;
   justify-content: center;
-  padding: 0.25in 0.4in 0.15in;
+  padding: 0.3in 0.4in 0.2in;
 }
 .closing-cell {
   display: flex;
@@ -279,10 +279,10 @@
   object-fit: contain;
 }
 .closing-cell--wordmark img {
-  max-height: 0.31in;           /* 56px optical band scaled */
+  max-height: 0.4in;            /* wordmark optical band, scaled up for taller cell */
 }
 .closing-cell--stacked img {
-  max-height: 0.42in;           /* 72px optical band scaled, +slight buffer */
+  max-height: 0.55in;           /* stacked optical band */
 }
 .closing-bottom-rule {
   margin: 0.12in auto 0;
