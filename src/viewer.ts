@@ -44,3 +44,15 @@ window.addEventListener('resize', () => { if (currentEl) fitToViewport(stage, cu
 
 bootRender();
 console.log('viewer booted, SLIDES count =', SLIDES.length);
+
+// Client review: arrow keys / space step through slides via the server,
+// so all connected clients stay in sync.
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'ArrowRight' || e.key === ' ') {
+    e.preventDefault();
+    sync.send({ type: 'nav', slideIdx: Math.min(SLIDES.length - 1, currentSlideIdx + 1) });
+  } else if (e.key === 'ArrowLeft') {
+    e.preventDefault();
+    sync.send({ type: 'nav', slideIdx: Math.max(0, currentSlideIdx - 1) });
+  }
+});

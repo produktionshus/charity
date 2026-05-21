@@ -55,3 +55,13 @@ sync.on((state) => {
 });
 
 window.addEventListener('resize', () => { if (currentEl) fitToViewport(stage, currentEl); });
+
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'ArrowRight' || e.key === ' ') {
+    e.preventDefault();
+    sync.send({ type: 'nav', slideIdx: Math.min(SLIDES.length - 1, currentIdx + 1) });
+  } else if (e.key === 'ArrowLeft') {
+    e.preventDefault();
+    sync.send({ type: 'nav', slideIdx: Math.max(0, currentIdx - 1) });
+  }
+});
