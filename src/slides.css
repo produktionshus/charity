@@ -188,8 +188,11 @@
   font-size: 30pt;
   color: var(--green);
   letter-spacing: 0.2em;
+  text-transform: uppercase;
   margin-top: 0.45in;
 }
+/* Spec tracking 0.06em for the sponsor-wall title only (slide 24). */
+.slide-closing .closing-title { letter-spacing: 0.06em; }
 .closing-rule {
   margin: 0.1in auto 0;
   width: calc(100% - 2in);
@@ -252,26 +255,37 @@
   max-height: 0.45in;
 }
 
+/* Sponsor wall — per handoff spec. 8 cols x 5 rows, 2:1 cells.
+   Spec base canvas 2400x1400 px → scaled 0.533x to our 1280px slide.
+   Optical-height bands: wordmark ~0.31in, stacked ~0.40in. */
 .closing-grid {
   display: grid;
-  grid-template-columns: repeat(8, 1fr);
-  gap: 0.18in;
-  padding: 0.2in 0.4in;
+  grid-template-columns: repeat(8, 1.5in);
+  grid-auto-rows: 0.75in;
+  column-gap: 0.07in;
+  row-gap: 0.06in;
+  justify-content: center;
+  padding: 0.25in 0.4in 0.15in;
 }
 .closing-cell {
-  aspect-ratio: 1.6 / 1;
   display: flex;
   align-items: center;
   justify-content: center;
+  padding: 0.05in;
   overflow: hidden;
 }
 .closing-cell img {
-  max-width: 100%;
-  max-height: 0.7in;
+  max-width: 1.22in;            /* 220px scaled */
   object-fit: contain;
 }
+.closing-cell--wordmark img {
+  max-height: 0.31in;           /* 56px optical band scaled */
+}
+.closing-cell--stacked img {
+  max-height: 0.42in;           /* 72px optical band scaled, +slight buffer */
+}
 .closing-bottom-rule {
-  margin: 0.15in auto 0;
+  margin: 0.12in auto 0;
   width: calc(100% - 2in);
 }
 .closing-tagline {
@@ -281,5 +295,5 @@
   color: var(--green);
   font-size: 10pt;
   letter-spacing: 0.6em;
-  margin-top: 0.08in;
+  margin-top: 0.06in;
 }

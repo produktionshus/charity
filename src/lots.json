@@ -350,7 +350,8 @@
       "titleParts": [
         {
           "text": "OMEGA Speedmaster ",
-          "bold": false
+          "bold": false,
+          "break": true
         },
         {
           "text": "“Silver Snoopy Award”",

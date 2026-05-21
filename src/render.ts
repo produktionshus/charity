@@ -139,22 +139,60 @@ function renderSponsorIndex(): string {
   `;
 }
 
-// ---- Closing (slide 24) — custom staggers ----
+// ---- Closing (slide 24) — sponsor wall per handoff spec ----
+// 8 columns x 5 rows = 40 cells, 2:1 aspect each.
+// Two-tier optical-height sizing: wordmarks ~56px target, stacked ~72px.
+// Container-bearing logos (Weber, Royal Unibrew, Pakhus77, M-10 hf, Køkken)
+// are spread across rows rather than clustered.
 function renderClosing(): string {
+  // File order reordered so container-bearing logos don't cluster on rows 4-5.
+  // Layout (row-major, 8 cols):
+  //   Row 1: L-01 L-02 L-03 L-04 L-05 L-06 L-07 R-01(Unibrew→row1)
+  //   Row 2: L-09 L-10 L-11 R-10(weber→row2) L-13 M-01 M-02 M-03
+  //   Row 3: M-04 M-05 M-06 M-07 M-08 M-09 M-10 M-11
+  //   Row 4: M-12 M-13 M-14 L-12(VILLA→row4) R-02 R-03 R-04 R-05
+  //   Row 5: R-06 R-07 R-08 R-09 L-08(REE PARK→row5) R-11 R-12 R-13
+  // Swaps: R-01<->L-08, R-10<->L-12  (containers spread to rows 1, 2, 3, 4)
   const fileList = [
+    // Row 1
     'closing-L-01.png','closing-L-02.png','closing-L-03.png','closing-L-04.png',
-    'closing-L-05.png','closing-L-06.png','closing-L-07.png','closing-L-08.png',
-    'closing-L-09.png','closing-L-10.png','closing-L-11.png','closing-L-12.png',
-    'closing-L-13.png',
-    'closing-M-01.png','closing-M-02.png','closing-M-03.png','closing-M-04.png',
-    'closing-M-05.png','closing-M-06.png','closing-M-07.png','closing-M-08.png',
-    'closing-M-09.png','closing-M-10.png','closing-M-11.png','closing-M-12.png',
-    'closing-M-13.png','closing-M-14.png',
-    'closing-R-01.png','closing-R-02.png','closing-R-03.png','closing-R-04.png',
-    'closing-R-05.png','closing-R-06.png','closing-R-07.png','closing-R-08.png',
-    'closing-R-09.png','closing-R-10.png','closing-R-11.png','closing-R-12.png',
-    'closing-R-13.png',
+    'closing-L-05.png','closing-L-06.png','closing-L-07.png','closing-R-01.png',
+    // Row 2
+    'closing-L-09.png','closing-L-10.png','closing-L-11.png','closing-R-10.png',
+    'closing-L-13.png','closing-M-01.png','closing-M-02.png','closing-M-03.png',
+    // Row 3
+    'closing-M-04.png','closing-M-05.png','closing-M-06.png','closing-M-07.png',
+    'closing-M-08.png','closing-M-09.png','closing-M-10.png','closing-M-11.png',
+    // Row 4
+    'closing-M-12.png','closing-M-13.png','closing-M-14.png','closing-L-12.png',
+    'closing-R-02.png','closing-R-03.png','closing-R-04.png','closing-R-05.png',
+    // Row 5
+    'closing-R-06.png','closing-R-07.png','closing-R-08.png','closing-R-09.png',
+    'closing-L-08.png','closing-R-11.png','closing-R-12.png','closing-R-13.png',
   ];
+
+  // Wordmark = single line or text-dominant. Default = stacked. Only mark
+  // wordmarks explicitly to keep the map small.
+  const WORDMARKS = new Set([
+    'closing-L-04.png',  // PRIVATE CAR CARE
+    'closing-L-05.png',  // Zinck Henningsen
+    'closing-L-09.png',  // CUE
+    'closing-L-10.png',  // DM Greenkeeping
+    'closing-L-12.png',  // VILLA LEJET
+    'closing-L-13.png',  // UNICO
+    'closing-M-02.png',  // artsolo
+    'closing-M-07.png',  // Cartier
+    'closing-M-08.png',  // VIPP
+    'closing-M-09.png',  // viaplay
+    'closing-M-11.png',  // OTTO SUENSON
+    'closing-M-12.png',  // LYFA
+    'closing-M-14.png',  // Bravo Tours
+    'closing-R-02.png',  // Eilersen
+    'closing-R-05.png',  // Kim Due
+    'closing-R-06.png',  // GREAT NORTHERN
+    'closing-R-12.png',  // PARK LANE
+  ]);
+
   const COLS = 8;
   const ROW_PAUSE = 250;
   const LOGO_STAGGER = 80;
@@ -163,7 +201,8 @@ function renderClosing(): string {
     const row = Math.floor(i / COLS);
     const col = i % COLS;
     const t = rowsStart + row * (ROW_PAUSE + COLS * LOGO_STAGGER) + col * LOGO_STAGGER;
-    return `<div class="closing-cell"><img class="build-item" style="transition-delay:${t}ms" src="/assets/closing/${f}" alt="" /></div>`;
+    const kind = WORDMARKS.has(f) ? 'wordmark' : 'stacked';
+    return `<div class="closing-cell closing-cell--${kind}"><img class="build-item" style="transition-delay:${t}ms" src="/assets/closing/${f}" alt="" /></div>`;
   }).join('');
   const rows = Math.ceil(fileList.length / COLS);
   const tailDelay = rowsStart + rows * (ROW_PAUSE + COLS * LOGO_STAGGER);
