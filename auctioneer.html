@@ -16,8 +16,25 @@
       <p id="lot-title"></p>
       <p id="lot-donor"></p>
     </div>
+    <div class="bid-block">
+      <span class="bid-label">Current bid</span>
+      <span class="bid-amount-big" id="bid-current">— kr</span>
+    </div>
+    <div class="bid-block bid-history-block">
+      <span class="bid-label">Bid history</span>
+      <ol class="bid-history-list" id="bid-history-list"></ol>
+    </div>
+    <div class="bid-block">
+      <span class="bid-label">Total raised</span>
+      <span class="bid-amount-mid" id="bid-total">0 kr</span>
+    </div>
+    <div class="sound-countdown" id="sound-countdown" hidden>
+      <span class="bid-label">Sound playing</span>
+      <span class="sound-file" id="sound-file"></span>
+      <div class="sound-bar"><div class="sound-bar-fill" id="sound-bar-fill"></div></div>
+      <span class="sound-remaining" id="sound-remaining">0.0s</span>
+    </div>
     <div class="lot-notes" id="lot-notes"></div>
-    <!-- Bid tracker / price field can be added here later -->
   </aside>
   <script type="module" src="/src/auctioneer.ts"></script>
 </body>

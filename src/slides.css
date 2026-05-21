@@ -163,6 +163,23 @@
   width: auto;
   display: block;
 }
+/* Per-lot caps for visually-heavy wordmarks that overpower at the default cap. */
+.sponsor-logo[src*="logo-lot-05"] {  /* CUE — chunky wordmark */
+  max-width: 1.6in;
+  max-height: 0.55in;
+}
+.sponsor-logo[src*="logo-lot-06"] {  /* Kim Due — wordmark + icon + tagline */
+  max-width: 2in;
+  max-height: 0.7in;
+}
+.sponsor-logo[src*="logo-lot-08"] {  /* Bravo Tours — square logo, needs more room */
+  max-width: 1.6in;
+  max-height: 1.3in;
+}
+.sponsor-logo[src*="logo-lot-21"] {  /* Otto Suenson + kin + Møntergade — wide composite */
+  max-width: 3.8in;
+  max-height: 0.95in;
+}
 .sponsor-private {
   position: absolute;
   right: 0.5in;
@@ -263,9 +280,9 @@
   grid-template-columns: repeat(8, 1.5in);
   grid-auto-rows: 0.95in;
   column-gap: 0.07in;
-  row-gap: 0.16in;
+  row-gap: 0.10in;
   justify-content: center;
-  padding: 0.3in 0.4in 0.2in;
+  padding: 0.2in 0.4in 0.15in;
 }
 .closing-cell {
   display: flex;
@@ -295,5 +312,6 @@
   color: var(--green);
   font-size: 10pt;
   letter-spacing: 0.6em;
-  margin-top: 0.06in;
+  /* Sit visually centered between the bottom rule and slide bottom edge. */
+  margin-top: 0.4in;
 }

@@ -1,12 +1,14 @@
 // Tiny ws wrapper — auto-reconnect, typed callbacks.
 
-import type { AppState, ClientMsg, ServerMsg } from './state';
+import type { AppState, ClientMsg, ServerMsg, SoundEvent } from './state';
 
-type Listener = (state: AppState) => void;
+type StateListener = (state: AppState) => void;
+type SoundListener = (event: SoundEvent) => void;
 
 export class SyncClient {
   private ws: WebSocket | null = null;
-  private listeners = new Set<Listener>();
+  private stateListeners = new Set<StateListener>();
+  private soundListeners = new Set<SoundListener>();
   private url: string;
 
   constructor(path = '/sync') {
@@ -21,7 +23,9 @@ export class SyncClient {
       let msg: ServerMsg;
       try { msg = JSON.parse(ev.data); } catch { return; }
       if (msg.type === 'state') {
-        for (const l of this.listeners) l(msg.state);
+        for (const l of this.stateListeners) l(msg.state);
+      } else if (msg.type === 'sound-event') {
+        for (const l of this.soundListeners) l(msg.event);
       }
     };
     this.ws.onclose = () => {
@@ -29,7 +33,8 @@ export class SyncClient {
     };
   }
 
-  on(fn: Listener) { this.listeners.add(fn); return () => this.listeners.delete(fn); }
+  on(fn: StateListener) { this.stateListeners.add(fn); return () => this.stateListeners.delete(fn); }
+  onSound(fn: SoundListener) { this.soundListeners.add(fn); return () => this.soundListeners.delete(fn); }
 
   send(msg: ClientMsg) {
     if (this.ws?.readyState === 1) this.ws.send(JSON.stringify(msg));

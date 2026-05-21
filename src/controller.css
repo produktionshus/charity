@@ -59,6 +59,15 @@ header h1 { font-size: 1rem; font-weight: 600; }
   overflow: hidden;
   position: relative;
 }
+.preview-iframe {
+  width: 100%;
+  flex: 1;
+  min-height: 240px;
+  background: var(--cream);
+  border: 0;
+  border-radius: 4px 4px 0 0;
+  display: block;
+}
 .preview-frame .slide-canvas {
   transition: none;
   outline: 0;
@@ -103,7 +112,8 @@ header h1 { font-size: 1rem; font-weight: 600; }
 }
 #open-buttons button:hover { background: #444; }
 
-/* ---- Bid panel ---- */
+/* ---- Bid panel + drawers ---- */
+.zone-bid { position: relative; overflow: hidden; }
 .bid-panel {
   flex: 1;
   display: flex;
@@ -113,10 +123,96 @@ header h1 { font-size: 1rem; font-weight: 600; }
   background: #222;
   border-radius: 4px;
 }
-.bid-lot, .bid-current { display: flex; justify-content: space-between; align-items: baseline; }
+.drawer-tab {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 28px;
+  height: 110px;
+  border: 0;
+  cursor: pointer;
+  z-index: 4;
+  font: inherit;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.drawer-tab span { writing-mode: vertical-rl; transform: rotate(180deg); }
+.drawer-tab--left  { left: 0;  background: #555; border-radius: 0 6px 6px 0; }
+.drawer-tab--left:hover  { background: #666; }
+.drawer-tab--right { right: 0; background: #2a5a8a; border-radius: 6px 0 0 6px; }
+.drawer-tab--right:hover { background: #3a6a9a; }
+
+.drawer {
+  position: absolute;
+  top: 2.2rem;
+  bottom: 0.5rem;
+  width: 0;
+  background: #1a1a1a;
+  border-radius: 4px;
+  z-index: 3;
+  overflow: hidden;
+  transition: width 220ms ease;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+.drawer.open { width: calc(100% - 36px); padding: 0.9rem; overflow-y: auto; }
+.drawer--left  { left: 34px; }
+.drawer--right { right: 34px; }
+.drawer h3 { font-size: 1rem; color: #fff; margin-bottom: 0.2rem; }
+.drawer-hint { font-size: 0.78rem; color: #888; line-height: 1.4; }
+.drawer-hint code { background: #2a2a2a; padding: 0.05rem 0.3rem; border-radius: 3px; color: #ccc; font-size: 0.85em; }
+.drawer-danger {
+  background: #c0392b;
+  color: #fff;
+  border: 0;
+  padding: 0.9rem;
+  border-radius: 6px;
+  font: inherit;
+  font-weight: 700;
+  font-size: 1rem;
+  cursor: pointer;
+  min-height: 52px;
+  letter-spacing: 0.04em;
+}
+.drawer-danger:hover { background: #a13325; }
+.sound-row { display: flex; flex-direction: column; gap: 0.3rem; }
+.sound-row > span { font-size: 0.7rem; color: #888; text-transform: uppercase; letter-spacing: 0.1em; }
+.sound-row select, .sound-row input[type="number"] {
+  background: #111; color: #fff; border: 1px solid #333; padding: 0.5rem;
+  border-radius: 4px; font: inherit; font-size: 0.9rem;
+}
+.sound-knob-row { display: flex; gap: 0.5rem; align-items: center; }
+.sound-knob-row input[type="range"] { flex: 1; accent-color: #2a5a8a; }
+.sound-knob-row input[type="number"] { width: 5rem; }
+.sound-preview-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.3rem; margin-top: 0.4rem; }
+.sound-preview-row button {
+  background: #333; color: #fff; border: 0; padding: 0.5rem 0.4rem;
+  border-radius: 4px; font: inherit; font-size: 0.78rem; cursor: pointer; min-height: 38px;
+}
+.sound-preview-row button:hover { background: #444; }
+.sound-play-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.3rem; margin-top: 0.5rem; }
+.sound-play-row button {
+  border: 0; padding: 0.6rem 0.4rem; border-radius: 5px;
+  font: inherit; font-size: 0.85rem; font-weight: 700; cursor: pointer; min-height: 44px;
+}
+.sound-play { background: #2a5a8a; color: #fff; }
+.sound-play:hover { background: #3a6a9a; }
+.sound-stop { background: #c0392b; color: #fff; }
+.sound-stop:hover { background: #a13325; }
+.bid-lot, .bid-current, .bid-total { display: flex; justify-content: space-between; align-items: baseline; }
 .bid-label { font-size: 0.7rem; color: #888; text-transform: uppercase; letter-spacing: 0.1em; }
 .bid-lot-num { font-size: 1.4rem; font-weight: 700; color: var(--green); }
 .bid-amount { font-size: 1.6rem; font-weight: 700; color: #fff; font-variant-numeric: tabular-nums; }
+.bid-total { padding-top: 0.3rem; border-top: 1px solid #333; }
+.bid-total-amount { font-size: 1.3rem; font-weight: 800; color: var(--green); font-variant-numeric: tabular-nums; }
 .bid-input-row { display: flex; gap: 0.3rem; }
 /* Touch-friendly sizing: all interactive elements >= 48px */
 .bid-input-row input { flex: 1; background: #111; color: #fff; border: 1px solid #444; padding: 0.9rem; border-radius: 6px; font: inherit; font-size: 1.1rem; min-height: 56px; }

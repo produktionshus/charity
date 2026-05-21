@@ -101,19 +101,17 @@ function sponsorBlockHtml(lot: ReturnType<typeof lotByNum>, donorLabelGroup: num
   }
   if (lot.donorNames && lot.donorNames.length) {
     const names = lot.donorNames
-      .map((n, i) => `<div class="donor-name build-item" style="transition-delay:${delay(donorLabelGroup + 1 + i, 0)}ms">${n.toUpperCase()}</div>`)
+      .map((n, i) => `<div class="donor-name build-item" style="transition-delay:${delay(donorLabelGroup + i, 0)}ms">${n.toUpperCase()}</div>`)
       .join('');
     return `
       <div class="sponsor-block sponsor-names">
-        <div class="doneret-af build-item" style="transition-delay:${delay(donorLabelGroup, 0)}ms">DONERET AF</div>
         ${names}
       </div>
     `;
   }
   return `
     <div class="sponsor-block">
-      <div class="doneret-af build-item" style="transition-delay:${delay(donorLabelGroup, 0)}ms">DONERET AF</div>
-      <img class="sponsor-logo build-item" style="transition-delay:${delay(donorLabelGroup + 1, 0)}ms" src="/assets/logo/logo-lot-${lot.num}.png" alt="${lot.sponsor}" />
+      <img class="sponsor-logo build-item" style="transition-delay:${delay(donorLabelGroup, 0)}ms" src="/assets/logo/logo-lot-${lot.num}.png" alt="${lot.sponsor}" />
     </div>
   `;
 }

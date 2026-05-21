@@ -4,8 +4,18 @@ body.auctioneer {
   grid-template-columns: 1fr 320px;
   height: 100vh;
 }
+/* When embedded in the controller's narrow iframe, stack slide above panel
+   so neither one starves the other. */
+@media (max-width: 900px) {
+  body.auctioneer {
+    grid-template-columns: 1fr;
+    grid-template-rows: 1fr auto;
+    height: 100vh;
+  }
+  #auctioneer-panel { max-height: 45vh; }
+}
 
-#stage { width: auto; height: 100%; }
+#stage { width: 100%; height: 100%; min-height: 0; min-width: 0; }
 
 #auctioneer-panel {
   background: #fafafa;
@@ -23,3 +33,30 @@ body.auctioneer {
 #lot-donor { color: var(--muted); font-style: italic; font-size: 0.9rem; }
 
 .lot-notes { font-size: 0.9rem; line-height: 1.5; color: var(--ink); white-space: pre-wrap; }
+
+/* ---- Bid panel ---- */
+.bid-block { display: flex; flex-direction: column; gap: 0.2rem; padding: 0.6rem 0; border-top: 1px solid #e0e0e0; }
+.bid-block:first-of-type { border-top: 0; }
+.bid-label { font-size: 0.7rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.12em; font-weight: 600; }
+.bid-amount-big { font-size: 2.6rem; font-weight: 800; color: var(--green-dark); font-variant-numeric: tabular-nums; line-height: 1.1; }
+.bid-amount-mid { font-size: 1.6rem; font-weight: 700; color: var(--green); font-variant-numeric: tabular-nums; }
+.bid-history-block { max-height: 200px; }
+.bid-history-list { list-style: none; counter-reset: bid; font-size: 0.95rem; color: var(--ink); font-variant-numeric: tabular-nums; overflow-y: auto; max-height: 170px; }
+.bid-history-list li { padding: 0.18rem 0; display: flex; justify-content: space-between; }
+.bid-history-list li::before { counter-increment: bid; content: counter(bid) "."; color: var(--muted); margin-right: 0.6rem; }
+.bid-history-list li.sold { font-weight: 700; color: var(--green-dark); }
+
+/* Sound countdown overlay */
+.sound-countdown {
+  background: #ffe8a0;
+  border: 1px solid #d4a93b;
+  border-radius: 6px;
+  padding: 0.7rem 0.9rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+.sound-file { font-weight: 700; font-size: 0.95rem; color: #6a4f10; word-break: break-all; }
+.sound-bar { background: #f7d878; height: 8px; border-radius: 4px; overflow: hidden; }
+.sound-bar-fill { background: #d4a93b; height: 100%; width: 0%; transition: width 100ms linear; }
+.sound-remaining { font-variant-numeric: tabular-nums; font-weight: 600; color: #6a4f10; font-size: 1.1rem; align-self: flex-end; }

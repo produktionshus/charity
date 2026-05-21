@@ -11,7 +11,8 @@ const sync = new SyncClient();
 const status = document.getElementById('status')!;
 const previewCurrent = document.getElementById('preview-current')!;
 const previewNext = document.getElementById('preview-next')!;
-const previewAuctioneer = document.getElementById('preview-auctioneer')!;
+// preview-auctioneer is now an <iframe src="/auctioneer.html"> that syncs
+// itself via its own ws connection — no manual rendering needed here.
 const thumbs = document.getElementById('thumbs')!;
 const position = document.getElementById('position')!;
 const prevBtn = document.getElementById('prev')!;
@@ -19,11 +20,122 @@ const nextBtn = document.getElementById('next')!;
 
 const bidLotNumEl = document.getElementById('bid-lot-num')!;
 const bidCurrentAmountEl = document.getElementById('bid-current-amount')!;
+const bidTotalAmountEl = document.getElementById('bid-total-amount')!;
 const bidInputEl = document.getElementById('bid-input') as HTMLInputElement;
 const bidAddBtn = document.getElementById('bid-add')!;
 const bidHistoryEl = document.getElementById('bid-history')!;
 const hammerslagBtn = document.getElementById('hammerslag')!;
 const bidQuickButtons = document.querySelectorAll<HTMLButtonElement>('.bid-quick button');
+
+// ---- Drawers ----
+const drawerSettings = document.getElementById('drawer-settings')!;
+const drawerSound    = document.getElementById('drawer-sound')!;
+const drawerTabSettings = document.getElementById('drawer-tab-settings')!;
+const drawerTabSound    = document.getElementById('drawer-tab-sound')!;
+const resetAuctionsBtn  = document.getElementById('reset-auctions')!;
+const soundLotNumEl     = document.getElementById('sound-lot-num')!;
+const soundInitFileEl   = document.getElementById('sound-init-file') as HTMLSelectElement;
+const soundHammerFileEl = document.getElementById('sound-hammer-file') as HTMLSelectElement;
+const soundInitKnobEl   = document.getElementById('sound-init-offset-knob') as HTMLInputElement;
+const soundInitNumEl    = document.getElementById('sound-init-offset-num')  as HTMLInputElement;
+const soundFadeInKnobEl  = document.getElementById('sound-fadein-knob')  as HTMLInputElement;
+const soundFadeInNumEl   = document.getElementById('sound-fadein-num')   as HTMLInputElement;
+const soundFadeOutKnobEl = document.getElementById('sound-fadeout-knob') as HTMLInputElement;
+const soundFadeOutNumEl  = document.getElementById('sound-fadeout-num')  as HTMLInputElement;
+const soundPlayInitBtn      = document.getElementById('sound-play-init')!;
+const soundPlayHammerBtn    = document.getElementById('sound-play-hammer')!;
+const soundStopBtn          = document.getElementById('sound-stop')!;
+const soundPreviewInitBtn   = document.getElementById('sound-preview-init')!;
+const soundPreviewHammerBtn = document.getElementById('sound-preview-hammer')!;
+const soundRefreshBtn       = document.getElementById('sound-refresh')!;
+
+function toggleDrawer(drawer: HTMLElement, other: HTMLElement) {
+  const wasOpen = drawer.classList.contains('open');
+  other.classList.remove('open');
+  drawer.classList.toggle('open', !wasOpen);
+}
+drawerTabSettings.addEventListener('click', () => toggleDrawer(drawerSettings, drawerSound));
+drawerTabSound.addEventListener('click', () => toggleDrawer(drawerSound, drawerSettings));
+
+resetAuctionsBtn.addEventListener('click', () => {
+  if (!confirm('Nulstil ALLE auktioner? Alle bud + hammerslag slettes.')) return;
+  sync.send({ type: 'reset-auctions' } as any);
+});
+
+async function loadSoundFiles() {
+  try {
+    const res = await fetch('/api/sounds');
+    const { files } = await res.json();
+    for (const sel of [soundInitFileEl, soundHammerFileEl]) {
+      const current = sel.value;
+      sel.innerHTML = '<option value="">(none)</option>' +
+        files.map((f: string) => `<option value="${f}">${f}</option>`).join('');
+      if (files.includes(current)) sel.value = current;
+    }
+  } catch (e) { console.warn('failed loading sounds', e); }
+}
+soundRefreshBtn.addEventListener('click', loadSoundFiles);
+loadSoundFiles();
+
+function applySoundConfigToUI(lotNum: string | null) {
+  soundLotNumEl.textContent = lotNum ?? '—';
+  const cfg = (lotNum && lastState?.sounds?.[lotNum]) || {};
+  soundInitFileEl.value   = cfg.initSound ?? '';
+  soundHammerFileEl.value = cfg.hammerSound ?? '';
+  const offset = cfg.initStartOffset ?? 0;
+  soundInitKnobEl.value = String(offset);
+  soundInitNumEl.value  = String(offset);
+  const fadeIn  = cfg.fadeInSec ?? 0;
+  const fadeOut = cfg.fadeOutSec ?? 0;
+  soundFadeInKnobEl.value = String(fadeIn);
+  soundFadeInNumEl.value  = String(fadeIn);
+  soundFadeOutKnobEl.value = String(fadeOut);
+  soundFadeOutNumEl.value  = String(fadeOut);
+}
+
+function pushSoundConfig() {
+  if (!currentLotNum) return;
+  sync.send({
+    type: 'set-sound', lotNum: currentLotNum,
+    config: {
+      initSound: soundInitFileEl.value || undefined,
+      initStartOffset: parseFloat(soundInitNumEl.value) || 0,
+      hammerSound: soundHammerFileEl.value || undefined,
+      fadeInSec: parseFloat(soundFadeInNumEl.value) || 0,
+      fadeOutSec: parseFloat(soundFadeOutNumEl.value) || 0,
+    },
+  } as any);
+}
+soundInitFileEl.addEventListener('change', pushSoundConfig);
+soundHammerFileEl.addEventListener('change', pushSoundConfig);
+
+function bindKnobPair(knob: HTMLInputElement, num: HTMLInputElement) {
+  knob.addEventListener('input', () => { num.value = knob.value; });
+  knob.addEventListener('change', pushSoundConfig);
+  num.addEventListener('change', () => { knob.value = num.value; pushSoundConfig(); });
+}
+bindKnobPair(soundInitKnobEl, soundInitNumEl);
+bindKnobPair(soundFadeInKnobEl, soundFadeInNumEl);
+bindKnobPair(soundFadeOutKnobEl, soundFadeOutNumEl);
+
+soundPlayInitBtn.addEventListener('click', () => {
+  if (!currentLotNum) return;
+  sync.send({ type: 'play-sound', lotNum: currentLotNum, which: 'init' } as any);
+});
+soundPlayHammerBtn.addEventListener('click', () => {
+  if (!currentLotNum) return;
+  sync.send({ type: 'play-sound', lotNum: currentLotNum, which: 'hammer' } as any);
+});
+soundStopBtn.addEventListener('click', () => sync.send({ type: 'stop-sound' } as any));
+
+function playPreview(file: string | null, offset = 0) {
+  if (!file) return;
+  const a = new Audio(`/sounds/${file}`);
+  a.currentTime = offset;
+  a.play().catch(e => console.warn('preview play failed', e));
+}
+soundPreviewInitBtn.addEventListener('click', () => playPreview(soundInitFileEl.value, parseFloat(soundInitNumEl.value) || 0));
+soundPreviewHammerBtn.addEventListener('click', () => playPreview(soundHammerFileEl.value, 0));
 
 let currentIdx = 0;
 let currentLotNum: string | null = null;
@@ -65,6 +177,14 @@ function renderThumbs() {
 }
 
 function updateBidPanel(state: any) {
+  // Accumulated total across all sold lots
+  let total = 0;
+  for (const k of Object.keys(state.lots)) {
+    const ls = state.lots[k];
+    if (ls.status === 'sold' && typeof ls.finalPrice === 'number') total += ls.finalPrice;
+  }
+  bidTotalAmountEl.textContent = total.toLocaleString('da-DK') + ' kr';
+
   const slide = SLIDES[state.slideIdx];
   if (slide?.kind === 'lot' && slide.lotNum) {
     currentLotNum = slide.lotNum;
@@ -84,12 +204,14 @@ function updateBidPanel(state: any) {
       hammerslagBtn.classList.remove('sold');
       hammerslagBtn.textContent = 'HAMMERSLAG';
     }
+    applySoundConfigToUI(lot.num);
   } else {
     currentLotNum = null;
     bidLotNumEl.textContent = '—';
     bidCurrentAmountEl.textContent = '— kr';
     bidHistoryEl.innerHTML = '';
     hammerslagBtn.textContent = 'HAMMERSLAG';
+    applySoundConfigToUI(null);
   }
 }
 
@@ -101,7 +223,7 @@ sync.on((state) => {
   position.textContent = `${currentIdx + 1} / ${SLIDES.length}`;
   renderPreview(previewCurrent, currentIdx);
   renderPreview(previewNext, currentIdx + 1);
-  renderPreview(previewAuctioneer, currentIdx);  // mirrors auctioneer for now
+  // auctioneer preview is a live iframe; no manual render
   let currentThumb: HTMLElement | null = null;
   thumbs.querySelectorAll<HTMLElement>('.thumb').forEach((t, i) => {
     t.classList.toggle('current', i === currentIdx);

@@ -10,6 +10,7 @@ export const PROFILE_MIRROR = new Set(['15']);
 // user can tweak via DevTools or a future controller knob.
 export const PHOTO_FOCAL: Record<string, string> = {
   '01': '50% 70%',  // Smukfest gate in lower half
+  '06': '50% 75%',  // Goodwood — car in lower portion, less sky
   '08': '50% 45%',  // safari elephants upper-middle
   '14': '50% 75%',  // OMEGA watch lower
   '17': '50% 65%',  // Eilersen sofa lower

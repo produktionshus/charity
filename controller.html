@@ -42,6 +42,59 @@
 
   <section class="zone zone-bid">
     <h2>Live auction</h2>
+    <button class="drawer-tab drawer-tab--left" id="drawer-tab-settings" title="Settings"><span>Settings</span></button>
+    <button class="drawer-tab drawer-tab--right" id="drawer-tab-sound" title="Sound"><span>Sound</span></button>
+
+    <div class="drawer drawer--left" id="drawer-settings">
+      <h3>Settings</h3>
+      <p class="drawer-hint">Advanced controls. Use carefully — affects all clients.</p>
+      <button id="reset-auctions" class="drawer-danger">Reset all auctions</button>
+    </div>
+
+    <div class="drawer drawer--right" id="drawer-sound">
+      <h3>Sound — lot <span id="sound-lot-num">—</span></h3>
+      <p class="drawer-hint">Per-lot init + hammerslag sound. Drop .mp3/.wav files into <code>web/public/sounds/</code>.</p>
+      <label class="sound-row">
+        <span>Init sound</span>
+        <select id="sound-init-file"><option value="">(none)</option></select>
+      </label>
+      <label class="sound-row">
+        <span>Init start offset (sec)</span>
+        <div class="sound-knob-row">
+          <input type="range" id="sound-init-offset-knob" min="0" max="30" step="0.1" value="0" />
+          <input type="number" id="sound-init-offset-num" min="0" max="600" step="0.1" value="0" />
+        </div>
+      </label>
+      <label class="sound-row">
+        <span>Hammerslag sound</span>
+        <select id="sound-hammer-file"><option value="">(none)</option></select>
+      </label>
+      <label class="sound-row">
+        <span>Fade in (sec)</span>
+        <div class="sound-knob-row">
+          <input type="range" id="sound-fadein-knob" min="0" max="10" step="0.1" value="0" />
+          <input type="number" id="sound-fadein-num" min="0" max="30" step="0.1" value="0" />
+        </div>
+      </label>
+      <label class="sound-row">
+        <span>Fade out (sec)</span>
+        <div class="sound-knob-row">
+          <input type="range" id="sound-fadeout-knob" min="0" max="10" step="0.1" value="0" />
+          <input type="number" id="sound-fadeout-num" min="0" max="30" step="0.1" value="0" />
+        </div>
+      </label>
+      <div class="sound-play-row">
+        <button id="sound-play-init" class="sound-play">▶ Play init</button>
+        <button id="sound-play-hammer" class="sound-play">▶ Play hammer</button>
+        <button id="sound-stop" class="sound-stop">■ Stop</button>
+      </div>
+      <div class="sound-preview-row">
+        <button id="sound-preview-init">Preview init (local)</button>
+        <button id="sound-preview-hammer">Preview hammer (local)</button>
+        <button id="sound-refresh">Refresh file list</button>
+      </div>
+    </div>
+
     <div class="bid-panel">
       <div class="bid-lot">
         <span class="bid-label">Lot</span>
@@ -50,6 +103,10 @@
       <div class="bid-current">
         <span class="bid-label">Current bid</span>
         <span class="bid-amount" id="bid-current-amount">— kr</span>
+      </div>
+      <div class="bid-total">
+        <span class="bid-label">Total raised (sold)</span>
+        <span class="bid-total-amount" id="bid-total-amount">0 kr</span>
       </div>
       <div class="bid-input-row">
         <input type="number" id="bid-input" placeholder="kr" step="500" />
@@ -69,7 +126,7 @@
   <section class="zone zone-auctioneer">
     <h2>Auctioneer view</h2>
     <div class="preview-wrap">
-      <div class="preview-frame" id="preview-auctioneer"></div>
+      <iframe class="preview-iframe" id="preview-auctioneer" src="/auctioneer.html" title="Auctioneer view"></iframe>
       <div class="qr-panel" id="qr-auctioneer">
         <canvas class="qr-canvas"></canvas>
         <div class="qr-url"></div>
