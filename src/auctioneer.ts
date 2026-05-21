@@ -27,6 +27,7 @@ sync.on((state) => {
       fitToViewport(stage, next);
       requestAnimationFrame(() => {
         next.classList.remove('entering');
+        next.classList.add('is-visible');
         currentEl?.classList.add('entering');
       });
     });

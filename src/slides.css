@@ -219,3 +219,35 @@
   max-height: 0.9in;
   object-fit: contain;
 }
+
+.closing-grid {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 0.18in;
+  padding: 0.2in 0.4in;
+}
+.closing-cell {
+  aspect-ratio: 1.6 / 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+.closing-cell img {
+  max-width: 100%;
+  max-height: 0.7in;
+  object-fit: contain;
+}
+.closing-bottom-rule {
+  margin: 0.15in auto 0;
+  width: calc(100% - 2in);
+}
+.closing-tagline {
+  text-align: center;
+  font-family: var(--font-body);
+  font-weight: 700;
+  color: var(--green);
+  font-size: 10pt;
+  letter-spacing: 0.6em;
+  margin-top: 0.08in;
+}

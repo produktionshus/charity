@@ -34,6 +34,8 @@ function renderPreview(container: HTMLElement, idx: number) {
   const slide = SLIDES[idx];
   if (!slide) return;
   const el = renderSlide(slide);
+  // Previews show finished state — no build animation
+  el.classList.add('is-visible', 'no-build');
   container.appendChild(el);
   fitToViewport(container, el);
 }
@@ -55,6 +57,7 @@ function renderThumbs() {
     thumbs.appendChild(t);
     // Render the mini slide
     const slideEl = renderSlide(s);
+    slideEl.classList.add('is-visible', 'no-build');
     inner.appendChild(slideEl);
     // Defer fit until thumb has layout dimensions
     requestAnimationFrame(() => fitToViewport(inner, slideEl));
@@ -99,7 +102,8 @@ sync.on((state) => {
   renderPreview(previewCurrent, currentIdx);
   renderPreview(previewNext, currentIdx + 1);
   renderPreview(previewAuctioneer, currentIdx);  // mirrors auctioneer for now
-  thumbs.querySelectorAll('.thumb').forEach((t, i) => {
+  let currentThumb: HTMLElement | null = null;
+  thumbs.querySelectorAll<HTMLElement>('.thumb').forEach((t, i) => {
     t.classList.toggle('current', i === currentIdx);
     t.classList.toggle('next', i === currentIdx + 1);
     let state = t.querySelector('.thumb-state');
@@ -113,7 +117,14 @@ sync.on((state) => {
       else if (i === currentIdx + 1) { state.textContent = 'NEXT'; state.className = 'thumb-state next'; }
       else state.remove();
     }
+    if (i === currentIdx) currentThumb = t;
   });
+  // Smooth-scroll the current thumb into view (centered). User can still
+  // scroll the strip manually via the native scrollbar — this only triggers
+  // when slide changes.
+  if (currentThumb) {
+    currentThumb.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' });
+  }
   updateBidPanel(state);
 });
 

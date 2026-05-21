@@ -25,9 +25,10 @@ function swapSlide(idx: number) {
   next.classList.add('entering');
   stage.appendChild(next);
   fitToViewport(stage, next);
-  // Force reflow so the transition fires on opacity change
-  next.getBoundingClientRect();
+  next.getBoundingClientRect();  // reflow
   next.classList.remove('entering');
+  // Trigger build-in animation on this slide (per-element fades start at t=0)
+  next.classList.add('is-visible');
   currentEl?.classList.add('entering');
   const previous = currentEl;
   currentEl = next;

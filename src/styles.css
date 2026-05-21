@@ -77,6 +77,33 @@ body.viewer {
 }
 .slide-canvas.entering { opacity: 0; }
 
+/* ---- Build animation system ----
+   Each element marked .build-item starts at opacity 0. When the slide root
+   gets .is-visible the element fades in over 400ms with a per-element
+   transition-delay (set inline as `transition-delay: Nms`). Delay formula
+   per handoff: groupStagger=200ms × group + inGroupStagger=60ms × index.
+*/
+.build-item {
+  opacity: 0;
+  transition: opacity 400ms ease-out;
+}
+.slide-canvas.is-visible .build-item {
+  opacity: 1;
+}
+/* Previews / thumbnails should show finished state instantly */
+.slide-canvas.no-build .build-item {
+  transition: none !important;
+  transition-delay: 0s !important;
+  opacity: 1 !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  .build-item {
+    opacity: 1 !important;
+    transition: none !important;
+    transition-delay: 0s !important;
+  }
+}
+
 /* Cover */
 .slide-cover .cover-content {
   position: absolute;
