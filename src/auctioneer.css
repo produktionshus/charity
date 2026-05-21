@@ -1,0 +1,25 @@
+body.auctioneer {
+  background: var(--cream);
+  display: grid;
+  grid-template-columns: 1fr 320px;
+  height: 100vh;
+}
+
+#stage { width: auto; height: 100%; }
+
+#auctioneer-panel {
+  background: #fafafa;
+  border-left: 1px solid #ddd;
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  overflow-y: auto;
+}
+
+.lot-meta h2 { font-size: 4rem; color: var(--green); line-height: 1; }
+.lot-meta p { color: var(--ink); }
+#lot-title { font-weight: 600; margin-top: 0.5rem; }
+#lot-donor { color: var(--muted); font-style: italic; font-size: 0.9rem; }
+
+.lot-notes { font-size: 0.9rem; line-height: 1.5; color: var(--ink); white-space: pre-wrap; }

@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="da">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Controller — StjerneGolf 2026</title>
+  <link rel="stylesheet" href="/src/styles.css" />
+  <link rel="stylesheet" href="/src/slides.css" />
+  <link rel="stylesheet" href="/src/controller.css" />
+</head>
+<body class="controller">
+  <header>
+    <h1>Controller</h1>
+    <span id="status">disconnected</span>
+    <nav id="open-buttons">
+      <button data-open="/" title="Open viewer in a new window">⤴ Viewer</button>
+      <button data-open="/auctioneer.html" title="Open auctioneer in a new window">⤴ Auctioneer</button>
+    </nav>
+    <span id="position"></span>
+    <nav id="controls">
+      <button id="prev">◀ Prev</button>
+      <button id="next">Next ▶</button>
+    </nav>
+  </header>
+
+  <section class="zone zone-current">
+    <h2>Current</h2>
+    <div class="preview-wrap">
+      <div class="preview-frame" id="preview-current"></div>
+      <div class="qr-panel" id="qr-viewer">
+        <canvas class="qr-canvas"></canvas>
+        <div class="qr-url"></div>
+      </div>
+      <button class="share-bar" data-share="/" data-target="qr-viewer">Share viewer URL →  QR</button>
+    </div>
+  </section>
+
+  <section class="zone zone-next">
+    <h2>Next</h2>
+    <div class="preview-frame" id="preview-next"></div>
+  </section>
+
+  <section class="zone zone-bid">
+    <h2>Live auction</h2>
+    <div class="bid-panel">
+      <div class="bid-lot">
+        <span class="bid-label">Lot</span>
+        <span class="bid-lot-num" id="bid-lot-num">—</span>
+      </div>
+      <div class="bid-current">
+        <span class="bid-label">Current bid</span>
+        <span class="bid-amount" id="bid-current-amount">— kr</span>
+      </div>
+      <div class="bid-input-row">
+        <input type="number" id="bid-input" placeholder="kr" step="500" />
+        <button id="bid-add">Add bid</button>
+      </div>
+      <div class="bid-quick">
+        <button data-inc="500">+500</button>
+        <button data-inc="1000">+1.000</button>
+        <button data-inc="2500">+2.500</button>
+        <button data-inc="5000">+5.000</button>
+      </div>
+      <div class="bid-history" id="bid-history"></div>
+      <button id="hammerslag" class="hammerslag">HAMMERSLAG</button>
+    </div>
+  </section>
+
+  <section class="zone zone-auctioneer">
+    <h2>Auctioneer view</h2>
+    <div class="preview-wrap">
+      <div class="preview-frame" id="preview-auctioneer"></div>
+      <div class="qr-panel" id="qr-auctioneer">
+        <canvas class="qr-canvas"></canvas>
+        <div class="qr-url"></div>
+      </div>
+      <button class="share-bar" data-share="/auctioneer.html" data-target="qr-auctioneer">Share auctioneer URL →  QR</button>
+    </div>
+  </section>
+
+  <aside id="thumbs"></aside>
+
+  <script type="module" src="/src/controller.ts"></script>
+</body>
+</html>

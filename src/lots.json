@@ -1,0 +1,541 @@
+{
+  "lots": [
+    {
+      "num": "01",
+      "title": "4 VIP-billetter til Smukfest og overnatning i bøgeskoven",
+      "subtitle": "Pakken inkluderer for 4 personer",
+      "sponsor": "Smukfest",
+      "bullets": [
+        "Onsdagsarmbånd til Smukfest",
+        "Middag i VIPPEN fra Restaurant Frederikshøj",
+        "2 tenthouses med overnatning for i alt 4 personer i Comwell Camp",
+        "Morgenmad i Comwell Camp"
+      ],
+      "titleParts": [
+        {
+          "text": "4 VIP-billetter til ",
+          "bold": false
+        },
+        {
+          "text": "Smukfest",
+          "bold": true
+        },
+        {
+          "text": " og overnatning i bøgeskoven",
+          "bold": false
+        }
+      ]
+    },
+    {
+      "num": "02",
+      "title": "Fodboldaften med VIP-oplevelser og middag i København",
+      "subtitle": "Pakken inkluderer for 2 personer",
+      "sponsor": "Viaplay",
+      "bullets": [
+        "Middag på Restaurant Pirlo",
+        "Rundvisning bag kulisserne hos Viaplay",
+        "Se en Champions League fodboldkamp live fra studiet",
+        "Mød Peter Grønborg og Preben Elkjær",
+        "Signeret Champions League fodbold",
+        "Gyldig i sæson 26/27"
+      ],
+      "titleParts": [
+        {
+          "text": "Fodboldaften med VIP-oplevelser",
+          "bold": true
+        },
+        {
+          "text": " og middag i København",
+          "bold": false
+        }
+      ]
+    },
+    {
+      "num": "03",
+      "title": "Eksklusiv Company Day eller fest for 35 personer i Ree Park",
+      "subtitle": "Pakken inkluderer for 35 personer",
+      "sponsor": "Ree Park Safari",
+      "bullets": [
+        "Entré til Ree Park",
+        "Teambuilding med vilde og engagerende opgaver i og omkring parken",
+        "Eksklusiv adgang bag kulisserne",
+        "Frokost i smukke omgivelser",
+        "Safaritur med parkens dyr helt tæt på",
+        "3-retters middag fra Food Family Group og udvalgte vine fra MasVino",
+        "Oplæg fra Jesper Stagegaard"
+      ],
+      "titleParts": [
+        {
+          "text": "Eksklusiv Company Day eller fest ",
+          "bold": false
+        },
+        {
+          "text": "for 35 personer i ",
+          "bold": false
+        },
+        {
+          "text": "Ree Park",
+          "bold": true
+        }
+      ]
+    },
+    {
+      "num": "04",
+      "title": "Et års premium pleje af både bil og græsplæne",
+      "subtitle": "Pakken inkluderer",
+      "sponsor": "Private Car Care · DM Greenkeeping",
+      "bullets": [
+        "Et års premium bilvask, 12 omgange på din hjemmeadresse",
+        "Et års luksuspakke til græsplænen fra DM Greenkeeping – 4 besøg",
+        "En Segway Navimow X430E robotplæneklipper",
+        "Bilvask leveres i postnumre 0–4000",
+        "Græspleje gælder op til 800 m² plæne"
+      ],
+      "titleParts": [
+        {
+          "text": "Et års ",
+          "bold": false
+        },
+        {
+          "text": "premium pleje",
+          "bold": true
+        },
+        {
+          "text": " af både bil og græsplæne",
+          "bold": false
+        }
+      ]
+    },
+    {
+      "num": "05",
+      "title": "Investér i flere sunde år sammen",
+      "subtitle": "Pakken inkluderer for 2 personer",
+      "sponsor": "Cue",
+      "bullets": [
+        "Årligt medlemskab hos Cue med kvartalsvis opfølgning",
+        "60+ biomarkører: hormoner, hjerte-kar, stofskifte, inflammation m.m.",
+        "DEXA-scanning af kropssammensætning og knoglesundhed",
+        "VO2 max (SeismofitR) og gribestyrkemåling",
+        "1:1 konsultation med Cue-læge og konkret handlingsplan",
+        "Personlig plan inden for kost, søvn, træning og restitution",
+        "Concierge-adgang til din læge mellem målingerne i Cue-appen"
+      ],
+      "titleParts": [
+        {
+          "text": "Investér i flere ",
+          "bold": false
+        },
+        {
+          "text": "sunde",
+          "bold": true
+        },
+        {
+          "text": " år sammen",
+          "bold": false
+        }
+      ]
+    },
+    {
+      "num": "06",
+      "title": "Oplev Goodwood Festival of Speed med eksklusiv VIP-adgang",
+      "subtitle": "Pakken inkluderer for 2 personer",
+      "sponsor": "Kim Due",
+      "bullets": [
+        "VIP-billetter til Surtees ved Goodwood Festival of Speed, søndag 12. juli 2026",
+        "Adgang til Surtees' hospitality-område og privat balkon",
+        "Helikoptertur over Goodwood Estate og paddock tours",
+        "Gastronomi af Michelin-kok Ollie Dabbous, fri champagne og cocktails",
+        "2 overnatninger 11.–13. juli 2026 på The White Horse inkl. middag"
+      ],
+      "titleParts": [
+        {
+          "text": "Oplev ",
+          "bold": false
+        },
+        {
+          "text": "Goodwood Festival of Speed",
+          "bold": true
+        },
+        {
+          "text": " med eksklusiv VIP-adgang",
+          "bold": false
+        }
+      ]
+    },
+    {
+      "num": "07",
+      "title": "Padel og vinsmagning i Aarhus",
+      "subtitle": "Pakken inkluderer for op til 30 personer",
+      "sponsor": "Pakhus77 · Vininvestoren · Gusto",
+      "bullets": [
+        "Padel i Pakhus77",
+        "Velkomstchampagne hos Vininvestoren",
+        "Blindsmagning af hvidvin og rødvin",
+        "Tapasanretning fra Gusto"
+      ],
+      "titleParts": [
+        {
+          "text": "Padel og vinsmagning",
+          "bold": true
+        },
+        {
+          "text": " i Aarhus",
+          "bold": false
+        }
+      ]
+    },
+    {
+      "num": "08",
+      "title": "Safari og badeferie i verdensklasse",
+      "subtitle": "Pakken inkluderer for 2 personer",
+      "sponsor": "Bravo Tours",
+      "bullets": [
+        "14 dages luksusferie i Kenya",
+        "7 dages eventyrsafari i Kenyas bedste safariområder",
+        "7 dages badeferie på pragtfuldt strandhotel",
+        "Halvpension på badeferien, helpension på safarien",
+        "Golf på 3 forskellige smukke baner",
+        "Fly på Premium Class"
+      ],
+      "titleParts": [
+        {
+          "text": "Safari og badeferie ",
+          "bold": false
+        },
+        {
+          "text": "i verdensklasse",
+          "bold": true
+        }
+      ]
+    },
+    {
+      "num": "09",
+      "title": "Eksklusiv VIP-oplevelse hos Selected Car Selection",
+      "subtitle": "Pakken inkluderer for 25 personer",
+      "sponsor": "Selected Car Collection",
+      "bullets": [
+        "Personlig rundvisning og fortællinger ved Jacob Brunsborg",
+        "Eksklusiv rundvisning i Selected Car Groups univers",
+        "Champagne, vin og øl i den private bilsamling",
+        "Uformel frokost samt kaffe og kage"
+      ],
+      "titleParts": [
+        {
+          "text": "Eksklusiv VIP-oplevelse",
+          "bold": true
+        },
+        {
+          "text": " hos Selected Car Selection",
+          "bold": false
+        }
+      ]
+    },
+    {
+      "num": "10",
+      "title": "Oplev APHACA i Parken — VIP-aften for 16 personer",
+      "subtitle": "Pakken inkluderer for 16 personer",
+      "sponsor": "Park Lane Copenhagen · Ønskeskyen",
+      "bullets": [
+        "Billetter til APHACA i Parken, 10. oktober 2026",
+        "3-retters middag i Ønskeskyens Skybox",
+        "8 dobbeltværelser på Park Lane Copenhagen inkl. morgenmad"
+      ],
+      "titleParts": [
+        {
+          "text": "Oplev APHACA i Parken ",
+          "bold": false,
+          "break": true
+        },
+        {
+          "text": "— ",
+          "bold": false
+        },
+        {
+          "text": "VIP-aften for 16 personer",
+          "bold": true
+        }
+      ]
+    },
+    {
+      "num": "11",
+      "title": "Eksklusiv private dining for 12 personer med intimkoncert af Mille",
+      "subtitle": "Pakken inkluderer for 12 personer",
+      "sponsor": "Hotel Villa Lejet",
+      "bullets": [
+        "Private dining i dit eget hjem med Thomas Castberg",
+        "Gourmetmenu med sæsonens bedste råvarer",
+        "Fortællinger fra gastronomiens verden",
+        "Intimkoncert med Mille — vinder af P3 Talent 2025"
+      ],
+      "titleParts": [
+        {
+          "text": "Eksklusiv ",
+          "bold": false
+        },
+        {
+          "text": "private dining",
+          "bold": true
+        },
+        {
+          "text": " for 12 personer med ",
+          "bold": false
+        },
+        {
+          "text": "intimkoncert af Mille",
+          "bold": true
+        }
+      ]
+    },
+    {
+      "num": "12",
+      "title": "Ophold og Michelin-middag på d'Angleterre",
+      "subtitle": "Pakken inkluderer for 4 personer",
+      "sponsor": "Hotel d'Angleterre · Cartier",
+      "bullets": [
+        "2 dobbeltværelser på Hotel d'Angleterre",
+        "6-retters tasting menu på Marchal med tilhørende vinmenu",
+        "Privat shopping-oplevelse i Cartier med champagne og kanapéer"
+      ],
+      "titleParts": [
+        {
+          "text": "Ophold og ",
+          "bold": false
+        },
+        {
+          "text": "Michelin-middag",
+          "bold": true
+        },
+        {
+          "text": " på ",
+          "bold": false
+        },
+        {
+          "text": "d'Angleterre",
+          "bold": true
+        }
+      ]
+    },
+    {
+      "num": "13",
+      "title": "Piemonte fra cykelsadlen",
+      "subtitle": "Pakken inkluderer for 4 par",
+      "sponsor": "Doneret af privat person",
+      "bullets": [
+        "3 nætter (torsdag til søndag) i privat villa Casa del Timo Selvatico",
+        "Daglige guidede cykelture med dansk vært, tilpasset niveau",
+        "Mulighed for vandreture gennem vinmarker og landsbyer",
+        "Ophold, morgenmad og guidede ture inkluderet",
+        "Transport, cykelleje og øvrige måltider arrangeres separat"
+      ],
+      "titleParts": [
+        {
+          "text": "Piemonte fra cykelsadlen",
+          "bold": false
+        }
+      ]
+    },
+    {
+      "num": "14",
+      "title": "OMEGA Speedmaster “Silver Snoopy Award”",
+      "subtitle": "Specifikationer",
+      "sponsor": "Doneret af privat person",
+      "bullets": [
+        "Model: OMEGA Speedmaster Silver Snoopy Award",
+        "Størrelse: 42 mm",
+        "Materiale: Stål",
+        "Rem: Blå coated nylonrem",
+        "Reference: 310.32.42.50.02.001",
+        "Stand: Næsten nyt og uden ridser"
+      ],
+      "titleParts": [
+        {
+          "text": "OMEGA Speedmaster ",
+          "bold": false
+        },
+        {
+          "text": "“Silver Snoopy Award”",
+          "bold": true
+        }
+      ]
+    },
+    {
+      "num": "15",
+      "title": "Eksklusivt foredrag med Viktor Axelsen & Morten Ankerdal",
+      "subtitle": "En aften om dedikation, mod og at lykkes mod alle odds",
+      "sponsor": "Viktor Axelsen · Morten Ankerdal",
+      "bullets": [
+        "Personlig samtale mellem Viktor Axelsen og Morten Ankerdal",
+        "Historier fra topidrættens svære perioder og store sejre",
+        "Perfekt til virksomheds- eller private arrangementer"
+      ],
+      "titleParts": [
+        {
+          "text": "Eksklusivt foredrag",
+          "bold": true
+        },
+        {
+          "text": " med Viktor Axelsen & Morten Ankerdal",
+          "bold": false
+        }
+      ],
+      "donorNames": [
+        "Viktor Axelsen",
+        "Morten Ankerdal"
+      ]
+    },
+    {
+      "num": "16",
+      "title": "Gudinden for ungdom og evig skønhed i marmor",
+      "subtitle": "Specifikationer",
+      "sponsor": "Zinck Henningsen Art Consulting",
+      "bullets": [
+        "Marmorskulptur efter Bertel Thorvaldsens Hebe",
+        "Materiale: Marmor",
+        "Producent: Massimo Galleni, Pietrasanta, Italien",
+        "Højde inkl. sokkel: 156 cm"
+      ],
+      "titleParts": [
+        {
+          "text": "Gudinden",
+          "bold": true
+        },
+        {
+          "text": " for ungdom og evig skønhed i ",
+          "bold": false
+        },
+        {
+          "text": "marmor",
+          "bold": true
+        }
+      ]
+    },
+    {
+      "num": "17",
+      "title": "En moderne klassiker fra Eilersen",
+      "subtitle": "Aton modulsofa, designet af Jens Juul Eilersen",
+      "sponsor": "Eilersen",
+      "bullets": [
+        "Elegant modulsofa med bløde former og tidløst design",
+        "Fleksibel modulopstilling tilpasses dit hjem",
+        "Dybe sæder og bløde hynder for maksimal komfort",
+        "Solid konstruktion og høj kvalitet — mange års glæde"
+      ],
+      "titleParts": [
+        {
+          "text": "En moderne klassiker ",
+          "bold": false
+        },
+        {
+          "text": "fra Eilersen",
+          "bold": true
+        }
+      ]
+    },
+    {
+      "num": "18",
+      "title": "Den store havefest — komplet festoplevelse for op til 50 personer",
+      "subtitle": "Pakken inkluderer for 50 personer",
+      "sponsor": "Cocktail Company · Køkken Piraterne · DJ Lee Van",
+      "bullets": [
+        "Cocktailoplevelse med bartender og bar fra Cocktail Company",
+        "DJ og live show med DJ Lee Van",
+        "Streetfood fra Køkken Piraterne (foodtruck)"
+      ],
+      "titleParts": [
+        {
+          "text": "Den ",
+          "bold": false
+        },
+        {
+          "text": "store havefest",
+          "bold": true
+        },
+        {
+          "text": " — komplet festoplevelse for op til 50 personer",
+          "bold": false
+        }
+      ]
+    },
+    {
+      "num": "19",
+      "title": "Rolex Land-Dweller 40 i Oystersteel og hvidguld",
+      "subtitle": "Specifikationer",
+      "sponsor": "Doneret af privat person",
+      "bullets": [
+        "Model: Rolex Land-Dweller 40",
+        "Materiale: Oystersteel og hvidguld",
+        "Størrelse: 40 mm",
+        "Reference: 127334",
+        "Stand: Næsten nyt og uden ridser"
+      ],
+      "titleParts": [
+        {
+          "text": "Rolex Land-Dweller 40",
+          "bold": true
+        },
+        {
+          "text": " i Oystersteel og hvidguld",
+          "bold": false
+        }
+      ]
+    },
+    {
+      "num": "20",
+      "title": "Golfophold på Great Northern med undervisning, spa og gastronomi",
+      "subtitle": "Pakken inkluderer for 4 personer",
+      "sponsor": "Great Northern",
+      "bullets": [
+        "4 enkeltværelser inkl. morgenmad (nyt hotel åbner 22. juni)",
+        "Frokost i Great Northerns restaurant",
+        "Greenfee",
+        "3-retters middag inkl. vinmenu",
+        "Spaadgang på afrejsedagen",
+        "1 times undervisning med Kenneth Hansen — Årets træner 2026"
+      ],
+      "titleParts": [
+        {
+          "text": "Golfophold på Great Northern",
+          "bold": true
+        },
+        {
+          "text": " med undervisning, spa og gastronomi",
+          "bold": false
+        }
+      ]
+    },
+    {
+      "num": "21",
+      "title": "Oplev Malte Ebert på Restaurant Møntergade med vine fra Otto Suenson",
+      "subtitle": "Pakken inkluderer for 50 personer",
+      "sponsor": "Restaurant Møntergade · Otto Suenson · Kin",
+      "bullets": [
+        "3-retters menu på Restaurant Møntergade",
+        "Vinmenu fra Otto Suenson",
+        "Udvalgte drinks",
+        "Intimkoncert med Malte Ebert"
+      ],
+      "titleParts": [
+        {
+          "text": "Oplev ",
+          "bold": false
+        },
+        {
+          "text": "Malte Ebert",
+          "bold": true
+        },
+        {
+          "text": " på Restaurant ",
+          "bold": false
+        },
+        {
+          "text": "Møntergade",
+          "bold": true
+        },
+        {
+          "text": " med vine fra Otto Suenson",
+          "bold": false
+        }
+      ]
+    }
+  ]
+}

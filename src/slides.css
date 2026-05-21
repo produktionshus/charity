@@ -1,0 +1,221 @@
+/* Layout dimensions mirror the pptxgenjs deck (in inches). */
+.slide-canvas {
+  /* internal coords: 13.333in x 7.5in */
+}
+
+/* ---- Horizon layout ---- */
+.layout-horizon .hero-area {
+  position: absolute;
+  inset: 0 0 2.25in 0;       /* hero photo: top 5.25" */
+  overflow: hidden;
+}
+.layout-horizon .hero-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.layout-horizon .lot-num {
+  position: absolute;
+  top: 0.20in;
+  left: 0.30in;
+  font-family: var(--font-title);
+  font-weight: 700;
+  font-size: 96pt;
+  letter-spacing: -2px;
+  color: var(--green);  /* override per-lot via data-attribute later */
+  line-height: 1;
+}
+.layout-horizon .caption-strip {
+  position: absolute;
+  inset: 5.25in 0 0 0;       /* 2.25" caption strip */
+  background: var(--cream);
+  padding: 0.15in 0.5in 0 0.5in;  /* title sits close to photo edge */
+}
+.layout-horizon .caption-rule {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: var(--green);
+}
+.layout-horizon .lot-title {
+  font-family: var(--font-title);
+  font-weight: 300;  /* light by default; <b> spans flip to 700 */
+  color: var(--ink);
+  letter-spacing: 0.04em;
+  line-height: 1.1;
+}
+.layout-horizon .lot-title b { font-weight: 700; }
+.layout-horizon .lot-subtitle {
+  margin-top: 0.10in;
+  font-style: italic;
+  font-size: 10pt;
+  color: var(--green-dark);
+}
+.layout-horizon .bullets, .layout-horizon .bullets-2col { margin-top: 0.12in; }
+
+/* ---- Profile layout ---- */
+.layout-profile .profile {
+  display: grid;
+  grid-template-columns: 5.8in 1fr;
+  height: 100%;
+}
+.layout-profile .profile.mirrored {
+  grid-template-columns: 1fr 5.8in;
+}
+.layout-profile .profile.mirrored .photo-side { order: 2; }
+.layout-profile .profile.mirrored .text-side { order: 1; }
+.layout-profile .photo-side {
+  position: relative;
+  overflow: hidden;
+}
+.layout-profile .hero-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.layout-profile .text-side {
+  padding: 0.45in 0.5in 0.5in 0.55in;
+  position: relative;
+  background: var(--cream);
+}
+.layout-profile .text-side::before {
+  /* green divider line between photo + cream column */
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 1px;
+  background: var(--green);
+}
+.layout-profile .lot-num {
+  font-family: var(--font-title);
+  font-weight: 700;
+  font-size: 96pt;
+  color: var(--green);
+  line-height: 1;
+  letter-spacing: -2px;
+  margin-bottom: 0.4in;
+}
+.layout-profile .lot-title {
+  font-family: var(--font-title);
+  font-weight: 300;
+  color: var(--ink);
+  letter-spacing: 0.04em;
+  line-height: 1.15;
+}
+.layout-profile .lot-title b { font-weight: 700; }
+.layout-profile .lot-subtitle {
+  margin-top: 0.15in;
+  font-style: italic;
+  font-size: 13pt;
+  color: var(--green-dark);
+}
+
+/* ---- Bullets (shared) ---- */
+.bullets {
+  list-style: none;
+  margin-top: 0.2in;
+}
+.bullets li {
+  font-size: 10pt;
+  line-height: 1.4;
+  padding: 0.02in 0;
+}
+.layout-profile .bullets li { font-size: 13pt; }
+.bullets-2col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.3in;
+  margin-top: 0.2in;
+}
+.bullets-2col .bullets { margin-top: 0; }
+
+/* ---- Sponsor block ---- */
+.sponsor-block {
+  position: absolute;
+  right: 0.5in;
+  bottom: 0.08in;
+  text-align: right;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.1in;
+}
+.layout-profile .sponsor-block { right: 0.5in; }
+.layout-profile.layout-mirrored .sponsor-block { right: auto; left: 0.5in; align-items: flex-start; text-align: left; }
+.doneret-af {
+  font-family: var(--font-body);
+  font-size: 9pt;
+  font-weight: 700;
+  color: var(--green);
+  letter-spacing: 0.6em;
+}
+.sponsor-logo {
+  max-width: 2.5in;
+  max-height: 0.9in;
+  height: auto;
+  width: auto;
+  display: block;
+}
+.sponsor-private {
+  position: absolute;
+  right: 0.5in;
+  bottom: 0.5in;
+  font-style: italic;
+  color: var(--muted);
+  font-size: 10pt;
+  letter-spacing: 0.05em;
+}
+.sponsor-names .donor-name {
+  font-family: var(--font-body);
+  font-weight: 700;
+  color: var(--green);
+  font-size: 14pt;
+  letter-spacing: 0.4em;
+}
+
+/* ---- Closing / sponsor-index placeholders ---- */
+.closing-title {
+  text-align: center;
+  font-family: var(--font-title);
+  font-weight: 700;
+  font-size: 30pt;
+  color: var(--green);
+  letter-spacing: 0.2em;
+  margin-top: 0.45in;
+}
+.closing-rule {
+  margin: 0.1in auto 0;
+  width: calc(100% - 2in);
+  height: 1px;
+  background: var(--green);
+  opacity: 0.5;
+}
+.sponsor-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 0.3in;
+  padding: 0.4in 0.5in;
+}
+.sponsor-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.1in;
+}
+.sponsor-cell-num {
+  font-family: var(--font-title);
+  font-weight: 700;
+  font-size: 18pt;
+  color: var(--green);
+}
+.sponsor-cell-logo {
+  max-width: 100%;
+  max-height: 0.9in;
+  object-fit: contain;
+}

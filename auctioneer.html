@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="da">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Auktionarius — StjerneGolf 2026</title>
+  <link rel="stylesheet" href="/src/styles.css" />
+  <link rel="stylesheet" href="/src/slides.css" />
+  <link rel="stylesheet" href="/src/auctioneer.css" />
+</head>
+<body class="auctioneer">
+  <main id="stage"></main>
+  <aside id="auctioneer-panel">
+    <div class="lot-meta">
+      <h2 id="lot-num"></h2>
+      <p id="lot-title"></p>
+      <p id="lot-donor"></p>
+    </div>
+    <div class="lot-notes" id="lot-notes"></div>
+    <!-- Bid tracker / price field can be added here later -->
+  </aside>
+  <script type="module" src="/src/auctioneer.ts"></script>
+</body>
+</html>
