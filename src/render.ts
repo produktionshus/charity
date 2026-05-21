@@ -119,27 +119,23 @@ function sponsorBlockHtml(lot: ReturnType<typeof lotByNum>, donorLabelGroup: num
 }
 
 // ---- Sponsor index (slide 2) — custom staggers ----
+// Animation order: title → outer grid frame → each lot cell (01..21) sequentially.
 function renderSponsorIndex(): string {
-  const COLS = 7;
-  const ROW_PAUSE = 250;
-  const CELL_STAGGER = 100;
-  const LOGO_OFFSET = 60;
-  const rowsStart = 400;
+  const FRAME_DELAY = 300;
+  const FIRST_CELL = 750;       // start after frame finishes fading in
+  const CELL_STAGGER = 130;
   const cells = LOTS.map((l, i) => {
-    const row = Math.floor(i / COLS);
-    const col = i % COLS;
-    const cellStart = rowsStart + row * (ROW_PAUSE + COLS * CELL_STAGGER) + col * CELL_STAGGER;
+    const t = FIRST_CELL + i * CELL_STAGGER;
     return `
-      <div class="sponsor-cell">
-        <div class="sponsor-cell-num build-item" style="transition-delay:${cellStart}ms">${l.num}</div>
-        <img class="sponsor-cell-logo build-item" style="transition-delay:${cellStart + LOGO_OFFSET}ms" src="/assets/logo/logo-lot-${l.num}.png" alt="" />
+      <div class="sponsor-cell build-item" data-lot="${l.num}" style="transition-delay:${t}ms">
+        <div class="sponsor-cell-num">${l.num}</div>
+        <img class="sponsor-cell-logo" src="/assets/logo/logo-lot-${l.num}.png" alt="" />
       </div>
     `;
   }).join('');
   return `
     <h1 class="closing-title build-item" style="transition-delay:0ms">AUKTIONENS SPONSORER</h1>
-    <div class="closing-rule build-item" style="transition-delay:100ms"></div>
-    <div class="sponsor-grid">${cells}</div>
+    <div class="sponsor-grid build-item" style="transition-delay:${FRAME_DELAY}ms">${cells}</div>
   `;
 }
 
