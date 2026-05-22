@@ -191,6 +191,19 @@ body.generator {
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--green-500) 15%, transparent);
 }
 .gen-form textarea { resize: vertical; min-height: 60px; font-family: var(--font-display-c); }
+.field-hint {
+  color: var(--text-c4);
+  font-family: var(--font-display-c);
+  font-size: 10px;
+  letter-spacing: 0;
+  text-transform: none;
+  font-weight: 400;
+}
+.field-hint code {
+  background: var(--bg-card); padding: 1px 4px;
+  border-radius: 3px; font-family: var(--font-mono-c);
+  font-size: 10px; color: var(--text-c2);
+}
 .gen-form .row {
   display: grid;
   grid-template-columns: 1fr 1fr;

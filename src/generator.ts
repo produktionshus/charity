@@ -27,7 +27,7 @@ const fActive    = document.getElementById('f-active')   as HTMLInputElement;
 const fExtra     = document.getElementById('f-extra')    as HTMLInputElement;
 const rowExtraSuffix = document.getElementById('row-extra-suffix')!;
 const fExtraSuffix = document.getElementById('f-extra-suffix') as HTMLInputElement;
-const fTitle     = document.getElementById('f-title')    as HTMLInputElement;
+const fTitle     = document.getElementById('f-title')    as HTMLTextAreaElement;
 const fSubtitle  = document.getElementById('f-subtitle') as HTMLInputElement;
 const fSponsor   = document.getElementById('f-sponsor')  as HTMLInputElement;
 const fBullets   = document.getElementById('f-bullets')  as HTMLTextAreaElement;
@@ -48,6 +48,41 @@ const logoPreview = document.getElementById('logo-preview') as HTMLImageElement;
 let lotsBank: Lot[] = [];
 let selectedId: string | null = null;
 let dirty = false;
+
+// ---- Title <-> markdown conversion (bold via **...**, break via newline) ----
+function partsToMarkdown(parts: Lot['titleParts']): string {
+  if (!parts || !parts.length) return '';
+  let out = '';
+  parts.forEach((p, i) => {
+    const t = p.bold ? `**${p.text}**` : p.text;
+    out += t;
+    if (p.break && i < parts.length - 1) out += '\n';
+  });
+  return out;
+}
+function markdownToParts(md: string): NonNullable<Lot['titleParts']> | undefined {
+  if (!md) return undefined;
+  const parts: NonNullable<Lot['titleParts']> = [];
+  const lines = md.split('\n');
+  lines.forEach((line, lineIdx) => {
+    const tokens = line.split(/(\*\*[^*]+?\*\*)/);
+    tokens.forEach(tok => {
+      if (!tok) return;
+      if (tok.startsWith('**') && tok.endsWith('**')) {
+        parts.push({ text: tok.slice(2, -2), bold: true });
+      } else {
+        parts.push({ text: tok, bold: false });
+      }
+    });
+    if (lineIdx < lines.length - 1 && parts.length) {
+      parts[parts.length - 1].break = true;
+    }
+  });
+  return parts.length ? parts : undefined;
+}
+function partsToPlainText(parts: NonNullable<Lot['titleParts']>): string {
+  return parts.map(p => p.text + (p.break ? '\n' : '')).join('');
+}
 
 // ---- API ----
 async function api(path: string, init?: RequestInit): Promise<any> {
@@ -190,7 +225,7 @@ function populateForm(lot: Lot) {
   fExtra.checked  = !!lot.extra;
   rowExtraSuffix.style.display = lot.extra ? '' : 'none';
   fExtraSuffix.value = lot.extraSuffix ?? '';
-  fTitle.value = lot.title || '';
+  fTitle.value = lot.titleParts && lot.titleParts.length ? partsToMarkdown(lot.titleParts) : (lot.title || '');
   fSubtitle.value = lot.subtitle || '';
   fSponsor.value = lot.sponsor || '';
   fBullets.value = (lot.bullets || []).join('\n');
@@ -206,11 +241,16 @@ function populateForm(lot: Lot) {
 }
 
 function readForm(): Partial<Lot> {
+  // Parse the title field as markdown — **bold** segments + newline for
+  // forced line break. Plain title becomes the concatenated text.
+  const titleParts = markdownToParts(fTitle.value);
+  const plainTitle = titleParts ? partsToPlainText(titleParts).replace(/\n/g, ' ').trim() : fTitle.value.trim();
   return {
     active: fActive.checked,
     extra:  fExtra.checked,
     extraSuffix: fExtraSuffix.value.trim() || null,
-    title: fTitle.value,
+    title: plainTitle,
+    titleParts: titleParts && titleParts.length > 1 ? titleParts : undefined,
     subtitle: fSubtitle.value,
     sponsor: fSponsor.value,
     bullets: fBullets.value.split('\n').map(s => s.trim()).filter(Boolean),
