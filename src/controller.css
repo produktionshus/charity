@@ -308,7 +308,7 @@ body.controller.show-lot-num .lot-slide-frame::after {
   font-size: 9.5px; letter-spacing: 0.14em; text-transform: uppercase;
   color: var(--text-3);
 }
-.theme-options { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; }
+.theme-options { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
 .theme-opt {
   position: relative;
   cursor: pointer;
@@ -324,6 +324,26 @@ body.controller.show-lot-num .lot-slide-frame::after {
 }
 .theme-opt input { position: absolute; opacity: 0; pointer-events: none; }
 .theme-opt:hover { background: var(--bg-card); color: var(--text); border-color: var(--line-3); }
+.color-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; }
+.color-opt {
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+  padding: 6px 4px;
+  background: var(--bg-elev);
+  border: 1px solid var(--line-2);
+  border-radius: 6px;
+  cursor: pointer;
+}
+.color-opt input[type='color'] {
+  width: 36px; height: 28px; padding: 0; border: 0; border-radius: 4px;
+  cursor: pointer; background: transparent;
+}
+.color-opt span {
+  font-family: var(--font-mono);
+  font-size: 9px; letter-spacing: 0.12em;
+  text-transform: uppercase; color: var(--text-3);
+}
+#color-reset { width: 100%; margin-top: 4px; }
+
 .theme-opt:has(input:checked) {
   border-color: rgba(52, 211, 153, 0.6);
   background: var(--bg-card);
@@ -1095,6 +1115,84 @@ body.controller.show-lot-num .lot-slide-frame::after {
 .hammer-overlay.fading { animation: hammer-fadeout 320ms ease forwards; }
 @keyframes hammer-fadeout { to { opacity: 0; } }
 
+/* KidsAid theme override for the compact hammer overlay (controller mirrors). */
+body.theme-kidsaid .hammer-overlay .hammer-card {
+  background: linear-gradient(180deg, #3FA34D 0%, #2F7A39 100%) !important;
+  border-color: #fff !important;
+}
+body.theme-kidsaid .hammer-overlay .hammer-card::before,
+body.theme-kidsaid .hammer-overlay .hammer-card::after {
+  background: linear-gradient(90deg, transparent, #fff 30%, #fff 70%, transparent) !important;
+}
+body.theme-kidsaid .hammer-overlay .hammer-top,
+body.theme-kidsaid .hammer-overlay .hammer-lot,
+body.theme-kidsaid .hammer-overlay .hammer-lot .lot-no,
+body.theme-kidsaid .hammer-overlay .hammer-foot,
+body.theme-kidsaid .hammer-overlay .hammer-foot .item b,
+body.theme-kidsaid .hammer-overlay .hammer-bid,
+body.theme-kidsaid .hammer-overlay .hammer-bid .kr {
+  background: none !important;
+  -webkit-background-clip: initial !important;
+  background-clip: initial !important;
+  -webkit-text-fill-color: #fff !important;
+  color: #fff !important;
+}
+
+/* KidsAid theme — controller-specific tweaks */
+body.controller.theme-kidsaid .bid-amount,
+body.controller.theme-kidsaid .bid-amount .currency {
+  background: none !important;
+  -webkit-background-clip: initial !important;
+  background-clip: initial !important;
+  -webkit-text-fill-color: #fff !important;
+  color: #fff !important;
+}
+body.controller.theme-kidsaid .nav-btn.primary {
+  color: #fff !important;
+  border-color: #fff !important;
+}
+body.controller.theme-kidsaid .btn-sold {
+  background: linear-gradient(180deg, #3FA34D 0%, #2F7A39 100%) !important;
+  border-color: #fff !important;
+  color: #fff !important;
+}
+body.controller.theme-kidsaid .btn-sold .amount {
+  color: #fff !important;
+}
+body.controller.theme-kidsaid .btn-sold::before {
+  background: radial-gradient(60% 100% at 50% 100%, rgba(255,255,255,0.22), transparent 70%) !important;
+}
+/* + amount chips: solid KidsAid green with white digits for clear contrast. */
+body.controller.theme-kidsaid .preset-btn {
+  background: linear-gradient(180deg, #3FA34D 0%, #2F7A39 100%) !important;
+  border-color: rgba(255,255,255,0.45) !important;
+  color: #FFFFFF !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.18), 0 2px 6px rgba(0,0,0,0.25) !important;
+}
+body.controller.theme-kidsaid .preset-btn::before {
+  color: #FFFFFF !important;
+}
+body.controller.theme-kidsaid .preset-btn:hover,
+body.controller.theme-kidsaid .preset-btn:focus-visible {
+  border-color: #FFFFFF !important;
+  color: #FFFFFF !important;
+  filter: brightness(1.08);
+}
+/* Tilføj bud — also green, ensure white text. */
+body.controller.theme-kidsaid .btn-primary {
+  background: linear-gradient(180deg, #3FA34D 0%, #2F7A39 100%) !important;
+  color: #FFFFFF !important;
+}
+/* Live-panel gradient went white-to-green which buried the "Nuværende"
+   label. Use a solid green panel under KidsAid. */
+body.controller.theme-kidsaid .panel.live {
+  background: #3FA34D !important;
+  border-color: rgba(255,255,255,0.35) !important;
+}
+body.controller.theme-kidsaid .panel .panel-head .label {
+  color: #FFFFFF !important;
+}
+
 .hammer-scrim {
   position: absolute; inset: 0;
   background:
@@ -1233,7 +1331,7 @@ body.controller.show-lot-num .lot-slide-frame::after {
   line-height: 0.9;
   letter-spacing: -0.04em;
   font-feature-settings: 'tnum';
-  background: linear-gradient(180deg, #F2DDB1 0%, var(--gold) 55%, var(--gold-soft) 100%);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--gold) 65%, white) 0%, var(--gold) 55%, var(--gold-soft) 100%);
   -webkit-background-clip: text; background-clip: text; color: transparent;
   display: inline-flex; align-items: baseline; gap: 8px;
   justify-content: center;

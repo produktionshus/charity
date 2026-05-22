@@ -30,7 +30,9 @@
       "extraSuffix": null,
       "layout": "horizon",
       "mirrored": false,
-      "focal": "50% 70%"
+      "focal": "50% 70%",
+      "donorNames": [],
+      "heroScale": 1
     },
     {
       "title": "Fodboldaften med VIP-oplevelser og middag i København",
@@ -262,6 +264,41 @@
       "focal": "50% 45%",
       "donorNames": [],
       "heroScale": 1
+    },
+    {
+      "id": "5ca12e17-b880-4723-9e20-a79c272621ee",
+      "title": "Lisa i baren på smukfest",
+      "subtitle": "Pakken inkluderer for 2 personer",
+      "sponsor": "",
+      "bullets": [
+        "1",
+        "1",
+        "2",
+        "3",
+        "32",
+        "4",
+        "4"
+      ],
+      "titleParts": [
+        {
+          "text": "Lisa i baren på ",
+          "bold": false
+        },
+        {
+          "text": "smukfest",
+          "bold": true
+        }
+      ],
+      "donorNames": [
+        "Lisa Kulldorf"
+      ],
+      "active": true,
+      "extra": false,
+      "extraSuffix": null,
+      "layout": "horizon",
+      "mirrored": false,
+      "focal": "64% 83%",
+      "heroScale": 1.1
     },
     {
       "title": "Eksklusiv VIP-oplevelse hos Selected Car Selection",

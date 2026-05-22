@@ -67,6 +67,119 @@ body.theme-marine {
   --accent-glow: rgba(96, 165, 250, 0.40);
 }
 
+/* ---------- Theme: KidsAid (brand green chrome, white text) ---------- */
+body.theme-kidsaid {
+  /* Green dominates — chrome bg is KidsAid green, panels slightly darker,
+     content cards stay white/cream for readable content. */
+  --bg-deep:     #2F7A39;          /* dark KidsAid green — app shell */
+  --bg-base:     #266831;
+  --bg-pane:     #3FA34D;          /* KidsAid brand green — panels / topbar */
+  --bg-card:     #FFFFFF;          /* white content cards inside panels */
+  --bg-elev:     #4FB35D;          /* hover / elevated areas */
+  --bg-input:    #FFFFFF;
+
+  --line-c:      rgba(255, 255, 255, 0.20);
+  --line-c2:     rgba(255, 255, 255, 0.32);
+
+  --green-200:  #FFFFFF;
+  --green-300:  #E8FFE9;
+  --green-400:  #3FA34D;
+  --green-500:  #3FA34D;
+  --green-600:  #2F7A39;
+  --green-700:  #1F5024;
+
+  --text-c:     #FFFFFF;
+  --text-c2:    rgba(255, 255, 255, 0.85);
+  --text-c3:    rgba(255, 255, 255, 0.65);
+  --text-c4:    rgba(255, 255, 255, 0.45);
+
+  --accent-glow: rgba(255, 255, 255, 0.35);
+}
+
+body.controller.theme-kidsaid {
+  --line:        rgba(255, 255, 255, 0.14);
+  --line-2:      rgba(255, 255, 255, 0.25);
+  --line-3:      rgba(255, 255, 255, 0.40);
+  --text:        #FFFFFF;
+  --text-2:      rgba(255, 255, 255, 0.85);
+  --text-3:      rgba(255, 255, 255, 0.65);
+  --text-4:      rgba(255, 255, 255, 0.45);
+  --glow:        0 0 24px -6px rgba(255, 255, 255, 0.45);
+  --glow-soft:   0 0 20px -8px rgba(255, 255, 255, 0.55);
+}
+
+/* Slide previews: the inner 16:9 frame holds the cream slide, while the
+   outer letterbox area takes the deep-green so it reads consistently with
+   the auctioneer view. */
+body.theme-kidsaid .lot-image,
+body.theme-kidsaid .auct-stage {
+  background: #266831 !important;        /* deeper than bg-pane */
+}
+body.theme-kidsaid .lot-slide-frame,
+body.theme-kidsaid .auct-frame {
+  background: #FFFCF3;
+}
+
+/* Solid KidsAid green ribbon, pure-white text + bid number — flatten the
+   gradient stops the other themes share. */
+body.theme-kidsaid .stage-ribbon,
+body.theme-kidsaid .current-ribbon {
+  background: #3FA34D !important;
+  box-shadow: 0 -10px 30px -10px rgba(0,0,0,0.4);
+}
+/* Hammer overlay (D ceremonial) under KidsAid theme: solid green card,
+   pure-white text + bid number, gold rays/particles tinted to brand. */
+body.theme-kidsaid .hammer-overlay-c .card {
+  background: linear-gradient(180deg, #3FA34D 0%, #2F7A39 100%) !important;
+  border-color: #fff !important;
+  box-shadow: 0 40px 80px -20px rgba(0,0,0,0.8),
+              0 0 100px -20px rgba(63,163,77,0.5),
+              inset 0 1px 0 rgba(255,255,255,0.3) !important;
+}
+body.theme-kidsaid .hammer-overlay-c .card::before,
+body.theme-kidsaid .hammer-overlay-c .card::after {
+  background: linear-gradient(90deg, transparent, #fff 30%, #fff 70%, transparent) !important;
+}
+body.theme-kidsaid .hammer-overlay-c .top,
+body.theme-kidsaid .hammer-overlay-c .lot-line,
+body.theme-kidsaid .hammer-overlay-c .lot-line .lot-no,
+body.theme-kidsaid .hammer-overlay-c .foot,
+body.theme-kidsaid .hammer-overlay-c .foot .item b,
+body.theme-kidsaid .hammer-overlay-c .bid,
+body.theme-kidsaid .hammer-overlay-c .bid .kr {
+  background: none !important;
+  -webkit-background-clip: initial !important;
+  background-clip: initial !important;
+  -webkit-text-fill-color: #fff !important;
+  color: #fff !important;
+}
+
+body.theme-kidsaid .stage-ribbon .sr-num,
+body.theme-kidsaid .stage-ribbon .sr-title,
+body.theme-kidsaid .stage-ribbon .sr-bid,
+body.theme-kidsaid .stage-ribbon .sr-bid .kr,
+body.theme-kidsaid .stage-ribbon .sr-bid-label,
+body.theme-kidsaid .stage-ribbon .sr-meta,
+body.theme-kidsaid .current-ribbon .cr-num,
+body.theme-kidsaid .current-ribbon .cr-title,
+body.theme-kidsaid .current-ribbon .cr-title b,
+body.theme-kidsaid .current-ribbon .cr-amount,
+body.theme-kidsaid .current-ribbon .cr-amount .kr,
+body.theme-kidsaid .current-ribbon .cr-label,
+body.theme-kidsaid .auct-monitor-bid,
+body.theme-kidsaid .auct-monitor-bid .kr,
+body.theme-kidsaid .auct-monitor-lotnum,
+body.theme-kidsaid .auct-monitor-title,
+body.theme-kidsaid .auct-monitor-bid-label,
+body.theme-kidsaid .auct-monitor-donor {
+  background: none !important;
+  -webkit-background-clip: initial !important;
+  background-clip: initial !important;
+  -webkit-text-fill-color: #fff !important;
+  color: #fff !important;
+  text-shadow: 0 1px 4px rgba(0,0,0,0.25);
+}
+
 /* ---------- Theme: Dark (neutral, white accent) ---------- */
 body.theme-dark {
   --bg-deep:     #0A0A0B;
@@ -409,8 +522,8 @@ body.auctioneer-f #stage {
   position: absolute;
   top: 50%; left: 50%;
   transform: translate(-50%, -50%) scale(0.85);
-  width: min(82%, 720px);
-  padding: 32px 40px 28px;
+  width: min(88%, 960px);
+  padding: 36px 56px 32px;
   border-radius: 6px;
   background: linear-gradient(180deg, rgba(11, 30, 23, 0.94), rgba(6, 20, 15, 0.96));
   backdrop-filter: blur(18px);
@@ -484,7 +597,11 @@ body.auctioneer-f #stage {
   line-height: 0.9;
   letter-spacing: -0.04em;
   font-feature-settings: 'tnum';
-  background: linear-gradient(180deg, #F2DDB1 0%, var(--gold) 55%, var(--gold-soft) 100%);
+  /* Light gold stop derived from --gold so a custom gold propagates. */
+  background: linear-gradient(180deg,
+    color-mix(in srgb, var(--gold) 65%, white) 0%,
+    var(--gold) 55%,
+    var(--gold-soft) 100%);
   -webkit-background-clip: text; background-clip: text; color: transparent;
   display: inline-flex; align-items: baseline; gap: 10px;
   justify-content: center;

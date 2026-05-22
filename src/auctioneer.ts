@@ -7,13 +7,42 @@ import { SyncClient } from './ws-client';
 import { renderSlide, fitToViewport } from './render';
 import { SLIDES, lotById, displayNumFor, refreshLotsFromServer, type Slide } from './slides';
 
-// Mirror controller's saved theme via shared localStorage.
-const savedTheme = localStorage.getItem('controller.theme') || 'forest';
+// Mirror controller's saved theme + custom brand colors via shared localStorage.
+const savedTheme = localStorage.getItem('controller.theme') || 'kidsaid';
 document.body.classList.add(`theme-${savedTheme}`);
+function applySavedBrandColors() {
+  let c: any = {};
+  try { c = JSON.parse(localStorage.getItem('brand.colors') || '{}'); } catch {}
+  const root = document.documentElement.style;
+  const set = (p: string, v: string) => root.setProperty(p, v, 'important');
+  if (c.primary) {
+    set('--green', c.primary);
+    set('--green-dark', `color-mix(in srgb, ${c.primary} 75%, black)`);
+    set('--green-200', `color-mix(in srgb, ${c.primary} 55%, white)`);
+    set('--green-300', `color-mix(in srgb, ${c.primary} 70%, white)`);
+    set('--green-400', c.primary);
+    set('--green-500', `color-mix(in srgb, ${c.primary} 85%, black)`);
+    set('--green-600', `color-mix(in srgb, ${c.primary} 70%, black)`);
+    set('--green-700', `color-mix(in srgb, ${c.primary} 55%, black)`);
+    set('--accent-glow', `color-mix(in srgb, ${c.primary} 50%, transparent)`);
+  }
+  if (c.gold) {
+    set('--gold', c.gold);
+    set('--gold-soft', `color-mix(in srgb, ${c.gold} 60%, black)`);
+  }
+  if (c.ink) {
+    set('--ink', c.ink);
+    set('--text-c', c.ink);
+  }
+}
+applySavedBrandColors();
 window.addEventListener('storage', (e) => {
-  if (e.key !== 'controller.theme' || !e.newValue) return;
-  document.body.classList.remove('theme-forest', 'theme-marine', 'theme-dark');
-  document.body.classList.add(`theme-${e.newValue}`);
+  if (e.key === 'controller.theme' && e.newValue) {
+    document.body.classList.remove('theme-forest', 'theme-marine', 'theme-dark', 'theme-kidsaid');
+    document.body.classList.add(`theme-${e.newValue}`);
+  } else if (e.key === 'brand.colors') {
+    applySavedBrandColors();
+  }
 });
 
 const stage = document.getElementById('stage')!;
@@ -57,6 +86,13 @@ function setBackgroundSlide(slide: Slide | null) {
 }
 
 // ---- Hammer overlay ----
+function hammerBidFontPx(amount: number): number {
+  const len = fmtKr(amount).length + 3;
+  if (len <= 8)  return 160;
+  if (len <= 11) return 120;
+  return 96;
+}
+
 function buildHammerOverlay(lotNum: string, finalPrice: number): HTMLElement {
   const lot = lotById(lotNum)!;
   const wrap = document.createElement('div');
@@ -78,7 +114,7 @@ function buildHammerOverlay(lotNum: string, finalPrice: number): HTMLElement {
     <div class="card">
       <div class="top"><span class="icon">🔨</span><span>Solgt</span></div>
       <div class="lot-line">${lot.title}<span class="lot-no">Lot ${lot.id}</span></div>
-      <div class="bid">${fmtKr(finalPrice)}<span class="kr">kr</span></div>
+      <div class="bid" style="font-size:${hammerBidFontPx(finalPrice)}px">${fmtKr(finalPrice)}<span class="kr">kr</span></div>
       <div class="foot">
         <div class="item"><span>Bud</span><b>${fmtKr(finalPrice)} kr</b></div>
         <div class="item"><span>Doneret af</span><b>${lot.sponsor}</b></div>

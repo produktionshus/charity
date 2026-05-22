@@ -141,7 +141,7 @@
 .sponsor-block {
   position: absolute;
   right: 0.5in;
-  bottom: 0.08in;
+  bottom: 0.4in;          /* matches private-donor placement for a consistent baseline */
   text-align: right;
   display: flex;
   flex-direction: column;

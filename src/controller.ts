@@ -141,9 +141,11 @@ function renderLotImage(container: HTMLElement, slide: Slide | null, big: boolea
       const lot = lotById(lotNum)!;
       const ribbon = document.createElement('div');
       ribbon.className = 'current-ribbon';
+      // Use the same element structure refreshCurrentOverlays expects so
+      // subsequent updates patch in place instead of remounting the ribbon.
       ribbon.innerHTML = `
         <div class="cr-lot"><div class="cr-num">${displayNumFor(lot.id)}</div></div>
-        <div class="cr-title">${lot.title}<b>${lot.sponsor}</b></div>
+        <div class="cr-title"><span class="cr-title-text">${lot.title}</span><b class="cr-sponsor">${lot.sponsor}</b></div>
         <div class="cr-bid">
           <span class="cr-label">Nuværende bud</span>
           <span class="cr-amount">${fmtKr(last)}<span class="kr">kr</span></span>
@@ -158,10 +160,10 @@ function refreshCurrentOverlays(slide: Slide | null) {
   if (!slide) return;
   const frame = currentCard.querySelector('.lot-slide-frame');
   if (!frame) return;
-  const existingRibbon = frame.querySelector('.current-ribbon');
-  if (existingRibbon) existingRibbon.remove();
   const existingTag = frame.querySelector('.lot-tag');
   if (existingTag) existingTag.remove();
+
+  // Status tag (live / sold) — always rebuilt cheaply, no animation churn.
   if (slide.kind === 'lot' && slide.lotId && lastState?.lots?.[slide.lotId]) {
     const ls = lastState.lots[slide.lotId];
     if (ls.status === 'live') {
@@ -169,23 +171,45 @@ function refreshCurrentOverlays(slide: Slide | null) {
     } else if (ls.status === 'sold') {
       const tag = document.createElement('div'); tag.className = 'lot-tag sold'; tag.textContent = 'Solgt'; frame.appendChild(tag);
     }
-    const bids: number[] = ls.bids || [];
-    const last = bids.length ? bids[bids.length - 1] : null;
-    if (last != null) {
-      const lot = lotById(slide.lotId)!;
-      const ribbon = document.createElement('div');
-      ribbon.className = 'current-ribbon';
-      ribbon.innerHTML = `
-        <div class="cr-lot"><div class="cr-num">${displayNumFor(lot.id)}</div></div>
-        <div class="cr-title">${lot.title}<b>${lot.sponsor}</b></div>
-        <div class="cr-bid">
-          <span class="cr-label">Nuværende bud</span>
-          <span class="cr-amount">${fmtKr(last)}<span class="kr">kr</span></span>
-        </div>
-      `;
-      frame.appendChild(ribbon);
-    }
   }
+
+  // Ribbon: build wrapper once on first mount, then only update text nodes
+  // so the slide-up entrance animation doesn't re-fire on every bid.
+  const ls = (slide.kind === 'lot' && slide.lotId) ? lastState?.lots?.[slide.lotId] : null;
+  const bids: number[] = ls?.bids || [];
+  const last = bids.length ? bids[bids.length - 1] : null;
+  const wantsRibbon = slide.kind === 'lot' && slide.lotId && last != null;
+  let ribbon = frame.querySelector('.current-ribbon') as HTMLElement | null;
+  if (!wantsRibbon) {
+    if (ribbon) ribbon.remove();
+    return;
+  }
+  const lot = lotById(slide.lotId!)!;
+  if (!ribbon) {
+    ribbon = document.createElement('div');
+    ribbon.className = 'current-ribbon';
+    ribbon.innerHTML = `
+      <div class="cr-lot"><div class="cr-num"></div></div>
+      <div class="cr-title"><span class="cr-title-text"></span><b class="cr-sponsor"></b></div>
+      <div class="cr-bid">
+        <span class="cr-label">Nuværende bud</span>
+        <span class="cr-amount"></span>
+      </div>
+    `;
+    frame.appendChild(ribbon);
+  }
+  const numEl   = ribbon.querySelector('.cr-num')!;
+  const titleEl = ribbon.querySelector('.cr-title-text')!;
+  const spoEl   = ribbon.querySelector('.cr-sponsor')!;
+  const amtEl   = ribbon.querySelector('.cr-amount') as HTMLElement;
+  const dn = displayNumFor(lot.id);
+  if (numEl.textContent   !== dn)         numEl.textContent   = dn;
+  if (titleEl.textContent !== lot.title)  titleEl.textContent = lot.title;
+  if (spoEl.textContent   !== lot.sponsor) spoEl.textContent  = lot.sponsor;
+  amtEl.innerHTML = `${fmtKr(last!)}<span class="kr">kr</span>`;
+  amtEl.classList.remove('bid-bump');
+  void amtEl.offsetWidth;
+  amtEl.classList.add('bid-bump');
 }
 
 function updateAuctioneerBid(slide: Slide | null) {
@@ -631,17 +655,89 @@ resetAuctionsBtn.addEventListener('click', () => {
 // Theme picker — switches the dark-chrome palette (forest/marine/dark).
 // Persists to localStorage. Applied as body class consumed by chrome.css.
 const themeRadios = document.querySelectorAll<HTMLInputElement>('input[name="theme"]');
-const savedTheme = localStorage.getItem('controller.theme') || 'forest';
+const savedTheme = localStorage.getItem('controller.theme') || 'kidsaid';
 function applyTheme(name: string) {
-  document.body.classList.remove('theme-forest', 'theme-marine', 'theme-dark');
-  if (name === 'marine' || name === 'dark') document.body.classList.add(`theme-${name}`);
-  else document.body.classList.add('theme-forest');
-  localStorage.setItem('controller.theme', name);
+  document.body.classList.remove('theme-forest', 'theme-marine', 'theme-dark', 'theme-kidsaid');
+  const valid = ['marine', 'dark', 'forest'].includes(name) ? name : 'kidsaid';
+  document.body.classList.add(`theme-${valid}`);
+  localStorage.setItem('controller.theme', valid);
 }
 applyTheme(savedTheme);
 themeRadios.forEach(r => {
   if (r.value === savedTheme) r.checked = true;
   r.addEventListener('change', () => { if (r.checked) applyTheme(r.value); });
+});
+
+// Brand color overrides — three pickers (primary green, gold, ink) that
+// override the active theme. Stored in localStorage and broadcast via
+// storage events so viewer + auctioneer reflect the change.
+const colorPrimaryEl = document.getElementById('color-primary') as HTMLInputElement;
+const colorGoldEl    = document.getElementById('color-gold')    as HTMLInputElement;
+const colorInkEl     = document.getElementById('color-ink')     as HTMLInputElement;
+const colorResetBtn  = document.getElementById('color-reset')!;
+
+function readCustomColors(): { primary?: string; gold?: string; ink?: string } {
+  try { return JSON.parse(localStorage.getItem('brand.colors') || '{}'); }
+  catch { return {}; }
+}
+function applyBrandColors(c: { primary?: string; gold?: string; ink?: string }) {
+  // Use !important — body.theme-marine / theme-dark have higher specificity
+  // than :root and would otherwise win over our inline override.
+  const root = document.documentElement.style;
+  const set = (p: string, v: string) => root.setProperty(p, v, 'important');
+  if (c.primary) {
+    set('--green', c.primary);
+    set('--green-dark', `color-mix(in srgb, ${c.primary} 75%, black)`);
+    set('--green-200', `color-mix(in srgb, ${c.primary} 55%, white)`);
+    set('--green-300', `color-mix(in srgb, ${c.primary} 70%, white)`);
+    set('--green-400', c.primary);
+    set('--green-500', `color-mix(in srgb, ${c.primary} 85%, black)`);
+    set('--green-600', `color-mix(in srgb, ${c.primary} 70%, black)`);
+    set('--green-700', `color-mix(in srgb, ${c.primary} 55%, black)`);
+    set('--accent-glow', `color-mix(in srgb, ${c.primary} 50%, transparent)`);
+  } else {
+    ['--green', '--green-dark', '--green-200', '--green-300', '--green-400', '--green-500', '--green-600', '--green-700', '--accent-glow'].forEach(p => root.removeProperty(p));
+  }
+  if (c.gold) {
+    set('--gold', c.gold);
+    set('--gold-soft', `color-mix(in srgb, ${c.gold} 60%, black)`);
+  } else {
+    root.removeProperty('--gold');
+    root.removeProperty('--gold-soft');
+  }
+  if (c.ink) {
+    set('--ink', c.ink);
+    set('--text-c', c.ink);
+  } else {
+    root.removeProperty('--ink');
+    root.removeProperty('--text-c');
+  }
+}
+
+const boot = readCustomColors();
+applyBrandColors(boot);
+if (boot.primary) colorPrimaryEl.value = boot.primary;
+if (boot.gold)    colorGoldEl.value    = boot.gold;
+if (boot.ink)     colorInkEl.value     = boot.ink;
+
+function saveAndBroadcastColors() {
+  const c = {
+    primary: colorPrimaryEl.value,
+    gold: colorGoldEl.value,
+    ink: colorInkEl.value,
+  };
+  localStorage.setItem('brand.colors', JSON.stringify(c));
+  applyBrandColors(c);
+}
+colorPrimaryEl.addEventListener('input', saveAndBroadcastColors);
+colorGoldEl.addEventListener('input', saveAndBroadcastColors);
+colorInkEl.addEventListener('input', saveAndBroadcastColors);
+colorResetBtn.addEventListener('click', () => {
+  localStorage.removeItem('brand.colors');
+  applyBrandColors({});
+  colorPrimaryEl.value = '#3FA34D';
+  colorGoldEl.value    = '#D9BF8C';
+  colorInkEl.value     = '#2A2A2A';
 });
 
 // Local toggle: show/hide the big lot-num overlay on Nuværende + Næste.
