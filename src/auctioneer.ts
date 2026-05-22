@@ -14,6 +14,7 @@ const titleEl  = document.getElementById('auct-title-text')!;
 const donorEl  = document.getElementById('auct-donor')!;
 const bidEl    = document.getElementById('auct-bid')!;
 
+const clockEl = document.getElementById('auct-clock')!;
 const soundCountdownEl = document.getElementById('sound-countdown')! as HTMLDivElement;
 const soundFileEl      = document.getElementById('sound-file')!;
 const soundBarFillEl   = document.getElementById('sound-bar-fill')! as HTMLDivElement;
@@ -194,6 +195,17 @@ document.addEventListener('keydown', (e) => {
     sync.send({ type: 'nav', slideIdx: Math.max(0, currentIdx - 1) });
   }
 });
+
+// Room-time clock — ticks every second, always visible.
+function tickClock() {
+  const d = new Date();
+  const hh = String(d.getHours()).padStart(2, '0');
+  const mm = String(d.getMinutes()).padStart(2, '0');
+  const ss = String(d.getSeconds()).padStart(2, '0');
+  clockEl.textContent = `${hh}:${mm}:${ss}`;
+}
+tickClock();
+setInterval(tickClock, 1000);
 
 window.addEventListener('resize', () => {
   const slideEl = bgMount?.querySelector('.slide-canvas') as HTMLElement | null;

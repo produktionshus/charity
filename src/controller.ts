@@ -325,9 +325,9 @@ function renderSidebar(state: any) {
         const numLabel = lot ? `Lot ${lot.num}` : (slide.kind === 'cover' ? 'Cover' : slide.kind === 'sponsor-index' ? 'Sponsorer' : 'Afslutning');
         const name = lot ? lot.title : (slide.kind === 'cover' ? 'Auktionens forside' : slide.kind === 'sponsor-index' ? 'Auktionens sponsorer' : 'Tak for i aften');
         row.innerHTML = `
+          <div class="lot-num-side">${lot ? lot.num : ''}</div>
           <div class="thumb">
             <div class="preview-mount"></div>
-            ${lot ? `<div class="thumb-num">${lot.num}</div>` : ''}
           </div>
           <div class="info">
             <div class="num">${numLabel}</div>
@@ -560,6 +560,19 @@ resetAuctionsBtn.addEventListener('click', () => {
   sync.send({ type: 'reset-auctions' } as any);
 });
 
+// Local toggle: show/hide the big lot-num overlay on Nuværende + Næste.
+// Persisted in localStorage. Default off — slide content already shows the
+// lot number, so the overlay would duplicate the digit.
+const toggleLotNumEl = document.getElementById('toggle-lot-num') as HTMLInputElement;
+const lotNumPref = localStorage.getItem('controller.showLotNum') === '1';
+toggleLotNumEl.checked = lotNumPref;
+document.body.classList.toggle('show-lot-num', lotNumPref);
+toggleLotNumEl.addEventListener('change', () => {
+  const on = toggleLotNumEl.checked;
+  document.body.classList.toggle('show-lot-num', on);
+  localStorage.setItem('controller.showLotNum', on ? '1' : '0');
+});
+
 // ---- Sound config ----
 async function loadSoundFiles() {
   try {
@@ -636,7 +649,9 @@ document.querySelectorAll<HTMLButtonElement>('#open-buttons button').forEach(btn
   btn.addEventListener('click', () => {
     const path = btn.dataset.open!;
     const url = new URL(path, window.location.origin).toString();
-    window.open(url, path, 'noopener,noreferrer');
+    // _blank forces a fresh window; custom target names get reused which
+    // is why the previous build felt like "same window".
+    window.open(url, '_blank', 'noopener,noreferrer');
   });
 });
 
@@ -660,6 +675,19 @@ document.querySelectorAll<HTMLButtonElement>('.share-bar').forEach(bar => {
     bar.classList.remove('open');
   });
 });
+
+// ---- Mirror clock on auctioneer view ----
+const auctClockMirror = document.getElementById('auct-clock-mirror');
+function tickAuctClock() {
+  if (!auctClockMirror) return;
+  const d = new Date();
+  const hh = String(d.getHours()).padStart(2, '0');
+  const mm = String(d.getMinutes()).padStart(2, '0');
+  const ss = String(d.getSeconds()).padStart(2, '0');
+  auctClockMirror.textContent = `${hh}:${mm}:${ss}`;
+}
+tickAuctClock();
+setInterval(tickAuctClock, 1000);
 
 // ---- Elapsed timer (local, since app start) ----
 const tStart = Date.now();

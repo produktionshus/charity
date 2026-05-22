@@ -188,6 +188,23 @@ body.auctioneer-f #stage {
   color: var(--gold);
   margin-top: 4px;
 }
+/* Always-on room clock — sits above the bid overlay so the auctioneer
+   keeps time even mid-bid. Outside the .has-bid gate. */
+.auct-monitor-clock {
+  position: absolute;
+  top: 26px; left: 50%;
+  transform: translateX(-50%);
+  z-index: 5;
+  font-family: var(--font-mono-c);
+  font-feature-settings: 'tnum';
+  font-weight: 600;
+  font-size: clamp(48px, 7vh, 96px);
+  letter-spacing: 0.04em;
+  color: var(--green-200);
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.85);
+  pointer-events: none;
+}
+
 /* Artsolo mark — top-right, white, only when overlay (vignette) is active */
 .auct-monitor-artsolo {
   position: absolute;

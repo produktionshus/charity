@@ -89,7 +89,12 @@
 
       <div class="drawer drawer--left" id="drawer-settings">
         <h3>Settings</h3>
-        <p class="drawer-hint">Advanced controls. Affects all connected clients.</p>
+        <p class="drawer-hint">Lokale visningsindstillinger + reset.</p>
+        <label class="setting-toggle">
+          <input type="checkbox" id="toggle-lot-num" />
+          <span>Vis lotnummer-overlay i Nuværende + Næste</span>
+        </label>
+        <p class="drawer-hint" style="margin-top:0.6rem">Advanced — affects all connected clients:</p>
         <button id="reset-auctions" class="drawer-danger">Reset all auctions</button>
       </div>
 
@@ -163,6 +168,8 @@
           <button class="preset-btn" data-inc="1000">1.000</button>
           <button class="preset-btn" data-inc="2500">2.500</button>
           <button class="preset-btn" data-inc="5000">5.000</button>
+          <button class="preset-btn" data-inc="10000">10.000</button>
+          <button class="preset-btn" data-inc="25000">25.000</button>
         </div>
 
         <div class="sold-bar">
@@ -184,6 +191,7 @@
         <div class="auct-frame">
           <div class="auct-bg" id="auct-bg"></div>
           <div class="auct-vignette"></div>
+          <div class="auct-clock" id="auct-clock-mirror">00:00:00</div>
           <div class="auct-header">
             <div class="auct-lotnum" id="auct-lotnum">—</div>
             <div class="auct-title">
@@ -218,7 +226,7 @@
     </div>
     <div class="lot-list" id="lot-list"></div>
     <div class="sidebar-foot">
-      <span class="total-label">Aftenens total</span>
+      <span class="total-label">Auktionens total</span>
       <span class="total-amount" id="sidebar-total">0 kr</span>
     </div>
   </aside>

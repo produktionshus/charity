@@ -80,25 +80,32 @@ function mountOrUpdateRibbon(lotNum: string, bid: number) {
   const lot = lotByNum(lotNum)!;
   let ribbon = getRibbon();
   if (!ribbon) {
+    // First mount — build full DOM. The slide-up entrance animation only
+    // fires here, never on subsequent bid updates.
     ribbon = document.createElement('div');
     ribbon.className = 'stage-ribbon';
+    ribbon.innerHTML = `
+      <div class="sr-lot">
+        <div class="sr-num"></div>
+        <div class="sr-title"></div>
+      </div>
+      <div></div>
+      <div class="sr-bid-wrap">
+        <span class="sr-bid-label">Nuværende bud</span>
+        <span class="sr-bid"></span>
+        <span class="sr-meta">▲ Live</span>
+      </div>
+    `;
     slideFrame.appendChild(ribbon);
   }
-  ribbon.innerHTML = `
-    <div class="sr-lot">
-      <div class="sr-num">${lot.num}</div>
-      <div class="sr-title">${lot.title}</div>
-    </div>
-    <div></div>
-    <div class="sr-bid-wrap">
-      <span class="sr-bid-label">Nuværende bud</span>
-      <span class="sr-bid">${fmtKr(bid)}<span class="kr">kr</span></span>
-      <span class="sr-meta">▲ Live</span>
-    </div>
-  `;
-  // bump the bid number
-  const bidEl = ribbon.querySelector('.sr-bid') as HTMLElement | null;
-  if (bidEl && lastBidForRibbon !== bid) {
+  // Update text content in place — wrapper element stays put, no re-entrance.
+  const numEl   = ribbon.querySelector('.sr-num')!;
+  const titleEl = ribbon.querySelector('.sr-title')!;
+  const bidEl   = ribbon.querySelector('.sr-bid') as HTMLElement;
+  if (numEl.textContent   !== lot.num)   numEl.textContent   = lot.num;
+  if (titleEl.textContent !== lot.title) titleEl.textContent = lot.title;
+  bidEl.innerHTML = `${fmtKr(bid)}<span class="kr">kr</span>`;
+  if (lastBidForRibbon !== bid) {
     bidEl.classList.remove('bid-bump-anim');
     void bidEl.offsetWidth;
     bidEl.classList.add('bid-bump-anim');
