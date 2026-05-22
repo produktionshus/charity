@@ -14,6 +14,21 @@ function delay(group: number, index = 0): number {
   return group * GROUP_STAGGER + index * INGROUP_STAGGER;
 }
 
+// Hero transform: combine object-position (cover-fit pan) with a scale+translate
+// transform so focal X/Y visibly moves the image even when its aspect matches
+// the container. translate offsets are computed so the focal point stays at
+// the center of the visible frame as scale grows.
+// Hero as a background-image on a sized div. background-size + position
+// give us reliable pan + zoom: at scale=1 the image cover-fits (no zoom),
+// and at scale > 1 the image is sized larger than the container so
+// background-position genuinely shifts the visible window.
+function heroBgStyle(srcUrl: string, focal: string, scale: number): string {
+  // background-size: cover keeps the source aspect; transform: scale zooms.
+  // transform-origin at focal makes the zoom pivot around the focal point,
+  // and background-position adds pan within any cover-fit slack at scale=1.
+  return `background-image: url('${srcUrl}'); background-size: cover; background-position: ${focal}; background-repeat: no-repeat; transform-origin: ${focal}; transform: scale(${scale});`;
+}
+
 function titleHtml(lot: Lot): string {
   const parts = lot.titleParts && lot.titleParts.length
     ? lot.titleParts
@@ -39,7 +54,9 @@ function titleSizePt(lot: Lot, layout: 'profile' | 'horizon'): number {
 function renderHorizonLot(lot: Lot, displayNum: string): string {
   const twoCol = lot.bullets.length >= 5;
   const titleSize = titleSizePt(lot, 'horizon');
-  const focal = photoFocal(lot.id);
+  const focal = lot.focal ?? photoFocal(lot.id);
+  const scale = lot.heroScale ?? 1;
+  const heroBg = heroBgStyle(`/assets/hero/lot-${lot.id}_FINAL.${lot.heroExt || 'jpg'}`, focal, scale);
 
   const bulletsInner = twoCol
     ? (() => {
@@ -57,7 +74,7 @@ function renderHorizonLot(lot: Lot, displayNum: string): string {
 
   return `
     <div class="hero-area">
-      <img class="hero-img build-item" style="object-position:${focal}; transition-delay:${delay(0, 0)}ms" src="/assets/hero/lot-${lot.id}_FINAL.jpg" alt="" />
+      <div class="hero-img build-item" style="${heroBg} transition-delay:${delay(0, 0)}ms"></div>
       <div class="lot-num build-item" style="transition-delay:${delay(1, 0)}ms">${displayNum}</div>
     </div>
     <div class="caption-strip">
@@ -72,13 +89,15 @@ function renderHorizonLot(lot: Lot, displayNum: string): string {
 
 // ---- Profile / mirrored (Type B) builds ----
 function renderProfileLot(lot: Lot, displayNum: string): string {
-  const mirrored = isMirrored(lot.id);
+  const mirrored = lot.mirrored ?? isMirrored(lot.id);
   const titleSize = titleSizePt(lot, 'profile');
-  const focal = photoFocal(lot.id);
+  const focal = lot.focal ?? photoFocal(lot.id);
+  const scale = lot.heroScale ?? 1;
+  const heroBg = heroBgStyle(`/assets/hero/lot-${lot.id}_FINAL.${lot.heroExt || 'jpg'}`, focal, scale);
   return `
     <div class="profile ${mirrored ? 'mirrored' : ''}">
       <div class="photo-side">
-        <img class="hero-img build-item" style="object-position:${focal}; transition-delay:${delay(0, 0)}ms" src="/assets/hero/lot-${lot.id}_FINAL.jpg" alt="" />
+        <div class="hero-img build-item" style="${heroBg} transition-delay:${delay(0, 0)}ms"></div>
       </div>
       <div class="text-side">
         <div class="lot-num build-item" style="transition-delay:${delay(0, 1)}ms">${displayNum}</div>

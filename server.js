@@ -185,6 +185,9 @@ app.post('/api/lots/reorder', (req, res) => {
 
 app.post('/api/upload', upload.single('file'), (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'No file' });
+  // We deliberately do NOT write lots.json here — that would trigger Vite's
+  // file watcher and force a full page reload of the generator mid-upload.
+  // The client patches lot.heroExt in memory and persists it on Save.
   res.json({ filename: req.file.filename });
 });
 

@@ -3,7 +3,7 @@
 
 import { SyncClient } from './ws-client';
 import { renderSlide, fitToViewport } from './render';
-import { SLIDES, lotById } from './slides';
+import { SLIDES, lotById, displayNumFor } from './slides';
 
 // Mirror controller's saved theme so all three views share the chrome.
 const savedTheme = localStorage.getItem('controller.theme') || 'forest';
@@ -111,7 +111,8 @@ function mountOrUpdateRibbon(lotNum: string, bid: number) {
   const numEl   = ribbon.querySelector('.sr-num')!;
   const titleEl = ribbon.querySelector('.sr-title')!;
   const bidEl   = ribbon.querySelector('.sr-bid') as HTMLElement;
-  if (numEl.textContent   !== lot.id)   numEl.textContent   = lot.id;
+  const dn = displayNumFor(lot.id);
+  if (numEl.textContent !== dn) numEl.textContent = dn;
   if (titleEl.textContent !== lot.title) titleEl.textContent = lot.title;
   bidEl.innerHTML = `${fmtKr(bid)}<span class="kr">kr</span>`;
   if (lastBidForRibbon !== bid) {
@@ -151,7 +152,7 @@ function buildHammerOverlay(lotNum: string, finalPrice: number): HTMLElement {
     <div class="flash"></div>
     <div class="card">
       <div class="top"><span class="icon">🔨</span><span>Solgt</span></div>
-      <div class="lot-line">${lot.title}<span class="lot-no">Lot ${lot.id}</span></div>
+      <div class="lot-line">${lot.title}<span class="lot-no">Lot ${displayNumFor(lot.id)}</span></div>
       <div class="bid">${fmtKr(finalPrice)}<span class="kr">kr</span></div>
       <div class="foot">
         <div class="item"><span>Bud</span><b>${fmtKr(finalPrice)} kr</b></div>

@@ -29,6 +29,8 @@ export interface Lot {
   mirrored?: boolean;
   focal?: string;                   // CSS object-position, e.g. '50% 70%'
   titleSizePt?: number;             // horizon title size override
+  heroExt?: string;                 // hero file extension (jpg|png|webp...), default 'jpg'
+  heroScale?: number;               // zoom multiplier on the hero image, default 1.0
 }
 
 // All lots from the bank (active + inactive). Generator edits this list.

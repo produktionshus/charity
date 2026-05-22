@@ -38,6 +38,8 @@ const fFocalX    = document.getElementById('f-focal-x')  as HTMLInputElement;
 const fFocalY    = document.getElementById('f-focal-y')  as HTMLInputElement;
 const fFocalXVal = document.getElementById('f-focal-x-val')!;
 const fFocalYVal = document.getElementById('f-focal-y-val')!;
+const fScale     = document.getElementById('f-scale')      as HTMLInputElement;
+const fScaleVal  = document.getElementById('f-scale-val')!;
 const fTitleSize = document.getElementById('f-title-size') as HTMLInputElement;
 const fHero      = document.getElementById('f-hero')     as HTMLInputElement;
 const fLogo      = document.getElementById('f-logo')     as HTMLInputElement;
@@ -235,8 +237,11 @@ function populateForm(lot: Lot) {
   const focal = (lot.focal || '50% 50%').replace(/%/g, '').split(/\s+/).map(s => parseInt(s, 10));
   fFocalX.value = String(focal[0] || 50); fFocalXVal.textContent = `${focal[0] || 50}%`;
   fFocalY.value = String(focal[1] || 50); fFocalYVal.textContent = `${focal[1] || 50}%`;
+  const scalePct = Math.round((lot.heroScale ?? 1) * 100);
+  fScale.value = String(scalePct);
+  fScaleVal.textContent = `${scalePct}%`;
   fTitleSize.value = lot.titleSizePt ? String(lot.titleSizePt) : '';
-  heroPreview.src = `/assets/hero/lot-${lot.id}_FINAL.jpg?v=${Date.now()}`;
+  heroPreview.src = `/assets/hero/lot-${lot.id}_FINAL.${lot.heroExt || 'jpg'}?v=${Date.now()}`;
   logoPreview.src = `/assets/logo/logo-lot-${lot.id}.png?v=${Date.now()}`;
 }
 
@@ -258,6 +263,7 @@ function readForm(): Partial<Lot> {
     layout: fLayout.value as 'horizon' | 'profile',
     mirrored: fMirrored.checked,
     focal: `${fFocalX.value}% ${fFocalY.value}%`,
+    heroScale: parseInt(fScale.value, 10) / 100,
     titleSizePt: fTitleSize.value ? parseInt(fTitleSize.value, 10) : undefined,
   };
 }
@@ -308,6 +314,10 @@ fExtra.addEventListener('change', () => {
   fFocalYVal.textContent = fFocalY.value + '%';
   onFormChange();
 }));
+fScale.addEventListener('input', () => {
+  fScaleVal.textContent = fScale.value + '%';
+  onFormChange();
+});
 
 // ---- Save ----
 saveBtn.addEventListener('click', async () => {
@@ -373,17 +383,27 @@ deleteBtn.addEventListener('click', async () => {
 // ---- Uploads ----
 async function uploadFile(kind: 'hero' | 'logo', file: File) {
   if (!selectedId) return;
+  // Order matters — multer parses fields top-down, and the destination
+  // / filename callbacks only see body fields appended BEFORE the file.
   const fd = new FormData();
-  fd.append('file', file);
   fd.append('kind', kind);
   fd.append('lotId', selectedId);
+  fd.append('file', file);
   try {
     statusEl.textContent = `Uploader ${kind}…`;
-    await fetch('/api/upload', { method: 'POST', body: fd });
+    const res = await fetch('/api/upload', { method: 'POST', body: fd });
+    const data = await res.json();
     statusEl.textContent = `${kind} uploadet`;
-    // Refresh image previews + main preview (cache bust)
+    // For hero, sync heroExt onto the in-memory lot so subsequent renders
+    // resolve the right URL without a full reload.
+    if (kind === 'hero' && data.filename) {
+      const ext = data.filename.split('.').pop()?.toLowerCase() || 'jpg';
+      const lot = lotsBank.find(l => l.id === selectedId);
+      if (lot) lot.heroExt = ext;
+    }
     const v = Date.now();
-    if (kind === 'hero') heroPreview.src = `/assets/hero/lot-${selectedId}_FINAL.jpg?v=${v}`;
+    const lot = lotsBank.find(l => l.id === selectedId);
+    if (kind === 'hero') heroPreview.src = `/assets/hero/lot-${selectedId}_FINAL.${lot?.heroExt || 'jpg'}?v=${v}`;
     else logoPreview.src = `/assets/logo/logo-lot-${selectedId}.png?v=${v}`;
     refreshPreview();
   } catch (e: any) {

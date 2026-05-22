@@ -5,7 +5,7 @@
 
 import { SyncClient } from './ws-client';
 import { renderSlide, fitToViewport } from './render';
-import { SLIDES, lotById, type Slide } from './slides';
+import { SLIDES, lotById, displayNumFor, type Slide } from './slides';
 
 // Mirror controller's saved theme via shared localStorage.
 const savedTheme = localStorage.getItem('controller.theme') || 'forest';
@@ -112,7 +112,7 @@ sync.on((state) => {
 
   if (slide?.kind === 'lot' && slide.lotId) {
     const lot = lotById(slide.lotId)!;
-    lotnumEl.textContent = lot.id;
+    lotnumEl.textContent = displayNumFor(lot.id);
     titleEl.textContent = lot.title;
     donorEl.textContent = lot.sponsor;
 

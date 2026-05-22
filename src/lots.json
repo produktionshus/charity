@@ -60,7 +60,9 @@
       "extraSuffix": null,
       "layout": "profile",
       "mirrored": false,
-      "focal": "50% 50%"
+      "focal": "50% 50%",
+      "donorNames": [],
+      "heroScale": 1
     },
     {
       "title": "Eksklusiv Company Day eller fest for 35 personer i Ree Park",
@@ -128,7 +130,9 @@
       "extraSuffix": null,
       "layout": "horizon",
       "mirrored": false,
-      "focal": "50% 50%"
+      "focal": "50% 50%",
+      "donorNames": [],
+      "heroScale": 1
     },
     {
       "title": "Investér i flere sunde år sammen",
@@ -255,7 +259,9 @@
       "extraSuffix": null,
       "layout": "horizon",
       "mirrored": false,
-      "focal": "50% 45%"
+      "focal": "50% 45%",
+      "donorNames": [],
+      "heroScale": 1
     },
     {
       "title": "Eksklusiv VIP-oplevelse hos Selected Car Selection",
@@ -564,7 +570,9 @@
       "extraSuffix": null,
       "layout": "profile",
       "mirrored": false,
-      "focal": "50% 50%"
+      "focal": "50% 50%",
+      "donorNames": [],
+      "heroScale": 1
     },
     {
       "title": "Rolex Land-Dweller 40 i Oystersteel og hvidguld",
@@ -664,6 +672,22 @@
       "layout": "profile",
       "mirrored": false,
       "focal": "50% 30%"
+    },
+    {
+      "id": "9d750323-c1c0-4802-8965-2270bd35d77e",
+      "title": "Nyt lot",
+      "subtitle": "",
+      "sponsor": "",
+      "bullets": [],
+      "active": false,
+      "extra": true,
+      "extraSuffix": "b52",
+      "layout": "horizon",
+      "mirrored": false,
+      "focal": "100% 100%",
+      "heroExt": "jpg",
+      "donorNames": [],
+      "heroScale": 2.2
     }
   ]
 }

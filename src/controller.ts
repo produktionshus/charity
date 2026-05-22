@@ -142,7 +142,7 @@ function renderLotImage(container: HTMLElement, slide: Slide | null, big: boolea
       const ribbon = document.createElement('div');
       ribbon.className = 'current-ribbon';
       ribbon.innerHTML = `
-        <div class="cr-lot"><div class="cr-num">${lot.id}</div></div>
+        <div class="cr-lot"><div class="cr-num">${displayNumFor(lot.id)}</div></div>
         <div class="cr-title">${lot.title}<b>${lot.sponsor}</b></div>
         <div class="cr-bid">
           <span class="cr-label">Nuværende bud</span>
@@ -176,7 +176,7 @@ function refreshCurrentOverlays(slide: Slide | null) {
       const ribbon = document.createElement('div');
       ribbon.className = 'current-ribbon';
       ribbon.innerHTML = `
-        <div class="cr-lot"><div class="cr-num">${lot.id}</div></div>
+        <div class="cr-lot"><div class="cr-num">${displayNumFor(lot.id)}</div></div>
         <div class="cr-title">${lot.title}<b>${lot.sponsor}</b></div>
         <div class="cr-bid">
           <span class="cr-label">Nuværende bud</span>
@@ -227,7 +227,7 @@ function renderAuctioneerPanel(slide: Slide | null) {
 
   if (slide.kind === 'lot' && slide.lotId) {
     const lot = lotById(slide.lotId)!;
-    auctLotnum.textContent = lot.id;
+    auctLotnum.textContent = displayNumFor(lot.id);
     auctTitle.textContent = lot.title;
     auctDonor.textContent = lot.sponsor;
     const ls = lastState?.lots?.[lot.id];
@@ -258,7 +258,7 @@ function renderBidHero(slide: Slide | null) {
   if (slide?.kind === 'lot' && slide.lotId) {
     currentLotNum = slide.lotId;
     const lot = lotById(slide.lotId)!;
-    bidLotNum.textContent = lot.id;
+    bidLotNum.textContent = displayNumFor(lot.id);
     bidLotCat.textContent = lotCategory(lot);
     const ls = lastState?.lots?.[lot.id];
     const last = ls?.bids?.length ? ls.bids[ls.bids.length - 1] : null;
@@ -324,10 +324,10 @@ function renderSidebar(state: any) {
         row.className = 'lot-row';
         row.dataset.idx = String(idx);
         const lot = slide.kind === 'lot' ? lotById(slide.lotId!) : null;
-        const numLabel = lot ? `Lot ${lot.id}` : (slide.kind === 'cover' ? 'Cover' : slide.kind === 'sponsor-index' ? 'Sponsorer' : 'Afslutning');
+        const numLabel = lot ? `Lot ${displayNumFor(lot.id)}` : (slide.kind === 'cover' ? 'Cover' : slide.kind === 'sponsor-index' ? 'Sponsorer' : 'Afslutning');
         const name = lot ? lot.title : (slide.kind === 'cover' ? 'Auktionens forside' : slide.kind === 'sponsor-index' ? 'Auktionens sponsorer' : 'Tak for i aften');
         row.innerHTML = `
-          <div class="lot-num-side">${lot ? lot.id : ''}</div>
+          <div class="lot-num-side">${lot ? displayNumFor(lot.id) : ''}</div>
           <div class="thumb">
             <div class="preview-mount"></div>
           </div>
@@ -390,7 +390,7 @@ function buildHammerOverlay(lotNum: string, finalPrice: number): HTMLElement {
     <div class="hammer-flash"></div>
     <div class="hammer-card">
       <div class="hammer-top"><span class="hammer-icon">🔨</span><span>Solgt</span></div>
-      <div class="hammer-lot">${lot.title}<span class="lot-no">Lot ${lot.id}</span></div>
+      <div class="hammer-lot">${lot.title}<span class="lot-no">Lot ${displayNumFor(lot.id)}</span></div>
       <div class="hammer-bid">${fmtKr(finalPrice)}<span class="kr">kr</span></div>
       <div class="hammer-foot">
         <div class="item"><span>Bud</span><b>${fmtKr(finalPrice)} kr</b></div>
@@ -444,7 +444,7 @@ function renderHistoryDrawer(state: any) {
       total += ls.finalPrice;
       rows.push(`
         <li data-lot="${lot.id}">
-          <span class="h-num">${lot.id}</span>
+          <span class="h-num">${displayNumFor(lot.id)}</span>
           <span class="h-title">${lot.title}</span>
           <span class="h-amount">${fmtKr(ls.finalPrice)} kr</span>
         </li>

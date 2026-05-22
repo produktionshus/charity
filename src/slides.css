@@ -6,7 +6,7 @@
 /* ---- Horizon layout ---- */
 .layout-horizon .hero-area {
   position: absolute;
-  inset: 0 0 2.25in 0;       /* hero photo: top 5.25" */
+  inset: -1px -1px 2.25in -1px;   /* tiny bleed avoids sub-pixel cream gaps at scaled previews */
   overflow: hidden;
 }
 .layout-horizon .hero-img {
@@ -70,6 +70,7 @@
 .layout-profile .photo-side {
   position: relative;
   overflow: hidden;
+  margin-left: -1px;          /* sub-pixel bleed */
 }
 .layout-profile .hero-img {
   width: 100%;
@@ -218,10 +219,13 @@
   opacity: 0.5;
 }
 .sponsor-grid {
-  display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  grid-auto-rows: 1.4in;
-  gap: 0.22in 0.22in;
+  /* Flexbox lets the last (possibly incomplete) row auto-center, so a lot
+     pulled at the last minute doesn't leave a visible gap in the grid. */
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-content: flex-start;
+  gap: 0.22in;
   padding: 0.22in;
   /* Outer rounded frame around the whole grid, matching the print layout */
   border: 1.5px solid var(--green);
@@ -230,6 +234,8 @@
 }
 .sponsor-cell {
   position: relative;
+  flex: 0 0 1.5in;          /* fixed width — 7 fit per row at default grid width */
+  height: 1.4in;
   border: 1.2px solid var(--green);
   border-radius: 0.10in;
   display: flex;
