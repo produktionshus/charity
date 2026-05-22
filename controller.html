@@ -4,139 +4,225 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Controller — StjerneGolf 2026</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&family=Cormorant+Garamond:ital,wght@1,500&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/src/styles.css" />
   <link rel="stylesheet" href="/src/slides.css" />
   <link rel="stylesheet" href="/src/controller.css" />
 </head>
 <body class="controller">
-  <header>
-    <h1>Controller</h1>
-    <span id="status">disconnected</span>
-    <nav id="open-buttons">
-      <button data-open="/" title="Open viewer in a new window">⤴ Viewer</button>
-      <button data-open="/auctioneer.html" title="Open auctioneer in a new window">⤴ Auctioneer</button>
-    </nav>
-    <span id="position"></span>
-    <nav id="controls">
-      <button id="prev">◀ Prev</button>
-      <button id="next">Next ▶</button>
-    </nav>
+<div class="app">
+
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand-mark">K</div>
+      <div class="brand-text">
+        <strong>KidsAid x Luminance</strong>
+        <small>CONTROLLER · STJERNEGOLF 2026</small>
+      </div>
+    </div>
+
+    <div class="status-pill" id="status-pill"><span class="status-dot"></span>Live · Connected</div>
+
+    <div class="stats-strip">
+      <div class="stat">
+        <span class="stat-label">Indsamlet</span>
+        <span class="stat-value" id="stat-total">0<span class="unit">kr</span></span>
+      </div>
+      <div class="stat">
+        <span class="stat-label">Solgt</span>
+        <span class="stat-value" id="stat-sold">0<span class="unit">/ 21</span></span>
+      </div>
+      <div class="stat">
+        <span class="stat-label">Forløbet</span>
+        <span class="stat-value" id="stat-elapsed">00:00:00</span>
+      </div>
+    </div>
+
+    <div id="open-buttons" style="display:flex;gap:6px;">
+      <button class="link-btn" data-open="/" title="Open viewer in new window">Viewer ↗</button>
+      <button class="link-btn" data-open="/auctioneer.html" title="Open auctioneer in new window">Auctioneer ↗</button>
+    </div>
+
+    <div class="nav-group">
+      <span class="nav-progress"><b id="nav-current">01</b><span class="total"> / <span id="nav-total">24</span></span></span>
+      <button class="nav-btn" id="prev" title="Forrige">‹</button>
+      <button class="nav-btn primary" id="next" title="Næste">Næste ›</button>
+    </div>
   </header>
 
-  <section class="zone zone-current">
-    <h2>Current</h2>
-    <div class="preview-wrap">
-      <div class="preview-frame" id="preview-current"></div>
+  <main class="main">
+
+    <!-- NUVÆRENDE -->
+    <section class="panel live">
+      <div class="panel-head">
+        <span class="label current"><span class="swatch"></span>Nuværende</span>
+        <div class="right">
+          <button class="share-bar" data-share="/" data-target="qr-viewer">Share viewer ↗ QR</button>
+        </div>
+      </div>
+      <div class="lot-card lot-card-stage" id="current-card"></div>
       <div class="qr-panel" id="qr-viewer">
         <canvas class="qr-canvas"></canvas>
         <div class="qr-url"></div>
       </div>
-      <button class="share-bar" data-share="/" data-target="qr-viewer">Share viewer URL →  QR</button>
-    </div>
-  </section>
+    </section>
 
-  <section class="zone zone-next">
-    <h2>Next</h2>
-    <div class="preview-frame" id="preview-next"></div>
-  </section>
+    <!-- NÆSTE -->
+    <section class="panel">
+      <div class="panel-head">
+        <span class="label next"><span class="swatch"></span>Næste</span>
+      </div>
+      <div class="lot-card" id="next-card"></div>
+    </section>
 
-  <section class="zone zone-bid">
-    <h2>Live auction</h2>
-    <button class="drawer-tab drawer-tab--left" id="drawer-tab-settings" title="Settings"><span>Settings</span></button>
-    <button class="drawer-tab drawer-tab--right" id="drawer-tab-sound" title="Sound"><span>Sound</span></button>
+    <!-- LIVE AUCTION (bid panel) -->
+    <section class="panel zone-bid">
+      <div class="panel-head">
+        <span class="label live"><span class="swatch"></span>Live auktion</span>
+      </div>
 
-    <div class="drawer drawer--left" id="drawer-settings">
-      <h3>Settings</h3>
-      <p class="drawer-hint">Advanced controls. Use carefully — affects all clients.</p>
-      <button id="reset-auctions" class="drawer-danger">Reset all auctions</button>
-    </div>
+      <!-- Drawers -->
+      <button class="drawer-tab drawer-tab--left" id="drawer-tab-settings" title="Settings"><span>Settings</span></button>
+      <button class="drawer-tab drawer-tab--right" id="drawer-tab-sound" title="Sound"><span>Sound</span></button>
 
-    <div class="drawer drawer--right" id="drawer-sound">
-      <h3>Sound — lot <span id="sound-lot-num">—</span></h3>
-      <p class="drawer-hint">Per-lot init + hammerslag sound. Drop .mp3/.wav files into <code>web/public/sounds/</code>.</p>
-      <label class="sound-row">
-        <span>Init sound</span>
-        <select id="sound-init-file"><option value="">(none)</option></select>
-      </label>
-      <label class="sound-row">
-        <span>Init start offset (sec)</span>
-        <div class="sound-knob-row">
-          <input type="range" id="sound-init-offset-knob" min="0" max="30" step="0.1" value="0" />
-          <input type="number" id="sound-init-offset-num" min="0" max="600" step="0.1" value="0" />
+      <div class="drawer drawer--left" id="drawer-settings">
+        <h3>Settings</h3>
+        <p class="drawer-hint">Advanced controls. Affects all connected clients.</p>
+        <button id="reset-auctions" class="drawer-danger">Reset all auctions</button>
+      </div>
+
+      <div class="drawer drawer--right" id="drawer-sound">
+        <h3>Sound — lot <span id="sound-lot-num">—</span></h3>
+        <p class="drawer-hint">Drop .mp3/.wav files into <code>web/public/sounds/</code>.</p>
+        <label class="sound-row">
+          <span>Init sound</span>
+          <select id="sound-init-file"><option value="">(none)</option></select>
+        </label>
+        <label class="sound-row">
+          <span>Init start offset (sec)</span>
+          <div class="sound-knob-row">
+            <input type="range" id="sound-init-offset-knob" min="0" max="30" step="0.1" value="0" />
+            <input type="number" id="sound-init-offset-num" min="0" max="600" step="0.1" value="0" />
+          </div>
+        </label>
+        <label class="sound-row">
+          <span>Hammerslag sound</span>
+          <select id="sound-hammer-file"><option value="">(none)</option></select>
+        </label>
+        <label class="sound-row">
+          <span>Fade in (sec)</span>
+          <div class="sound-knob-row">
+            <input type="range" id="sound-fadein-knob" min="0" max="10" step="0.1" value="0" />
+            <input type="number" id="sound-fadein-num" min="0" max="30" step="0.1" value="0" />
+          </div>
+        </label>
+        <label class="sound-row">
+          <span>Fade out (sec)</span>
+          <div class="sound-knob-row">
+            <input type="range" id="sound-fadeout-knob" min="0" max="10" step="0.1" value="0" />
+            <input type="number" id="sound-fadeout-num" min="0" max="30" step="0.1" value="0" />
+          </div>
+        </label>
+        <div class="sound-play-row">
+          <button id="sound-play-init" class="sound-play">▶ Init</button>
+          <button id="sound-play-hammer" class="sound-play">▶ Hammer</button>
+          <button id="sound-stop" class="sound-stop">■ Stop</button>
         </div>
-      </label>
-      <label class="sound-row">
-        <span>Hammerslag sound</span>
-        <select id="sound-hammer-file"><option value="">(none)</option></select>
-      </label>
-      <label class="sound-row">
-        <span>Fade in (sec)</span>
-        <div class="sound-knob-row">
-          <input type="range" id="sound-fadein-knob" min="0" max="10" step="0.1" value="0" />
-          <input type="number" id="sound-fadein-num" min="0" max="30" step="0.1" value="0" />
+        <div class="sound-preview-row">
+          <button id="sound-preview-init">Preview init</button>
+          <button id="sound-preview-hammer">Preview hammer</button>
+          <button id="sound-refresh">Refresh files</button>
         </div>
-      </label>
-      <label class="sound-row">
-        <span>Fade out (sec)</span>
-        <div class="sound-knob-row">
-          <input type="range" id="sound-fadeout-knob" min="0" max="10" step="0.1" value="0" />
-          <input type="number" id="sound-fadeout-num" min="0" max="30" step="0.1" value="0" />
+      </div>
+
+      <div class="bid-panel-wrap">
+        <div class="bid-hero">
+          <div>
+            <div class="bid-amount-label">Nuværende bud</div>
+            <div class="bid-amount idle" id="bid-amount-display">—<span class="currency">kr</span></div>
+          </div>
+          <div class="bid-lot">
+            <div class="bid-lot-label">Lot</div>
+            <div class="bid-lot-num" id="bid-lot-num">—</div>
+            <div class="bid-lot-cat" id="bid-lot-cat"></div>
+          </div>
         </div>
-      </label>
-      <div class="sound-play-row">
-        <button id="sound-play-init" class="sound-play">▶ Play init</button>
-        <button id="sound-play-hammer" class="sound-play">▶ Play hammer</button>
-        <button id="sound-stop" class="sound-stop">■ Stop</button>
-      </div>
-      <div class="sound-preview-row">
-        <button id="sound-preview-init">Preview init (local)</button>
-        <button id="sound-preview-hammer">Preview hammer (local)</button>
-        <button id="sound-refresh">Refresh file list</button>
-      </div>
-    </div>
 
-    <div class="bid-panel">
-      <div class="bid-lot">
-        <span class="bid-label">Lot</span>
-        <span class="bid-lot-num" id="bid-lot-num">—</span>
-      </div>
-      <div class="bid-current">
-        <span class="bid-label">Current bid</span>
-        <span class="bid-amount" id="bid-current-amount">— kr</span>
-      </div>
-      <div class="bid-total">
-        <span class="bid-label">Total raised (sold)</span>
-        <span class="bid-total-amount" id="bid-total-amount">0 kr</span>
-      </div>
-      <div class="bid-input-row">
-        <input type="number" id="bid-input" placeholder="kr" step="500" />
-        <button id="bid-add">Add bid</button>
-      </div>
-      <div class="bid-quick">
-        <button data-inc="500">+500</button>
-        <button data-inc="1000">+1.000</button>
-        <button data-inc="2500">+2.500</button>
-        <button data-inc="5000">+5.000</button>
-      </div>
-      <div class="bid-history" id="bid-history"></div>
-      <button id="hammerslag" class="hammerslag">HAMMERSLAG</button>
-    </div>
-  </section>
+        <div class="bid-input-row">
+          <div class="bid-input">
+            <span class="prefix">kr</span>
+            <input type="number" id="bid-input" placeholder="0" step="500" />
+          </div>
+          <button class="btn-primary" id="bid-add">Tilføj bud</button>
+        </div>
 
-  <section class="zone zone-auctioneer">
-    <h2>Auctioneer view</h2>
-    <div class="preview-wrap">
-      <iframe class="preview-iframe" id="preview-auctioneer" src="/auctioneer.html" title="Auctioneer view"></iframe>
+        <div class="preset-grid">
+          <button class="preset-btn" data-inc="500">500</button>
+          <button class="preset-btn" data-inc="1000">1.000</button>
+          <button class="preset-btn" data-inc="2500">2.500</button>
+          <button class="preset-btn" data-inc="5000">5.000</button>
+        </div>
+
+        <div class="sold-bar">
+          <button class="btn-undo" id="undo-bid" title="Fortryd sidste bud (eller rul salg tilbage)">Fortryd</button>
+          <button class="btn-sold" id="hammerslag"><span class="hammer">🔨</span><span>Solgt</span><span class="amount" id="hammer-amount"></span></button>
+        </div>
+      </div>
+    </section>
+
+    <!-- AUCTIONEER VIEW (F treatment, mirrors what the auctioneer sees) -->
+    <section class="panel auct-panel">
+      <div class="panel-head">
+        <span class="label mirror"><span class="swatch"></span>Auctioneer view</span>
+        <div class="right">
+          <button class="share-bar" data-share="/auctioneer.html" data-target="qr-auctioneer">Share auctioneer ↗ QR</button>
+        </div>
+      </div>
+      <div class="auct-stage" id="auct-stage">
+        <div class="auct-frame">
+          <div class="auct-bg" id="auct-bg"></div>
+          <div class="auct-vignette"></div>
+          <div class="auct-header">
+            <div class="auct-lotnum" id="auct-lotnum">—</div>
+            <div class="auct-title">
+              <span id="auct-title-text"></span>
+              <span class="auct-donor" id="auct-donor"></span>
+            </div>
+          </div>
+          <div class="auct-bid-wrap">
+            <div class="auct-bid-label">Nuværende bud</div>
+            <div class="auct-bid idle" id="auct-bid">—<span class="kr">kr</span></div>
+          </div>
+        </div>
+      </div>
       <div class="qr-panel" id="qr-auctioneer">
         <canvas class="qr-canvas"></canvas>
         <div class="qr-url"></div>
       </div>
-      <button class="share-bar" data-share="/auctioneer.html" data-target="qr-auctioneer">Share auctioneer URL →  QR</button>
+    </section>
+
+  </main>
+
+  <!-- SIDEBAR (280px) -->
+  <aside class="sidebar">
+    <div class="sidebar-head">
+      <div class="title">AUKTION 2026 · STJERNEGOLF</div>
+      <div class="progress-track"><div class="progress-fill" id="progress-fill"></div></div>
+      <div class="progress-meta">
+        <span id="progress-pct">0%</span>
+        <span id="progress-counter">0/21 solgt</span>
+      </div>
     </div>
-  </section>
+    <div class="lot-list" id="lot-list"></div>
+    <div class="sidebar-foot">
+      <span class="total-label">Aftenens total</span>
+      <span class="total-amount" id="sidebar-total">0 kr</span>
+    </div>
+  </aside>
 
-  <aside id="thumbs"></aside>
-
-  <script type="module" src="/src/controller.ts"></script>
+</div>
+<script type="module" src="/src/controller.ts"></script>
 </body>
 </html>

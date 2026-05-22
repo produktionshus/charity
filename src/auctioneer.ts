@@ -1,128 +1,176 @@
-// Auctioneer view — same slide as audience, plus a side panel with lot
-// details, live bid tracking, total raised, and a sound playback countdown
-// so the auctioneer knows how long the current cue will run.
+// Auctioneer monitor — F-style spotlight (per design handoff).
+// Vignetted lot image as ambient background, lot number + title top-left,
+// big centered bid number. Sound countdown floats bottom-right. Hammer
+// overlay fires on Solgt and stays until lot change.
 
 import { SyncClient } from './ws-client';
 import { renderSlide, fitToViewport } from './render';
-import { SLIDES, lotByNum } from './slides';
+import { SLIDES, lotByNum, type Slide } from './slides';
 
 const stage = document.getElementById('stage')!;
-const lotNumEl = document.getElementById('lot-num')!;
-const lotTitleEl = document.getElementById('lot-title')!;
-const lotDonorEl = document.getElementById('lot-donor')!;
-const lotNotesEl = document.getElementById('lot-notes')!;
-const bidCurrentEl = document.getElementById('bid-current')!;
-const bidHistoryEl = document.getElementById('bid-history-list')!;
-const bidTotalEl = document.getElementById('bid-total')!;
+const monitor = document.getElementById('auct-monitor')!;
+const lotnumEl = document.getElementById('auct-lotnum')!;
+const titleEl  = document.getElementById('auct-title-text')!;
+const donorEl  = document.getElementById('auct-donor')!;
+const bidEl    = document.getElementById('auct-bid')!;
+
 const soundCountdownEl = document.getElementById('sound-countdown')! as HTMLDivElement;
-const soundFileEl = document.getElementById('sound-file')!;
-const soundBarFillEl = document.getElementById('sound-bar-fill')! as HTMLDivElement;
+const soundFileEl      = document.getElementById('sound-file')!;
+const soundBarFillEl   = document.getElementById('sound-bar-fill')! as HTMLDivElement;
 const soundRemainingEl = document.getElementById('sound-remaining')!;
 
+const fmtKr = (n: number) => n.toLocaleString('da-DK').replace(/,/g, '.');
+
 const sync = new SyncClient();
-let currentEl: HTMLElement | null = null;
 let currentIdx = -1;
+let lastBid: number | null = null;
+const lastSoldStatus: Record<string, string> = {};
+let firstStateMsg = true;
 
-// Boot-render slide 0 so the stage isn't blank if ws lags. State takes over.
-function bootRender() {
-  const slide = SLIDES[0];
-  const next = renderSlide(slide);
-  stage.appendChild(next);
-  requestAnimationFrame(() => {
-    fitToViewport(stage, next);
-    next.classList.add('is-visible');
-  });
-  currentEl = next;
-  currentIdx = 0;
+// ---- Background slide preview ----
+let bgMount: HTMLElement | null = null;
+function ensureBg() {
+  if (bgMount) return bgMount;
+  bgMount = document.createElement('div');
+  bgMount.className = 'preview-mount';
+  monitor.insertBefore(bgMount, monitor.firstChild);
+  return bgMount;
 }
-bootRender();
-window.addEventListener('resize', () => { if (currentEl) fitToViewport(stage, currentEl); });
-
-sync.on((state) => {
-  const slide = SLIDES[state.slideIdx];
+function setBackgroundSlide(slide: Slide | null) {
+  const mount = ensureBg();
+  mount.innerHTML = '';
   if (!slide) return;
+  const slideEl = renderSlide(slide);
+  slideEl.classList.add('is-visible', 'no-build');
+  mount.appendChild(slideEl);
+  requestAnimationFrame(() => fitToViewport(mount, slideEl));
+}
+
+// ---- Hammer overlay ----
+function buildHammerOverlay(lotNum: string, finalPrice: number): HTMLElement {
+  const lot = lotByNum(lotNum)!;
+  const wrap = document.createElement('div');
+  wrap.className = 'hammer-overlay-c';
+  const particles = Array.from({ length: 22 }).map(() => {
+    const angle = Math.random() * Math.PI * 2;
+    const dist = 200 + Math.random() * 320;
+    const dx = Math.cos(angle) * dist;
+    const dy = Math.sin(angle) * dist;
+    const left = 30 + Math.random() * 40;
+    const top  = 30 + Math.random() * 40;
+    const delay = Math.random() * 600;
+    return `<span class="particle" style="left:${left}%;top:${top}%;--dx:${dx}px;--dy:${dy}px;animation-delay:${500 + delay}ms"></span>`;
+  }).join('');
+  wrap.innerHTML = `
+    <div class="scrim"></div>
+    <div class="rays"></div>
+    <div class="flash"></div>
+    <div class="card">
+      <div class="top"><span class="icon">🔨</span><span>Solgt</span></div>
+      <div class="lot-line">${lot.title}<span class="lot-no">Lot ${lot.num}</span></div>
+      <div class="bid">${fmtKr(finalPrice)}<span class="kr">kr</span></div>
+      <div class="foot">
+        <div class="item"><span>Bud</span><b>${fmtKr(finalPrice)} kr</b></div>
+        <div class="item"><span>Doneret af</span><b>${lot.sponsor}</b></div>
+      </div>
+    </div>
+    ${particles}
+  `;
+  return wrap;
+}
+function clearHammerOverlay() {
+  const el = stage.querySelector('.hammer-overlay-c') as HTMLElement | null;
+  if (!el || el.classList.contains('fading')) return;
+  el.classList.add('fading');
+  setTimeout(() => el.remove(), 340);
+}
+function fireHammer(lotNum: string, finalPrice: number) {
+  clearHammerOverlay();
+  stage.appendChild(buildHammerOverlay(lotNum, finalPrice));
+}
+
+// ---- State sync ----
+sync.on((state) => {
+  const slide = SLIDES[state.slideIdx] ?? null;
+
   if (state.slideIdx !== currentIdx) {
     currentIdx = state.slideIdx;
-    const next = renderSlide(slide);
-    next.classList.add('entering');
-    stage.appendChild(next);
-    requestAnimationFrame(() => {
-      fitToViewport(stage, next);
-      requestAnimationFrame(() => {
-        next.classList.remove('entering');
-        next.classList.add('is-visible');
-        currentEl?.classList.add('entering');
-      });
-    });
-    const previous = currentEl;
-    currentEl = next;
-    setTimeout(() => previous?.remove(), 260);
+    setBackgroundSlide(slide);
+    clearHammerOverlay();
+    lastBid = null;
   }
 
-  // Accumulated total across all sold lots
-  let total = 0;
-  for (const k of Object.keys(state.lots || {})) {
-    const ls = state.lots[k];
-    if (ls.status === 'sold' && typeof ls.finalPrice === 'number') total += ls.finalPrice;
-  }
-  bidTotalEl.textContent = total.toLocaleString('da-DK') + ' kr';
+  if (slide?.kind === 'lot' && slide.lotNum) {
+    const lot = lotByNum(slide.lotNum)!;
+    monitor.classList.add('show-header');
+    lotnumEl.textContent = lot.num;
+    titleEl.textContent = lot.title;
+    donorEl.textContent = lot.sponsor;
 
-  if (slide.kind === 'lot') {
-    const lot = lotByNum(slide.lotNum!);
-    if (lot) {
-      lotNumEl.textContent = lot.num;
-      lotTitleEl.textContent = lot.title;
-      lotDonorEl.textContent = `Doneret af: ${lot.sponsor}`;
-      const bidState = state.lots[lot.num];
-      const bids = bidState?.bids ?? [];
-      const last = bids.length ? bids[bids.length - 1] : null;
-      bidCurrentEl.textContent = last != null ? last.toLocaleString('da-DK') + ' kr' : '— kr';
-      bidHistoryEl.innerHTML = bids
-        .map((b: number) => `<li><span>${b.toLocaleString('da-DK')} kr</span></li>`)
-        .join('');
-      if (bidState?.status === 'sold' && bidState.finalPrice != null) {
-        lotNotesEl.textContent = `SOLGT — ${bidState.finalPrice.toLocaleString('da-DK')} kr`;
-        bidCurrentEl.textContent = bidState.finalPrice.toLocaleString('da-DK') + ' kr';
-      } else {
-        lotNotesEl.textContent = '';
+    const ls = state.lots?.[slide.lotNum];
+    const last = ls?.bids?.length ? ls.bids[ls.bids.length - 1] : null;
+    const sold = ls?.status === 'sold';
+    if (last != null && !sold) {
+      monitor.classList.add('has-bid');
+      bidEl.classList.remove('idle');
+      bidEl.innerHTML = `${fmtKr(last)}<span class="kr">kr</span>`;
+      if (lastBid !== last) {
+        bidEl.classList.remove('bid-bump-anim');
+        void (bidEl as HTMLElement).offsetWidth;
+        bidEl.classList.add('bid-bump-anim');
       }
+      lastBid = last;
+    } else if (!sold) {
+      monitor.classList.remove('has-bid');
+      bidEl.innerHTML = `—<span class="kr">kr</span>`;
+      lastBid = null;
+    }
+
+    // Hammer overlay on transition to sold
+    const prev = lastSoldStatus[slide.lotNum];
+    if (!firstStateMsg && ls?.status === 'sold' && prev !== 'sold' && ls.finalPrice != null) {
+      fireHammer(slide.lotNum, ls.finalPrice);
+      monitor.classList.remove('has-bid');
     }
   } else {
-    lotNumEl.textContent = '';
-    lotTitleEl.textContent = slide.kind === 'cover' ? 'Cover' : slide.kind;
-    lotDonorEl.textContent = '';
-    lotNotesEl.textContent = '';
-    bidCurrentEl.textContent = '— kr';
-    bidHistoryEl.innerHTML = '';
+    monitor.classList.remove('show-header');
+    monitor.classList.remove('has-bid');
+    lotnumEl.textContent = '—';
+    titleEl.textContent = slide?.kind === 'cover' ? 'Cover' : slide?.kind === 'sponsor-index' ? 'Sponsorer' : slide?.kind === 'closing' ? 'Tak for i aften' : '';
+    donorEl.textContent = '';
+    bidEl.innerHTML = `—<span class="kr">kr</span>`;
+    lastBid = null;
   }
+
+  for (const k of Object.keys(state.lots || {})) lastSoldStatus[k] = state.lots[k].status;
+  firstStateMsg = false;
 });
 
-// ---- Sound playback countdown ----
+// ---- Sound playback countdown (visual only — viewer handles audio) ----
 let countdownRaf = 0;
-let countdownAudio: HTMLAudioElement | null = null;
+let countdownProbe: HTMLAudioElement | null = null;
 
 function stopCountdown() {
   if (countdownRaf) { cancelAnimationFrame(countdownRaf); countdownRaf = 0; }
-  if (countdownAudio) { try { countdownAudio.pause(); } catch {} countdownAudio = null; }
-  soundCountdownEl.hidden = true;
+  if (countdownProbe) { try { countdownProbe.pause(); } catch {} countdownProbe = null; }
+  soundCountdownEl.classList.remove('open');
   soundBarFillEl.style.width = '0%';
 }
 
 sync.onSound((event) => {
   if (event.action === 'stop') { stopCountdown(); return; }
   stopCountdown();
-  // Load metadata to get duration. Don't actually play this — viewer handles audio.
   const probe = new Audio(`/sounds/${event.file}`);
   probe.preload = 'metadata';
   probe.muted = true;
-  countdownAudio = probe;
+  countdownProbe = probe;
   soundFileEl.textContent = `${event.file} (${event.which})`;
-  soundCountdownEl.hidden = false;
+  soundCountdownEl.classList.add('open');
   probe.addEventListener('loadedmetadata', () => {
     const totalPlay = Math.max(0.1, probe.duration - event.offset);
     const startTs = performance.now();
     const tick = () => {
-      if (countdownAudio !== probe) return;
+      if (countdownProbe !== probe) return;
       const elapsed = (performance.now() - startTs) / 1000;
       const remaining = Math.max(0, totalPlay - elapsed);
       const pct = Math.min(100, (elapsed / totalPlay) * 100);
@@ -135,6 +183,7 @@ sync.onSound((event) => {
   });
 });
 
+// Keyboard nav (lets a client review slides without the controller)
 document.addEventListener('keydown', (e) => {
   if (e.key === 'ArrowRight' || e.key === ' ') {
     e.preventDefault();
@@ -143,4 +192,9 @@ document.addEventListener('keydown', (e) => {
     e.preventDefault();
     sync.send({ type: 'nav', slideIdx: Math.max(0, currentIdx - 1) });
   }
+});
+
+window.addEventListener('resize', () => {
+  const slideEl = bgMount?.querySelector('.slide-canvas') as HTMLElement | null;
+  if (bgMount && slideEl) fitToViewport(bgMount, slideEl);
 });

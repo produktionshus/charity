@@ -53,7 +53,8 @@ export type ClientMsg =
   | { type: 'reset-auctions' }
   | { type: 'set-sound'; lotNum: string; config: LotSoundConfig }
   | { type: 'play-sound'; lotNum: string; which: 'init' | 'hammer' | 'manual'; fileOverride?: string }
-  | { type: 'stop-sound' };
+  | { type: 'stop-sound' }
+  | { type: 'undo-bid'; lotNum: string };
 
 export function initialLotBidState(): LotBidState {
   return { bids: [], finalPrice: null, status: 'pending' };

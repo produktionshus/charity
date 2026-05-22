@@ -3,13 +3,18 @@
 
 import { SyncClient } from './ws-client';
 import { renderSlide, fitToViewport } from './render';
-import { SLIDES } from './slides';
+import { SLIDES, lotByNum } from './slides';
 
 const stage = document.getElementById('stage')!;
 
 let currentSlideIdx = -1;
 let currentEl: HTMLElement | null = null;
 let audioUnlocked = false;
+let lastBidForRibbon: number | null = null;
+const lastSoldStatus: Record<string, string> = {};
+let firstStateMsg = true;
+
+const fmtKr = (n: number) => n.toLocaleString('da-DK').replace(/,/g, '.');
 
 function unlockAudio() {
   if (audioUnlocked) return;
@@ -67,10 +72,127 @@ function swapSlide(idx: number) {
   setTimeout(() => previous?.remove(), 260);
 }
 
+// ---- Ribbon (B-style) ----
+function getRibbon(): HTMLElement | null { return stage.querySelector('.stage-ribbon'); }
+
+function mountOrUpdateRibbon(lotNum: string, bid: number) {
+  const lot = lotByNum(lotNum)!;
+  let ribbon = getRibbon();
+  if (!ribbon) {
+    ribbon = document.createElement('div');
+    ribbon.className = 'stage-ribbon';
+    stage.appendChild(ribbon);
+  }
+  ribbon.innerHTML = `
+    <div class="sr-lot">
+      <div class="sr-num">${lot.num}</div>
+      <div class="sr-title">${lot.title}</div>
+    </div>
+    <div></div>
+    <div class="sr-bid-wrap">
+      <span class="sr-bid-label">Nuværende bud</span>
+      <span class="sr-bid">${fmtKr(bid)}<span class="kr">kr</span></span>
+      <span class="sr-meta">▲ Live</span>
+    </div>
+  `;
+  // bump the bid number
+  const bidEl = ribbon.querySelector('.sr-bid') as HTMLElement | null;
+  if (bidEl && lastBidForRibbon !== bid) {
+    bidEl.classList.remove('bid-bump-anim');
+    void bidEl.offsetWidth;
+    bidEl.classList.add('bid-bump-anim');
+  }
+  lastBidForRibbon = bid;
+}
+function removeRibbon() {
+  const ribbon = getRibbon();
+  if (!ribbon) return;
+  if (ribbon.classList.contains('fading')) return;
+  ribbon.classList.add('fading');
+  setTimeout(() => ribbon!.remove(), 340);
+  lastBidForRibbon = null;
+}
+
+// ---- Hammer overlay (D ceremoniel) ----
+function buildHammerOverlay(lotNum: string, finalPrice: number): HTMLElement {
+  const lot = lotByNum(lotNum)!;
+  const wrap = document.createElement('div');
+  wrap.className = 'hammer-overlay-c';
+  const particles = Array.from({ length: 22 }).map(() => {
+    const angle = Math.random() * Math.PI * 2;
+    const dist = 200 + Math.random() * 320;
+    const dx = Math.cos(angle) * dist;
+    const dy = Math.sin(angle) * dist;
+    const left = 30 + Math.random() * 40;
+    const top  = 30 + Math.random() * 40;
+    const delay = Math.random() * 600;
+    return `<span class="particle" style="left:${left}%;top:${top}%;--dx:${dx}px;--dy:${dy}px;animation-delay:${500 + delay}ms"></span>`;
+  }).join('');
+  wrap.innerHTML = `
+    <div class="scrim"></div>
+    <div class="rays"></div>
+    <div class="flash"></div>
+    <div class="card">
+      <div class="top"><span class="icon">🔨</span><span>Solgt</span></div>
+      <div class="lot-line">${lot.title}<span class="lot-no">Lot ${lot.num}</span></div>
+      <div class="bid">${fmtKr(finalPrice)}<span class="kr">kr</span></div>
+      <div class="foot">
+        <div class="item"><span>Bud</span><b>${fmtKr(finalPrice)} kr</b></div>
+        <div class="item"><span>Doneret af</span><b>${lot.sponsor}</b></div>
+      </div>
+    </div>
+    ${particles}
+  `;
+  return wrap;
+}
+function clearHammerOverlay() {
+  const el = stage.querySelector('.hammer-overlay-c') as HTMLElement | null;
+  if (!el || el.classList.contains('fading')) return;
+  el.classList.add('fading');
+  setTimeout(() => el.remove(), 340);
+}
+function fireHammer(lotNum: string, finalPrice: number) {
+  clearHammerOverlay();
+  stage.appendChild(buildHammerOverlay(lotNum, finalPrice));
+}
+
 sync.on((state) => {
-  if (state.slideIdx === currentSlideIdx) return;
-  currentSlideIdx = state.slideIdx;
-  swapSlide(currentSlideIdx);
+  if (state.slideIdx !== currentSlideIdx) {
+    currentSlideIdx = state.slideIdx;
+    swapSlide(currentSlideIdx);
+    clearHammerOverlay();
+    removeRibbon();
+  }
+
+  // Ribbon mount/update based on current slide's lot + bid
+  const slide = SLIDES[currentSlideIdx];
+  if (slide?.kind === 'lot' && slide.lotNum) {
+    const ls = state.lots?.[slide.lotNum];
+    const bids: number[] = ls?.bids || [];
+    const last = bids.length ? bids[bids.length - 1] : null;
+    if (last != null && ls?.status !== 'sold') {
+      mountOrUpdateRibbon(slide.lotNum, last);
+    } else {
+      removeRibbon();
+    }
+  } else {
+    removeRibbon();
+  }
+
+  // Hammer overlay on status -> sold transition (current slide's lot)
+  if (slide?.kind === 'lot' && slide.lotNum) {
+    const prev = lastSoldStatus[slide.lotNum];
+    const newSt = state.lots?.[slide.lotNum]?.status;
+    if (!firstStateMsg && newSt === 'sold' && prev !== 'sold') {
+      const fp = state.lots[slide.lotNum].finalPrice;
+      if (fp != null) {
+        removeRibbon();
+        fireHammer(slide.lotNum, fp);
+      }
+    }
+  }
+  for (const k of Object.keys(state.lots || {})) lastSoldStatus[k] = state.lots[k].status;
+  firstStateMsg = false;
 });
 
 // Server drives playback via sound-event messages (init on slide enter,

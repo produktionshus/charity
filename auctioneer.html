@@ -4,38 +4,36 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Auktionarius — StjerneGolf 2026</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&family=Cormorant+Garamond:ital,wght@1,500&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/src/styles.css" />
   <link rel="stylesheet" href="/src/slides.css" />
-  <link rel="stylesheet" href="/src/auctioneer.css" />
+  <link rel="stylesheet" href="/src/chrome.css" />
 </head>
-<body class="auctioneer">
-  <main id="stage"></main>
-  <aside id="auctioneer-panel">
-    <div class="lot-meta">
-      <h2 id="lot-num"></h2>
-      <p id="lot-title"></p>
-      <p id="lot-donor"></p>
+<body class="auctioneer-f">
+  <main id="stage">
+    <div class="auct-monitor" id="auct-monitor">
+      <div class="auct-monitor-vignette"></div>
+      <div class="auct-monitor-header">
+        <div class="auct-monitor-lotnum" id="auct-lotnum">—</div>
+        <div class="auct-monitor-title">
+          <span id="auct-title-text">—</span>
+          <span class="auct-monitor-donor" id="auct-donor"></span>
+        </div>
+      </div>
+      <div class="auct-monitor-bid-wrap">
+        <div class="auct-monitor-bid-label">Nuværende bud</div>
+        <div class="auct-monitor-bid" id="auct-bid">—<span class="kr">kr</span></div>
+      </div>
+      <div class="sound-countdown-f" id="sound-countdown">
+        <span class="label">Lyd afspilles</span>
+        <span class="file" id="sound-file"></span>
+        <div class="bar"><div class="bar-fill" id="sound-bar-fill"></div></div>
+        <span class="remaining" id="sound-remaining">0.0s</span>
+      </div>
     </div>
-    <div class="bid-block">
-      <span class="bid-label">Current bid</span>
-      <span class="bid-amount-big" id="bid-current">— kr</span>
-    </div>
-    <div class="bid-block bid-history-block">
-      <span class="bid-label">Bid history</span>
-      <ol class="bid-history-list" id="bid-history-list"></ol>
-    </div>
-    <div class="bid-block">
-      <span class="bid-label">Total raised</span>
-      <span class="bid-amount-mid" id="bid-total">0 kr</span>
-    </div>
-    <div class="sound-countdown" id="sound-countdown" hidden>
-      <span class="bid-label">Sound playing</span>
-      <span class="sound-file" id="sound-file"></span>
-      <div class="sound-bar"><div class="sound-bar-fill" id="sound-bar-fill"></div></div>
-      <span class="sound-remaining" id="sound-remaining">0.0s</span>
-    </div>
-    <div class="lot-notes" id="lot-notes"></div>
-  </aside>
+  </main>
   <script type="module" src="/src/auctioneer.ts"></script>
 </body>
 </html>

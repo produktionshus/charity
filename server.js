@@ -145,6 +145,17 @@ wss.on('connection', (ws) => {
       return;
     } else if (msg.type === 'lotStatus' && state.lots[msg.lotNum]) {
       state.lots[msg.lotNum].status = msg.status;
+    } else if (msg.type === 'undo-bid' && state.lots[msg.lotNum]) {
+      const ls = state.lots[msg.lotNum];
+      if (ls.status === 'sold') {
+        // Roll the sale back; keep the bid history intact so the operator can
+        // continue editing from where it was.
+        ls.status = ls.bids.length ? 'live' : 'pending';
+        ls.finalPrice = null;
+      } else if (ls.bids.length) {
+        ls.bids.pop();
+        if (ls.bids.length === 0) ls.status = 'pending';
+      }
     } else if (msg.type === 'reset-auctions') {
       state.lots = freshLots();
     } else if (msg.type === 'set-sound' && state.sounds[msg.lotNum]) {
