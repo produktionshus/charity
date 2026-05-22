@@ -215,9 +215,16 @@ app.post('/api/lots/reorder', (req, res) => {
 
 app.post('/api/upload', upload.single('file'), (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'No file' });
-  // We deliberately do NOT write lots.json here — that would trigger Vite's
-  // file watcher and force a full page reload of the generator mid-upload.
-  // The client patches lot.heroExt in memory and persists it on Save.
+  const kind = req.body.kind || req.query.kind;
+  const lotId = req.body.lotId || req.query.lotId;
+  // In prod (no Vite watcher), persist heroExt immediately so viewer +
+  // auctioneer + controller resolve the right URL after a soft refresh.
+  // In dev we skip — Vite would HMR-reload the generator mid-edit.
+  if (isProd && kind === 'hero' && lotId) {
+    const ext = extname(req.file.filename).replace(/^\./, '').toLowerCase();
+    const lot = lotsFile.lots.find(l => l.id === lotId);
+    if (lot) { lot.heroExt = ext; saveLots(lotsFile); broadcastLotsUpdated(); }
+  }
   res.json({ filename: req.file.filename });
 });
 
