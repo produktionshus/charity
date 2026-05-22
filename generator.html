@@ -23,6 +23,7 @@
         </div>
       </div>
       <span class="gen-status" id="gen-status">Indlæser…</span>
+      <span class="gen-save-pill" id="gen-save-pill"></span>
       <div class="gen-topbar-spacer"></div>
       <button class="link-btn" id="open-controller">Controller ↗</button>
       <button class="nav-btn primary" id="new-lot">+ Nyt lot</button>
@@ -41,7 +42,9 @@
         <div class="gen-edit-head">
           <span class="gen-edit-id">ID: <code id="edit-id">—</code></span>
           <span class="gen-edit-display">Vises som <b id="edit-display-num">—</b></span>
-          <button class="drawer-danger" id="delete-lot" style="margin-left:auto;display:none">Slet lot</button>
+          <button class="link-btn" id="duplicate-lot" style="margin-left:auto;display:none">Duplicate</button>
+          <button class="link-btn" id="reset-focal" style="display:none">Reset focal</button>
+          <button class="drawer-danger" id="delete-lot" style="display:none">Slet</button>
         </div>
 
         <div class="gen-form" id="gen-form">
@@ -115,6 +118,7 @@
             </div>
           </div>
 
+          <div class="gen-validation" id="gen-validation"></div>
           <div class="row gen-save-row">
             <button class="nav-btn primary" id="save-lot">Gem ændringer</button>
             <span class="gen-save-meta" id="gen-save-meta"></span>

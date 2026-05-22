@@ -675,11 +675,11 @@
     },
     {
       "id": "9d750323-c1c0-4802-8965-2270bd35d77e",
-      "title": "Nyt lot",
+      "title": "Luminance test",
       "subtitle": "",
       "sponsor": "",
       "bullets": [],
-      "active": false,
+      "active": true,
       "extra": true,
       "extraSuffix": "b52",
       "layout": "horizon",

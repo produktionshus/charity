@@ -134,10 +134,44 @@ function sponsorBlockHtml(lot: Lot, donorLabelGroup: number, _profile = false): 
 
 // ---- Sponsor index (slide 2) — custom staggers ----
 // Animation order: title → outer grid frame → each lot cell sequentially.
+// Solve for the (cols, rows) layout that best fits N sponsor cells into the
+// available grid area. Optimises:
+//   - minimal empty cells (cols*rows - N)
+//   - cell aspect close to ~1.5:1
+//   - cell size within sane bounds
+// Returns inline CSS variables consumed by the .sponsor-cell rules.
+function chooseSponsorLayout(n: number): { cols: number; rows: number; cw: number; ch: number } {
+  // Inner grid area: slide width minus side-margin (0.5in × 2) minus padding
+  // (0.22in × 2) and the matching vertical region between title + footer.
+  const gridW = 13.333 - 1.0;          // slide width minus left/right padding
+  // Cells-and-gaps budget inside the green frame.
+  const gridH = 5.5;
+  const gap = 0.22;            // must match the CSS gap on .sponsor-grid
+  const TARGET_ASPECT = 1.5;
+  let best = { cols: 7, rows: 3, cw: 1.5, ch: 1.4, score: -Infinity };
+  for (let cols = 3; cols <= 10; cols++) {
+    const rows = Math.ceil(n / cols);
+    if (rows < 1 || rows > 6) continue;
+    const cw = (gridW - (cols - 1) * gap) / cols;
+    const ch = (gridH - (rows - 1) * gap) / rows;
+    if (cw < 0.95 || ch < 0.70) continue;
+    if (cw > 2.2 || ch > 1.9) continue;
+    const aspect = cw / ch;
+    const empties = cols * rows - n;
+    // Score: fewer empties + closer to target aspect = better.
+    const score = -empties * 3 - Math.abs(aspect - TARGET_ASPECT) * 4;
+    if (score > best.score) best = { cols, rows, cw, ch, score };
+  }
+  return best;
+}
+
 function renderSponsorIndex(): string {
   const FRAME_DELAY = 300;
   const FIRST_CELL = 750;
   const CELL_STAGGER = 130;
+  const L = chooseSponsorLayout(LOTS.length);
+  const logoCap = Math.max(0.5, L.ch - 0.50);   // leave room for the lot-num + padding
+  const numSize = L.cw < 1.25 ? 11 : L.cw < 1.4 ? 12 : 14;
   const cells = LOTS.map((l, i) => {
     const t = FIRST_CELL + i * CELL_STAGGER;
     const dn = displayNumFor(l.id);
@@ -148,9 +182,11 @@ function renderSponsorIndex(): string {
       </div>
     `;
   }).join('');
+  const gridStyle = `--cell-w:${L.cw.toFixed(3)}in;--cell-h:${L.ch.toFixed(3)}in;--cell-logo-cap:${logoCap.toFixed(3)}in;--cell-num-size:${numSize}pt; transition-delay:${FRAME_DELAY}ms`;
   return `
     <h1 class="closing-title build-item" style="transition-delay:0ms">AUKTIONENS SPONSORER</h1>
-    <div class="sponsor-grid build-item" style="transition-delay:${FRAME_DELAY}ms">${cells}</div>
+    <div class="closing-rule build-item" style="transition-delay:150ms"></div>
+    <div class="sponsor-grid build-item" style="${gridStyle}">${cells}</div>
   `;
 }
 

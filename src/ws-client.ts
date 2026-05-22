@@ -9,6 +9,7 @@ export class SyncClient {
   private ws: WebSocket | null = null;
   private stateListeners = new Set<StateListener>();
   private soundListeners = new Set<SoundListener>();
+  private lotsUpdatedListeners = new Set<() => void>();
   private url: string;
 
   constructor(path = '/sync') {
@@ -27,10 +28,10 @@ export class SyncClient {
       } else if (msg.type === 'sound-event') {
         for (const l of this.soundListeners) l(msg.event);
       } else if (msg.type === 'lots-updated') {
-        // Lot bank changed on disk — reload so the bundled lots.json refreshes.
-        // Generator skips this (it's likely the source of the change).
+        // Lot bank changed on disk. Generator window ignores (it's the source).
+        // Other views soft-update via /api/lots + re-render — no flash.
         if (!document.body.classList.contains('generator')) {
-          setTimeout(() => location.reload(), 200);
+          for (const l of this.lotsUpdatedListeners) l();
         }
       }
     };
@@ -41,6 +42,7 @@ export class SyncClient {
 
   on(fn: StateListener) { this.stateListeners.add(fn); return () => this.stateListeners.delete(fn); }
   onSound(fn: SoundListener) { this.soundListeners.add(fn); return () => this.soundListeners.delete(fn); }
+  onLotsUpdated(fn: () => void) { this.lotsUpdatedListeners.add(fn); return () => this.lotsUpdatedListeners.delete(fn); }
 
   send(msg: ClientMsg) {
     if (this.ws?.readyState === 1) this.ws.send(JSON.stringify(msg));

@@ -43,6 +43,59 @@ body.generator {
   letter-spacing: 0.1em; text-transform: uppercase;
 }
 .gen-topbar-spacer { flex: 1; }
+.gen-save-pill {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-family: var(--font-mono-c);
+  font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase;
+  font-weight: 600;
+}
+.gen-save-pill:empty { display: none; }
+.gen-save-pill.dirty {
+  background: rgba(217, 191, 140, 0.14);
+  border: 1px solid rgba(217, 191, 140, 0.45);
+  color: var(--gold);
+}
+.gen-save-pill.saved {
+  background: color-mix(in srgb, var(--green-500) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--green-500) 40%, transparent);
+  color: var(--green-200);
+}
+
+/* Drag-drop visual feedback */
+.gen-row.is-dragging { opacity: 0.45; box-shadow: 0 8px 24px -8px rgba(0,0,0,0.6); cursor: grabbing; }
+.gen-row.drop-above { border-top: 2px solid var(--green-400); padding-top: 6px; }
+.gen-row.drop-below { border-bottom: 2px solid var(--green-400); padding-bottom: 6px; }
+
+/* Validation error state */
+.gen-form .has-error input,
+.gen-form .has-error textarea,
+.gen-form .has-error select { border-color: #F87171; box-shadow: 0 0 0 3px rgba(248,113,113,0.18); }
+.field-error {
+  display: block;
+  font-family: var(--font-display-c);
+  color: #F87171; font-size: 11px; letter-spacing: 0; text-transform: none;
+  margin-top: 4px;
+}
+.field-warning {
+  display: block;
+  font-family: var(--font-display-c);
+  color: var(--gold); font-size: 11px; letter-spacing: 0; text-transform: none;
+  margin-top: 4px;
+}
+.gen-validation:empty { display: none; }
+.gen-validation {
+  display: flex; flex-direction: column; gap: 5px;
+  padding: 8px 10px;
+  background: rgba(248, 113, 113, 0.06);
+  border: 1px solid rgba(248, 113, 113, 0.25);
+  border-radius: 6px;
+  font-size: 12px;
+}
+.gen-validation .v-error { color: #FCA5A5; }
+.gen-validation .v-warn  { color: var(--gold); }
+.gen-validation.warn-only { background: rgba(217, 191, 140, 0.06); border-color: rgba(217, 191, 140, 0.3); }
 
 .gen-list {
   grid-area: list;

@@ -219,43 +219,40 @@
   opacity: 0.5;
 }
 .sponsor-grid {
-  /* Flexbox lets the last (possibly incomplete) row auto-center, so a lot
-     pulled at the last minute doesn't leave a visible gap in the grid. */
+  /* No outer frame any more — a thin closing-rule under the title separates
+     sponsors from the heading. Flex-wrap centers the last partial row. */
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
   align-content: flex-start;
   gap: 0.22in;
-  padding: 0.22in;
-  /* Outer rounded frame around the whole grid, matching the print layout */
-  border: 1.5px solid var(--green);
-  border-radius: 0.18in;
-  margin: 0.15in 0.5in 0;
+  padding: 0.25in 0.5in 0;
+  margin: 0;
 }
 .sponsor-cell {
   position: relative;
-  flex: 0 0 1.5in;          /* fixed width — 7 fit per row at default grid width */
-  height: 1.4in;
+  flex: 0 0 var(--cell-w, 1.5in);
+  height: var(--cell-h, 1.4in);
   border: 1.2px solid var(--green);
   border-radius: 0.10in;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 0.32in 0.15in 0.18in;
+  padding: 0.28in 0.12in 0.15in;
 }
 .sponsor-cell-num {
   position: absolute;
   top: 0.08in;
-  left: 0.14in;
+  left: 0.12in;
   font-family: var(--font-title);
   font-weight: 700;
-  font-size: 14pt;
+  font-size: var(--cell-num-size, 14pt);
   color: var(--green);
   line-height: 1;
 }
 .sponsor-cell-logo {
   max-width: 90%;
-  max-height: 0.85in;
+  max-height: var(--cell-logo-cap, 0.85in);
   object-fit: contain;
 }
 /* Per-lot trim for visually-heavy (square / tall) logos so they sit at the

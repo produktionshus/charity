@@ -82,14 +82,34 @@ export function displayNumFor(id: string): string {
   return DISPLAY_NUMS.get(id) ?? '';
 }
 
-export const SLIDES: Slide[] = [
-  { id: 'cover', kind: 'cover' },
-  { id: 'sponsor-index', kind: 'sponsor-index' },
-  ...ACTIVE_LOTS.map(l => ({
-    id: `lot-${l.id}`,
-    kind: 'lot' as const,
-    lotId: l.id,
-    displayNum: DISPLAY_NUMS.get(l.id),
-  })),
-  { id: 'closing', kind: 'closing' },
-];
+function buildSlides(): Slide[] {
+  return [
+    { id: 'cover', kind: 'cover' },
+    { id: 'sponsor-index', kind: 'sponsor-index' },
+    ...ACTIVE_LOTS.map(l => ({
+      id: `lot-${l.id}`,
+      kind: 'lot' as const,
+      lotId: l.id,
+      displayNum: DISPLAY_NUMS.get(l.id),
+    })),
+    { id: 'closing', kind: 'closing' },
+  ];
+}
+
+export const SLIDES: Slide[] = buildSlides();
+
+// Pull the latest lot bank from the server and mutate the exported arrays /
+// maps in place so consumers see fresh data without a full page reload.
+export async function refreshLotsFromServer(): Promise<void> {
+  const res = await fetch('/api/lots');
+  if (!res.ok) return;
+  const data = await res.json();
+  ALL_LOTS.length = 0;
+  for (const l of data.lots) ALL_LOTS.push(l);
+  ACTIVE_LOTS.length = 0;
+  for (const l of ALL_LOTS.filter(l => l.active)) ACTIVE_LOTS.push(l);
+  DISPLAY_NUMS.clear();
+  for (const [k, v] of computeDisplayNums(ALL_LOTS)) DISPLAY_NUMS.set(k, v);
+  SLIDES.length = 0;
+  for (const s of buildSlides()) SLIDES.push(s);
+}

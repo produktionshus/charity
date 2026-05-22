@@ -6,7 +6,7 @@
 import QRCode from 'qrcode';
 import { SyncClient } from './ws-client';
 import { renderSlide, fitToViewport } from './render';
-import { SLIDES, LOTS, lotById, displayNumFor, type Slide } from './slides';
+import { SLIDES, LOTS, lotById, displayNumFor, refreshLotsFromServer, type Slide } from './slides';
 
 const sync = new SyncClient();
 
@@ -488,6 +488,30 @@ function renderStatsAndProgress(state: any) {
 
 // ---- Boot ----
 navTotal.textContent = String(SLIDES.length);
+
+sync.onLotsUpdated(async () => {
+  await refreshLotsFromServer();
+  // Force a re-render: invalidate the slide-cache markers so the next state
+  // update rebuilds Nuværende + Næste with fresh data.
+  lastRenderedCurrentIdx = -999;
+  lastRenderedNextIdx    = -999;
+  // Rebuild sidebar from scratch
+  delete lotList.dataset.built;
+  lotList.innerHTML = '';
+  if (lastState) {
+    const slide = SLIDES[currentIdx] ?? null;
+    const nextSlide = SLIDES[currentIdx + 1] ?? null;
+    renderLotImage(currentCard, slide, true, true);
+    renderAuctioneerPanel(slide);
+    lastRenderedCurrentIdx = currentIdx;
+    renderLotImage(nextCard, nextSlide, false, false);
+    lastRenderedNextIdx = currentIdx + 1;
+    renderBidHero(slide);
+    renderSidebar(lastState);
+    renderStatsAndProgress(lastState);
+    renderHistoryDrawer(lastState);
+  }
+});
 
 sync.on((state) => {
   lastState = state;

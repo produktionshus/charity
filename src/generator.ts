@@ -18,6 +18,8 @@ const openCtrlBtn = document.getElementById('open-controller')!;
 const editIdEl   = document.getElementById('edit-id')!;
 const editDisplayNumEl = document.getElementById('edit-display-num')!;
 const deleteBtn  = document.getElementById('delete-lot') as HTMLButtonElement;
+const duplicateBtn = document.getElementById('duplicate-lot') as HTMLButtonElement;
+const resetFocalBtn = document.getElementById('reset-focal') as HTMLButtonElement;
 const saveBtn    = document.getElementById('save-lot')!;
 const saveMeta   = document.getElementById('gen-save-meta')!;
 const previewFrame = document.getElementById('gen-preview-frame')!;
@@ -160,10 +162,15 @@ function renderList() {
 }
 
 let draggingId: string | null = null;
+function clearDropMarkers() {
+  listRows.querySelectorAll('.drop-above, .drop-below').forEach(el => {
+    el.classList.remove('drop-above', 'drop-below');
+  });
+}
 function onDragStart(e: DragEvent) {
   const row = e.currentTarget as HTMLElement;
   draggingId = row.dataset.id!;
-  row.classList.add('dragging');
+  row.classList.add('is-dragging');
   e.dataTransfer!.effectAllowed = 'move';
   e.dataTransfer!.setData('text/plain', draggingId);
 }
@@ -172,20 +179,33 @@ function onDragOver(e: DragEvent) {
   e.dataTransfer!.dropEffect = 'move';
   const target = e.currentTarget as HTMLElement;
   if (!draggingId || target.dataset.id === draggingId) return;
-  // Move dragged element above or below target depending on cursor Y
   const rect = target.getBoundingClientRect();
   const before = e.clientY < rect.top + rect.height / 2;
-  const dragRow = listRows.querySelector(`[data-id="${draggingId}"]`)!;
-  if (before) target.parentElement!.insertBefore(dragRow, target);
-  else target.parentElement!.insertBefore(dragRow, target.nextSibling);
+  clearDropMarkers();
+  target.classList.add(before ? 'drop-above' : 'drop-below');
+  // Auto-scroll the list when dragging near top/bottom edges
+  const scroller = listRows;
+  const sRect = scroller.getBoundingClientRect();
+  const margin = 36;
+  if (e.clientY < sRect.top + margin) scroller.scrollBy({ top: -10 });
+  else if (e.clientY > sRect.bottom - margin) scroller.scrollBy({ top: 10 });
 }
 async function onDrop(e: DragEvent) {
   e.preventDefault();
   if (!draggingId) return;
-  // Read new order from DOM
+  const target = e.currentTarget as HTMLElement;
+  if (target.dataset.id !== draggingId) {
+    // Move source row in DOM to drop position before computing order
+    const before = target.classList.contains('drop-above');
+    const dragRow = listRows.querySelector(`[data-id="${draggingId}"]`);
+    if (dragRow) {
+      if (before) target.parentElement!.insertBefore(dragRow, target);
+      else target.parentElement!.insertBefore(dragRow, target.nextSibling);
+    }
+  }
+  clearDropMarkers();
   const order = Array.from(listRows.querySelectorAll<HTMLElement>('.gen-row'))
     .map(el => el.dataset.id!);
-  // Reorder in local memory
   const byId = new Map(lotsBank.map(l => [l.id, l]));
   lotsBank = order.map(id => byId.get(id)!).filter(Boolean);
   try {
@@ -201,7 +221,8 @@ async function onDrop(e: DragEvent) {
   }
 }
 function onDragEnd(e: DragEvent) {
-  (e.currentTarget as HTMLElement).classList.remove('dragging');
+  (e.currentTarget as HTMLElement).classList.remove('is-dragging');
+  clearDropMarkers();
   draggingId = null;
 }
 
@@ -217,12 +238,15 @@ function selectLot(id: string) {
   refreshPreview();
   renderList();   // update selected highlight
   setDirty(false);
+  renderValidation();
 }
 
 function populateForm(lot: Lot) {
   editIdEl.textContent = lot.id;
   editDisplayNumEl.textContent = computeDisplayNums().get(lot.id) ?? '—';
   deleteBtn.style.display = 'inline-flex';
+  duplicateBtn.style.display = 'inline-flex';
+  resetFocalBtn.style.display = 'inline-flex';
   fActive.checked = !!lot.active;
   fExtra.checked  = !!lot.extra;
   rowExtraSuffix.style.display = lot.extra ? '' : 'none';
@@ -268,11 +292,46 @@ function readForm(): Partial<Lot> {
   };
 }
 
+const savePillEl = document.getElementById('gen-save-pill')!;
+const validationEl = document.getElementById('gen-validation')!;
+
+function validateForm(): { errors: string[]; warnings: string[] } {
+  const errors: string[] = [];
+  const warnings: string[] = [];
+  const title = fTitle.value.trim();
+  if (fActive.checked && !title) errors.push('Lot er active men har ingen titel.');
+  if (fExtra.checked && !fExtraSuffix.value.trim()) {
+    warnings.push('Ekstra-lot uden suffix — auto-tildeles (fx 03A).');
+  }
+  const bulletCount = fBullets.value.split('\n').map(s => s.trim()).filter(Boolean).length;
+  if (fLayout.value === 'horizon' && bulletCount > 8) {
+    warnings.push(`${bulletCount} bullets passer muligvis ikke i 2-col horizon layout.`);
+  }
+  return { errors, warnings };
+}
+
+function renderValidation() {
+  const { errors, warnings } = validateForm();
+  validationEl.innerHTML = '';
+  validationEl.classList.toggle('warn-only', errors.length === 0 && warnings.length > 0);
+  for (const e of errors) {
+    const el = document.createElement('div'); el.className = 'v-error'; el.textContent = '✗ ' + e;
+    validationEl.appendChild(el);
+  }
+  for (const w of warnings) {
+    const el = document.createElement('div'); el.className = 'v-warn'; el.textContent = '! ' + w;
+    validationEl.appendChild(el);
+  }
+  return errors.length === 0;
+}
 function setDirty(v: boolean) {
   dirty = v;
   saveMeta.className = 'gen-save-meta' + (v ? ' dirty' : ' saved');
   saveMeta.textContent = v ? 'UGEMTE ÆNDRINGER' : 'GEMT';
   if (!v && !selectedId) saveMeta.textContent = '';
+  // Topbar pill mirror
+  savePillEl.className = 'gen-save-pill ' + (selectedId ? (v ? 'dirty' : 'saved') : '');
+  savePillEl.textContent = selectedId ? (v ? '● Ugemt' : '✓ Gemt') : '';
 }
 
 // ---- Preview ----
@@ -303,6 +362,7 @@ function refreshPreview() {
 function onFormChange() {
   setDirty(true);
   refreshPreview();
+  renderValidation();
 }
 [fActive, fExtra, fExtraSuffix, fTitle, fSubtitle, fSponsor, fBullets, fDonorNames, fLayout, fMirrored, fTitleSize]
   .forEach(el => el.addEventListener('input', onFormChange));
@@ -322,6 +382,10 @@ fScale.addEventListener('input', () => {
 // ---- Save ----
 saveBtn.addEventListener('click', async () => {
   if (!selectedId) return;
+  if (!renderValidation()) {
+    statusEl.textContent = 'Kan ikke gemme — ret fejl først';
+    return;
+  }
   const patch = readForm();
   try {
     statusEl.textContent = 'Gemmer…';
@@ -361,6 +425,43 @@ newLotBtn.addEventListener('click', async () => {
   } catch (e: any) {
     statusEl.textContent = 'Create failed: ' + e.message;
   }
+});
+
+// ---- Duplicate / Reset focal ----
+duplicateBtn.addEventListener('click', async () => {
+  if (!selectedId) return;
+  const lot = lotsBank.find(l => l.id === selectedId);
+  if (!lot) return;
+  if (dirty && !confirm('Du har ugemte ændringer. Duplicate uden at gemme dem?')) return;
+  const dup = {
+    ...lot,
+    id: undefined,    // server assigns new UUID
+    title: lot.title + ' (kopi)',
+    active: false,
+  };
+  delete (dup as any).id;
+  try {
+    const created = await api('/api/lots', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(dup),
+    });
+    lotsBank.push(created);
+    selectedId = created.id;
+    renderList();
+    populateForm(created);
+    refreshPreview();
+    statusEl.textContent = 'Duplikeret';
+  } catch (e: any) {
+    statusEl.textContent = 'Duplicate failed: ' + e.message;
+  }
+});
+
+resetFocalBtn.addEventListener('click', () => {
+  fFocalX.value = '50'; fFocalXVal.textContent = '50%';
+  fFocalY.value = '50'; fFocalYVal.textContent = '50%';
+  fScale.value = '100'; fScaleVal.textContent = '100%';
+  onFormChange();
 });
 
 deleteBtn.addEventListener('click', async () => {

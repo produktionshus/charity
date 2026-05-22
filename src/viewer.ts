@@ -3,7 +3,7 @@
 
 import { SyncClient } from './ws-client';
 import { renderSlide, fitToViewport } from './render';
-import { SLIDES, lotById, displayNumFor } from './slides';
+import { SLIDES, lotById, displayNumFor, refreshLotsFromServer } from './slides';
 
 // Mirror controller's saved theme so all three views share the chrome.
 const savedTheme = localStorage.getItem('controller.theme') || 'forest';
@@ -173,6 +173,12 @@ function fireHammer(lotNum: string, finalPrice: number) {
   clearHammerOverlay();
   slideFrame.appendChild(buildHammerOverlay(lotNum, finalPrice));
 }
+
+sync.onLotsUpdated(async () => {
+  await refreshLotsFromServer();
+  // Re-render current slide with fresh data (no full reload, no flash).
+  if (currentSlideIdx >= 0) swapSlide(currentSlideIdx);
+});
 
 sync.on((state) => {
   if (state.slideIdx !== currentSlideIdx) {

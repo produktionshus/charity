@@ -5,7 +5,7 @@
 
 import { SyncClient } from './ws-client';
 import { renderSlide, fitToViewport } from './render';
-import { SLIDES, lotById, displayNumFor, type Slide } from './slides';
+import { SLIDES, lotById, displayNumFor, refreshLotsFromServer, type Slide } from './slides';
 
 // Mirror controller's saved theme via shared localStorage.
 const savedTheme = localStorage.getItem('controller.theme') || 'forest';
@@ -100,6 +100,12 @@ function fireHammer(lotNum: string, finalPrice: number) {
 }
 
 // ---- State sync ----
+sync.onLotsUpdated(async () => {
+  await refreshLotsFromServer();
+  const slide = SLIDES[currentIdx];
+  if (slide) setBackgroundSlide(slide);
+});
+
 sync.on((state) => {
   const slide = SLIDES[state.slideIdx] ?? null;
 
