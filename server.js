@@ -16,8 +16,8 @@ const lots = JSON.parse(readFileSync(lotsPath, 'utf8')).lots;
 const initialLots = {};
 const initialSounds = {};
 for (const l of lots) {
-  initialLots[l.num] = { bids: [], finalPrice: null, status: 'pending' };
-  initialSounds[l.num] = {};
+  initialLots[l.id] = { bids: [], finalPrice: null, status: 'pending' };
+  initialSounds[l.id] = {};
 }
 
 const state = { slideIdx: 0, buildStep: 0, lots: initialLots, sounds: initialSounds };
@@ -27,13 +27,13 @@ const state = { slideIdx: 0, buildStep: 0, lots: initialLots, sounds: initialSou
 const slides = [
   { kind: 'cover' },
   { kind: 'sponsor-index' },
-  ...lots.map(l => ({ kind: 'lot', lotNum: l.num })),
+  ...lots.filter(l => l.active).map(l => ({ kind: 'lot', lotId: l.id })),
   { kind: 'closing' },
 ];
 
 function freshLots() {
   const out = {};
-  for (const l of lots) out[l.num] = { bids: [], finalPrice: null, status: 'pending' };
+  for (const l of lots) out[l.id] = { bids: [], finalPrice: null, status: 'pending' };
   return out;
 }
 
@@ -131,7 +131,7 @@ wss.on('connection', (ws) => {
       // Auto-fire init sound when slideIdx changes to a lot with initSound config.
       if (typeof msg.slideIdx === 'number' && msg.slideIdx !== prevIdx) {
         const slide = slides[msg.slideIdx];
-        if (slide?.kind === 'lot' && slide.lotNum) emitPlay(slide.lotNum, 'init');
+        if (slide?.kind === 'lot' && slide.lotId) emitPlay(slide.lotId, 'init');
       }
       return;
     } else if (msg.type === 'bid' && state.lots[msg.lotNum]) {

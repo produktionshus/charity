@@ -2,7 +2,7 @@
 // Each animated element carries class="build-item" and an inline
 // transition-delay derived from its build group + in-group index.
 
-import { LOTS, SLIDES, lotByNum, type Slide } from './slides';
+import { LOTS, SLIDES, lotById, displayNumFor, type Slide, type Lot } from './slides';
 import { lotLayout, isMirrored, photoFocal, HORIZON_TITLE_SIZE_OVERRIDE } from './layout';
 
 const SLIDE_W_IN = 13.333;
@@ -14,8 +14,7 @@ function delay(group: number, index = 0): number {
   return group * GROUP_STAGGER + index * INGROUP_STAGGER;
 }
 
-function titleHtml(lot: ReturnType<typeof lotByNum>): string {
-  if (!lot) return '';
+function titleHtml(lot: Lot): string {
   const parts = lot.titleParts && lot.titleParts.length
     ? lot.titleParts
     : [{ text: lot.title, bold: true } as { text: string; bold?: boolean; break?: boolean }];
@@ -26,21 +25,21 @@ function titleHtml(lot: ReturnType<typeof lotByNum>): string {
   }).join('');
 }
 
-function titleSizePt(lot: ReturnType<typeof lotByNum>, layout: 'profile' | 'horizon'): number {
-  const len = lot?.title.length ?? 0;
+function titleSizePt(lot: Lot, layout: 'profile' | 'horizon'): number {
+  const len = lot.title.length;
   if (layout === 'horizon') {
-    if (HORIZON_TITLE_SIZE_OVERRIDE[lot!.num]) return HORIZON_TITLE_SIZE_OVERRIDE[lot!.num];
+    const override = HORIZON_TITLE_SIZE_OVERRIDE[lot.id];
+    if (override) return override;
     return len > 56 ? 18 : len > 42 ? 20 : 22;
   }
   return len > 56 ? 24 : len > 42 ? 26 : 28;
 }
 
 // ---- Horizon (Type A) builds ----
-function renderHorizonLot(lot: ReturnType<typeof lotByNum>): string {
-  if (!lot) return '';
+function renderHorizonLot(lot: Lot, displayNum: string): string {
   const twoCol = lot.bullets.length >= 5;
   const titleSize = titleSizePt(lot, 'horizon');
-  const focal = photoFocal(lot.num);
+  const focal = photoFocal(lot.id);
 
   const bulletsInner = twoCol
     ? (() => {
@@ -58,8 +57,8 @@ function renderHorizonLot(lot: ReturnType<typeof lotByNum>): string {
 
   return `
     <div class="hero-area">
-      <img class="hero-img build-item" style="object-position:${focal}; transition-delay:${delay(0, 0)}ms" src="/assets/hero/lot-${lot.num}_FINAL.jpg" alt="" />
-      <div class="lot-num build-item" style="transition-delay:${delay(1, 0)}ms">${lot.num}</div>
+      <img class="hero-img build-item" style="object-position:${focal}; transition-delay:${delay(0, 0)}ms" src="/assets/hero/lot-${lot.id}_FINAL.jpg" alt="" />
+      <div class="lot-num build-item" style="transition-delay:${delay(1, 0)}ms">${displayNum}</div>
     </div>
     <div class="caption-strip">
       <div class="caption-rule build-item" style="transition-delay:${delay(0, 1)}ms"></div>
@@ -72,18 +71,17 @@ function renderHorizonLot(lot: ReturnType<typeof lotByNum>): string {
 }
 
 // ---- Profile / mirrored (Type B) builds ----
-function renderProfileLot(lot: ReturnType<typeof lotByNum>): string {
-  if (!lot) return '';
-  const mirrored = isMirrored(lot.num);
+function renderProfileLot(lot: Lot, displayNum: string): string {
+  const mirrored = isMirrored(lot.id);
   const titleSize = titleSizePt(lot, 'profile');
-  const focal = photoFocal(lot.num);
+  const focal = photoFocal(lot.id);
   return `
     <div class="profile ${mirrored ? 'mirrored' : ''}">
       <div class="photo-side">
-        <img class="hero-img build-item" style="object-position:${focal}; transition-delay:${delay(0, 0)}ms" src="/assets/hero/lot-${lot.num}_FINAL.jpg" alt="" />
+        <img class="hero-img build-item" style="object-position:${focal}; transition-delay:${delay(0, 0)}ms" src="/assets/hero/lot-${lot.id}_FINAL.jpg" alt="" />
       </div>
       <div class="text-side">
-        <div class="lot-num build-item" style="transition-delay:${delay(0, 1)}ms">${lot.num}</div>
+        <div class="lot-num build-item" style="transition-delay:${delay(0, 1)}ms">${displayNum}</div>
         <h2 class="lot-title build-item" style="font-size:${titleSize}pt; transition-delay:${delay(1, 0)}ms">${titleHtml(lot)}</h2>
         <p class="lot-subtitle build-item" style="transition-delay:${delay(2, 0)}ms">${lot.subtitle}</p>
         <ul class="bullets build-item" style="transition-delay:${delay(3, 0)}ms">${lot.bullets.map(b => `<li>${b}</li>`).join('')}</ul>
@@ -93,8 +91,7 @@ function renderProfileLot(lot: ReturnType<typeof lotByNum>): string {
   `;
 }
 
-function sponsorBlockHtml(lot: ReturnType<typeof lotByNum>, donorLabelGroup: number, _profile = false): string {
-  if (!lot) return '';
+function sponsorBlockHtml(lot: Lot, donorLabelGroup: number, _profile = false): string {
   const isPrivate = /^doneret/i.test(lot.sponsor);
   if (isPrivate) {
     return `<div class="sponsor-block sponsor-private build-item" style="transition-delay:${delay(donorLabelGroup, 0)}ms">Doneret af privat person</div>`;
@@ -111,23 +108,24 @@ function sponsorBlockHtml(lot: ReturnType<typeof lotByNum>, donorLabelGroup: num
   }
   return `
     <div class="sponsor-block">
-      <img class="sponsor-logo build-item" style="transition-delay:${delay(donorLabelGroup, 0)}ms" src="/assets/logo/logo-lot-${lot.num}.png" alt="${lot.sponsor}" />
+      <img class="sponsor-logo build-item" style="transition-delay:${delay(donorLabelGroup, 0)}ms" src="/assets/logo/logo-lot-${lot.id}.png" alt="${lot.sponsor}" />
     </div>
   `;
 }
 
 // ---- Sponsor index (slide 2) — custom staggers ----
-// Animation order: title → outer grid frame → each lot cell (01..21) sequentially.
+// Animation order: title → outer grid frame → each lot cell sequentially.
 function renderSponsorIndex(): string {
   const FRAME_DELAY = 300;
-  const FIRST_CELL = 750;       // start after frame finishes fading in
+  const FIRST_CELL = 750;
   const CELL_STAGGER = 130;
   const cells = LOTS.map((l, i) => {
     const t = FIRST_CELL + i * CELL_STAGGER;
+    const dn = displayNumFor(l.id);
     return `
-      <div class="sponsor-cell build-item" data-lot="${l.num}" style="transition-delay:${t}ms">
-        <div class="sponsor-cell-num">${l.num}</div>
-        <img class="sponsor-cell-logo" src="/assets/logo/logo-lot-${l.num}.png" alt="" />
+      <div class="sponsor-cell build-item" data-lot="${l.id}" style="transition-delay:${t}ms">
+        <div class="sponsor-cell-num">${dn}</div>
+        <img class="sponsor-cell-logo" src="/assets/logo/logo-lot-${l.id}.png" alt="" />
       </div>
     `;
   }).join('');
@@ -139,58 +137,26 @@ function renderSponsorIndex(): string {
 
 // ---- Closing (slide 24) — sponsor wall per handoff spec ----
 // 8 columns x 5 rows = 40 cells, 2:1 aspect each.
-// Two-tier optical-height sizing: wordmarks ~56px target, stacked ~72px.
-// Container-bearing logos (Weber, Royal Unibrew, Pakhus77, M-10 hf, Køkken)
-// are spread across rows rather than clustered.
 function renderClosing(): string {
-  // File order reordered so container-bearing logos don't cluster on rows 4-5.
-  // Layout (row-major, 8 cols):
-  //   Row 1: L-01 L-02 L-03 L-04 L-05 L-06 L-07 R-01(Unibrew→row1)
-  //   Row 2: L-09 L-10 L-11 R-10(weber→row2) L-13 M-01 M-02 M-03
-  //   Row 3: M-04 M-05 M-06 M-07 M-08 M-09 M-10 M-11
-  //   Row 4: M-12 M-13 M-14 L-12(VILLA→row4) R-02 R-03 R-04 R-05
-  //   Row 5: R-06 R-07 R-08 R-09 L-08(REE PARK→row5) R-11 R-12 R-13
-  // Swaps: R-01<->L-08, R-10<->L-12  (containers spread to rows 1, 2, 3, 4)
   const fileList = [
-    // Row 1
     'closing-L-01.png','closing-L-02.png','closing-L-03.png','closing-L-04.png',
     'closing-L-05.png','closing-L-06.png','closing-L-07.png','closing-R-01.png',
-    // Row 2
     'closing-L-09.png','closing-L-10.png','closing-L-11.png','closing-R-10.png',
     'closing-L-13.png','closing-M-01.png','closing-M-02.png','closing-M-03.png',
-    // Row 3
     'closing-M-04.png','closing-M-05.png','closing-M-06.png','closing-M-07.png',
     'closing-M-08.png','closing-M-09.png','closing-M-10.png','closing-M-11.png',
-    // Row 4
     'closing-M-12.png','closing-M-13.png','closing-M-14.png','closing-L-12.png',
     'closing-R-02.png','closing-R-03.png','closing-R-04.png','closing-R-05.png',
-    // Row 5
     'closing-R-06.png','closing-R-07.png','closing-R-08.png','closing-R-09.png',
     'closing-L-08.png','closing-R-11.png','closing-R-12.png','closing-R-13.png',
   ];
-
-  // Wordmark = single line or text-dominant. Default = stacked. Only mark
-  // wordmarks explicitly to keep the map small.
   const WORDMARKS = new Set([
-    'closing-L-04.png',  // PRIVATE CAR CARE
-    'closing-L-05.png',  // Zinck Henningsen
-    'closing-L-09.png',  // CUE
-    'closing-L-10.png',  // DM Greenkeeping
-    'closing-L-12.png',  // VILLA LEJET
-    'closing-L-13.png',  // UNICO
-    'closing-M-02.png',  // artsolo
-    'closing-M-07.png',  // Cartier
-    'closing-M-08.png',  // VIPP
-    'closing-M-09.png',  // viaplay
-    'closing-M-11.png',  // OTTO SUENSON
-    'closing-M-12.png',  // LYFA
-    'closing-M-14.png',  // Bravo Tours
-    'closing-R-02.png',  // Eilersen
-    'closing-R-05.png',  // Kim Due
-    'closing-R-06.png',  // GREAT NORTHERN
-    'closing-R-12.png',  // PARK LANE
+    'closing-L-04.png','closing-L-05.png','closing-L-09.png','closing-L-10.png',
+    'closing-L-12.png','closing-L-13.png','closing-M-02.png','closing-M-07.png',
+    'closing-M-08.png','closing-M-09.png','closing-M-11.png','closing-M-12.png',
+    'closing-M-14.png','closing-R-02.png','closing-R-05.png','closing-R-06.png',
+    'closing-R-12.png',
   ]);
-
   const COLS = 8;
   const ROW_PAUSE = 250;
   const LOGO_STAGGER = 80;
@@ -234,11 +200,13 @@ export function renderSlide(slide: Slide): HTMLElement {
   } else if (slide.kind === 'sponsor-index') {
     root.innerHTML = renderSponsorIndex();
   } else if (slide.kind === 'lot') {
-    const lot = lotByNum(slide.lotNum!);
-    const layout = lotLayout(slide.lotNum!);
+    const lot = lotById(slide.lotId!);
+    if (!lot) return root;
+    const layout = lotLayout(slide.lotId!);
+    const displayNum = slide.displayNum ?? displayNumFor(slide.lotId!);
     root.classList.add(layout === 'horizon' ? 'layout-horizon' : 'layout-profile');
-    if (isMirrored(slide.lotNum!)) root.classList.add('layout-mirrored');
-    root.innerHTML = layout === 'horizon' ? renderHorizonLot(lot) : renderProfileLot(lot);
+    if (isMirrored(slide.lotId!)) root.classList.add('layout-mirrored');
+    root.innerHTML = layout === 'horizon' ? renderHorizonLot(lot, displayNum) : renderProfileLot(lot, displayNum);
   } else if (slide.kind === 'closing') {
     root.innerHTML = renderClosing();
   }

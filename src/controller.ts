@@ -6,7 +6,7 @@
 import QRCode from 'qrcode';
 import { SyncClient } from './ws-client';
 import { renderSlide, fitToViewport } from './render';
-import { SLIDES, LOTS, lotByNum, type Slide } from './slides';
+import { SLIDES, LOTS, lotById, displayNumFor, type Slide } from './slides';
 
 const sync = new SyncClient();
 
@@ -85,7 +85,7 @@ let firstStateMsg = true;
 const fmtKr = (n: number | null | undefined) =>
   n == null ? '—' : n.toLocaleString('da-DK').replace(/,/g, '.');
 
-function lotCategory(lot: ReturnType<typeof lotByNum>): string {
+function lotCategory(lot: ReturnType<typeof lotById>): string {
   if (!lot) return '';
   // Derive a short category label from the sponsor field (fallback: empty)
   const s = lot.sponsor || '';
@@ -110,11 +110,11 @@ function renderLotImage(container: HTMLElement, slide: Slide | null, big: boolea
   // Lot number overlay (only for actual lot slides), placed inside the
   // 16:9 frame so it aligns with the slide content not the panel letterbox.
   let lotNum: string | null = null;
-  if (slide.kind === 'lot' && slide.lotNum) {
-    lotNum = slide.lotNum;
+  if (slide.kind === 'lot' && slide.lotId) {
+    lotNum = slide.lotId;
     const num = document.createElement('div');
     num.className = 'lot-num-overlay' + (big ? '' : ' small');
-    num.textContent = slide.lotNum;
+    num.textContent = slide.lotId;
     frame.appendChild(num);
   }
   // Status tag (top-right of frame)
@@ -138,11 +138,11 @@ function renderLotImage(container: HTMLElement, slide: Slide | null, big: boolea
     const bids: number[] = lastState.lots[lotNum].bids || [];
     const last = bids.length ? bids[bids.length - 1] : null;
     if (last != null) {
-      const lot = lotByNum(lotNum)!;
+      const lot = lotById(lotNum)!;
       const ribbon = document.createElement('div');
       ribbon.className = 'current-ribbon';
       ribbon.innerHTML = `
-        <div class="cr-lot"><div class="cr-num">${lot.num}</div></div>
+        <div class="cr-lot"><div class="cr-num">${lot.id}</div></div>
         <div class="cr-title">${lot.title}<b>${lot.sponsor}</b></div>
         <div class="cr-bid">
           <span class="cr-label">Nuværende bud</span>
@@ -162,8 +162,8 @@ function refreshCurrentOverlays(slide: Slide | null) {
   if (existingRibbon) existingRibbon.remove();
   const existingTag = frame.querySelector('.lot-tag');
   if (existingTag) existingTag.remove();
-  if (slide.kind === 'lot' && slide.lotNum && lastState?.lots?.[slide.lotNum]) {
-    const ls = lastState.lots[slide.lotNum];
+  if (slide.kind === 'lot' && slide.lotId && lastState?.lots?.[slide.lotId]) {
+    const ls = lastState.lots[slide.lotId];
     if (ls.status === 'live') {
       const tag = document.createElement('div'); tag.className = 'lot-tag live'; tag.textContent = '• Live'; frame.appendChild(tag);
     } else if (ls.status === 'sold') {
@@ -172,11 +172,11 @@ function refreshCurrentOverlays(slide: Slide | null) {
     const bids: number[] = ls.bids || [];
     const last = bids.length ? bids[bids.length - 1] : null;
     if (last != null) {
-      const lot = lotByNum(slide.lotNum)!;
+      const lot = lotById(slide.lotId)!;
       const ribbon = document.createElement('div');
       ribbon.className = 'current-ribbon';
       ribbon.innerHTML = `
-        <div class="cr-lot"><div class="cr-num">${lot.num}</div></div>
+        <div class="cr-lot"><div class="cr-num">${lot.id}</div></div>
         <div class="cr-title">${lot.title}<b>${lot.sponsor}</b></div>
         <div class="cr-bid">
           <span class="cr-label">Nuværende bud</span>
@@ -189,8 +189,8 @@ function refreshCurrentOverlays(slide: Slide | null) {
 }
 
 function updateAuctioneerBid(slide: Slide | null) {
-  if (slide?.kind === 'lot' && slide.lotNum) {
-    const ls = lastState?.lots?.[slide.lotNum];
+  if (slide?.kind === 'lot' && slide.lotId) {
+    const ls = lastState?.lots?.[slide.lotId];
     const last = ls?.bids?.length ? ls.bids[ls.bids.length - 1] : null;
     if (last != null) {
       auctStage.classList.add('has-bid');
@@ -225,12 +225,12 @@ function renderAuctioneerPanel(slide: Slide | null) {
   mount.appendChild(slideEl);
   requestAnimationFrame(() => fitToViewport(mount, slideEl));
 
-  if (slide.kind === 'lot' && slide.lotNum) {
-    const lot = lotByNum(slide.lotNum)!;
-    auctLotnum.textContent = lot.num;
+  if (slide.kind === 'lot' && slide.lotId) {
+    const lot = lotById(slide.lotId)!;
+    auctLotnum.textContent = lot.id;
     auctTitle.textContent = lot.title;
     auctDonor.textContent = lot.sponsor;
-    const ls = lastState?.lots?.[lot.num];
+    const ls = lastState?.lots?.[lot.id];
     const last = ls?.bids?.length ? ls.bids[ls.bids.length - 1] : null;
     if (last != null) {
       auctStage.classList.add('has-bid');
@@ -255,12 +255,12 @@ function renderAuctioneerPanel(slide: Slide | null) {
 }
 
 function renderBidHero(slide: Slide | null) {
-  if (slide?.kind === 'lot' && slide.lotNum) {
-    currentLotNum = slide.lotNum;
-    const lot = lotByNum(slide.lotNum)!;
-    bidLotNum.textContent = lot.num;
+  if (slide?.kind === 'lot' && slide.lotId) {
+    currentLotNum = slide.lotId;
+    const lot = lotById(slide.lotId)!;
+    bidLotNum.textContent = lot.id;
     bidLotCat.textContent = lotCategory(lot);
-    const ls = lastState?.lots?.[lot.num];
+    const ls = lastState?.lots?.[lot.id];
     const last = ls?.bids?.length ? ls.bids[ls.bids.length - 1] : null;
     const finalPrice = ls?.finalPrice;
 
@@ -323,11 +323,11 @@ function renderSidebar(state: any) {
         const row = document.createElement('div');
         row.className = 'lot-row';
         row.dataset.idx = String(idx);
-        const lot = slide.kind === 'lot' ? lotByNum(slide.lotNum!) : null;
-        const numLabel = lot ? `Lot ${lot.num}` : (slide.kind === 'cover' ? 'Cover' : slide.kind === 'sponsor-index' ? 'Sponsorer' : 'Afslutning');
+        const lot = slide.kind === 'lot' ? lotById(slide.lotId!) : null;
+        const numLabel = lot ? `Lot ${lot.id}` : (slide.kind === 'cover' ? 'Cover' : slide.kind === 'sponsor-index' ? 'Sponsorer' : 'Afslutning');
         const name = lot ? lot.title : (slide.kind === 'cover' ? 'Auktionens forside' : slide.kind === 'sponsor-index' ? 'Auktionens sponsorer' : 'Tak for i aften');
         row.innerHTML = `
-          <div class="lot-num-side">${lot ? lot.num : ''}</div>
+          <div class="lot-num-side">${lot ? lot.id : ''}</div>
           <div class="thumb">
             <div class="preview-mount"></div>
           </div>
@@ -354,14 +354,14 @@ function renderSidebar(state: any) {
   lotList.querySelectorAll<HTMLElement>('.lot-row').forEach((row: HTMLElement) => {
     const idx = parseInt(row.dataset.idx!, 10);
     const slide = SLIDES[idx];
-    const lot = slide.kind === 'lot' ? lotByNum(slide.lotNum!) : null;
+    const lot = slide.kind === 'lot' ? lotById(slide.lotId!) : null;
     row.classList.toggle('current', idx === state.slideIdx);
     row.classList.toggle('next', idx === state.slideIdx + 1);
-    row.classList.toggle('sold', !!(lot && state.lots[lot.num]?.status === 'sold'));
+    row.classList.toggle('sold', !!(lot && state.lots[lot.id]?.status === 'sold'));
     const badge = row.querySelector('.badge')!;
     if (idx === state.slideIdx) badge.textContent = 'CURRENT';
     else if (idx === state.slideIdx + 1) badge.textContent = 'NEXT';
-    else if (lot && state.lots[lot.num]?.status === 'sold') badge.textContent = 'Solgt';
+    else if (lot && state.lots[lot.id]?.status === 'sold') badge.textContent = 'Solgt';
     else badge.textContent = '';
     if (idx === state.slideIdx) scrollTo = row;
   });
@@ -370,7 +370,7 @@ function renderSidebar(state: any) {
 
 // ---- Hammer overlay (D ceremoniel) ----
 function buildHammerOverlay(lotNum: string, finalPrice: number): HTMLElement {
-  const lot = lotByNum(lotNum)!;
+  const lot = lotById(lotNum)!;
   const wrap = document.createElement('div');
   wrap.className = 'hammer-overlay';
   // 18 gold particles, random angles around the card center, 140-360px float
@@ -390,7 +390,7 @@ function buildHammerOverlay(lotNum: string, finalPrice: number): HTMLElement {
     <div class="hammer-flash"></div>
     <div class="hammer-card">
       <div class="hammer-top"><span class="hammer-icon">🔨</span><span>Solgt</span></div>
-      <div class="hammer-lot">${lot.title}<span class="lot-no">Lot ${lot.num}</span></div>
+      <div class="hammer-lot">${lot.title}<span class="lot-no">Lot ${lot.id}</span></div>
       <div class="hammer-bid">${fmtKr(finalPrice)}<span class="kr">kr</span></div>
       <div class="hammer-foot">
         <div class="item"><span>Bud</span><b>${fmtKr(finalPrice)} kr</b></div>
@@ -439,12 +439,12 @@ function renderHistoryDrawer(state: any) {
   const rows: string[] = [];
   let total = 0;
   for (const lot of LOTS) {
-    const ls = state.lots?.[lot.num];
+    const ls = state.lots?.[lot.id];
     if (ls?.status === 'sold' && typeof ls.finalPrice === 'number') {
       total += ls.finalPrice;
       rows.push(`
-        <li data-lot="${lot.num}">
-          <span class="h-num">${lot.num}</span>
+        <li data-lot="${lot.id}">
+          <span class="h-num">${lot.id}</span>
           <span class="h-title">${lot.title}</span>
           <span class="h-amount">${fmtKr(ls.finalPrice)} kr</span>
         </li>
@@ -459,7 +459,7 @@ function renderHistoryDrawer(state: any) {
     historySoldListEl.querySelectorAll<HTMLElement>('li[data-lot]').forEach(li => {
       li.addEventListener('click', () => {
         const lotNum = li.dataset.lot!;
-        const idx = SLIDES.findIndex(s => s.kind === 'lot' && s.lotNum === lotNum);
+        const idx = SLIDES.findIndex(s => s.kind === 'lot' && s.lotId === lotNum);
         if (idx >= 0) sync.send({ type: 'nav', slideIdx: idx });
       });
       (li.style as any).cursor = 'pointer';
@@ -471,7 +471,7 @@ function renderHistoryDrawer(state: any) {
 function renderStatsAndProgress(state: any) {
   // Total + sold count
   let total = 0; let soldCount = 0;
-  const lotIds = LOTS.map(l => l.num);
+  const lotIds = LOTS.map(l => l.id);
   for (const k of lotIds) {
     const ls = state.lots[k];
     if (ls?.status === 'sold' && typeof ls.finalPrice === 'number') {
@@ -529,11 +529,11 @@ sync.on((state) => {
   // Auto-focus bid input on lot slide
   if (slide?.kind === 'lot' && document.activeElement !== bidInput) {
     // Only focus on slide transitions, not every state msg
-    const last = lastBidByLot[slide.lotNum!] ?? null;
-    const ls = state.lots[slide.lotNum!];
+    const last = lastBidByLot[slide.lotId!] ?? null;
+    const ls = state.lots[slide.lotId!];
     const cur = ls?.bids?.length ? ls.bids[ls.bids.length - 1] : null;
     if (cur !== last) {
-      lastBidByLot[slide.lotNum!] = cur;
+      lastBidByLot[slide.lotId!] = cur;
     }
   }
 });

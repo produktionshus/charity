@@ -3,7 +3,7 @@
 
 import { SyncClient } from './ws-client';
 import { renderSlide, fitToViewport } from './render';
-import { SLIDES, lotByNum } from './slides';
+import { SLIDES, lotById } from './slides';
 
 // Mirror controller's saved theme so all three views share the chrome.
 const savedTheme = localStorage.getItem('controller.theme') || 'forest';
@@ -86,7 +86,7 @@ function swapSlide(idx: number) {
 function getRibbon(): HTMLElement | null { return slideFrame.querySelector('.stage-ribbon'); }
 
 function mountOrUpdateRibbon(lotNum: string, bid: number) {
-  const lot = lotByNum(lotNum)!;
+  const lot = lotById(lotNum)!;
   let ribbon = getRibbon();
   if (!ribbon) {
     // First mount — build full DOM. The slide-up entrance animation only
@@ -111,7 +111,7 @@ function mountOrUpdateRibbon(lotNum: string, bid: number) {
   const numEl   = ribbon.querySelector('.sr-num')!;
   const titleEl = ribbon.querySelector('.sr-title')!;
   const bidEl   = ribbon.querySelector('.sr-bid') as HTMLElement;
-  if (numEl.textContent   !== lot.num)   numEl.textContent   = lot.num;
+  if (numEl.textContent   !== lot.id)   numEl.textContent   = lot.id;
   if (titleEl.textContent !== lot.title) titleEl.textContent = lot.title;
   bidEl.innerHTML = `${fmtKr(bid)}<span class="kr">kr</span>`;
   if (lastBidForRibbon !== bid) {
@@ -132,7 +132,7 @@ function removeRibbon() {
 
 // ---- Hammer overlay (D ceremoniel) ----
 function buildHammerOverlay(lotNum: string, finalPrice: number): HTMLElement {
-  const lot = lotByNum(lotNum)!;
+  const lot = lotById(lotNum)!;
   const wrap = document.createElement('div');
   wrap.className = 'hammer-overlay-c';
   const particles = Array.from({ length: 22 }).map(() => {
@@ -151,7 +151,7 @@ function buildHammerOverlay(lotNum: string, finalPrice: number): HTMLElement {
     <div class="flash"></div>
     <div class="card">
       <div class="top"><span class="icon">🔨</span><span>Solgt</span></div>
-      <div class="lot-line">${lot.title}<span class="lot-no">Lot ${lot.num}</span></div>
+      <div class="lot-line">${lot.title}<span class="lot-no">Lot ${lot.id}</span></div>
       <div class="bid">${fmtKr(finalPrice)}<span class="kr">kr</span></div>
       <div class="foot">
         <div class="item"><span>Bud</span><b>${fmtKr(finalPrice)} kr</b></div>
@@ -183,12 +183,12 @@ sync.on((state) => {
 
   // Ribbon mount/update based on current slide's lot + bid
   const slide = SLIDES[currentSlideIdx];
-  if (slide?.kind === 'lot' && slide.lotNum) {
-    const ls = state.lots?.[slide.lotNum];
+  if (slide?.kind === 'lot' && slide.lotId) {
+    const ls = state.lots?.[slide.lotId];
     const bids: number[] = ls?.bids || [];
     const last = bids.length ? bids[bids.length - 1] : null;
     if (last != null && ls?.status !== 'sold') {
-      mountOrUpdateRibbon(slide.lotNum, last);
+      mountOrUpdateRibbon(slide.lotId, last);
     } else {
       removeRibbon();
     }
@@ -197,14 +197,14 @@ sync.on((state) => {
   }
 
   // Hammer overlay on status -> sold transition (current slide's lot)
-  if (slide?.kind === 'lot' && slide.lotNum) {
-    const prev = lastSoldStatus[slide.lotNum];
-    const newSt = state.lots?.[slide.lotNum]?.status;
+  if (slide?.kind === 'lot' && slide.lotId) {
+    const prev = lastSoldStatus[slide.lotId];
+    const newSt = state.lots?.[slide.lotId]?.status;
     if (!firstStateMsg && newSt === 'sold' && prev !== 'sold') {
-      const fp = state.lots[slide.lotNum].finalPrice;
+      const fp = state.lots[slide.lotId].finalPrice;
       if (fp != null) {
         removeRibbon();
-        fireHammer(slide.lotNum, fp);
+        fireHammer(slide.lotId, fp);
       }
     }
   }

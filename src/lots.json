@@ -1,7 +1,6 @@
 {
   "lots": [
     {
-      "num": "01",
       "title": "4 VIP-billetter til Smukfest og overnatning i bøgeskoven",
       "subtitle": "Pakken inkluderer for 4 personer",
       "sponsor": "Smukfest",
@@ -24,10 +23,16 @@
           "text": " og overnatning i bøgeskoven",
           "bold": false
         }
-      ]
+      ],
+      "id": "01",
+      "active": true,
+      "extra": false,
+      "extraSuffix": null,
+      "layout": "horizon",
+      "mirrored": false,
+      "focal": "50% 70%"
     },
     {
-      "num": "02",
       "title": "Fodboldaften med VIP-oplevelser og middag i København",
       "subtitle": "Pakken inkluderer for 2 personer",
       "sponsor": "Viaplay",
@@ -48,10 +53,16 @@
           "text": " og middag i København",
           "bold": false
         }
-      ]
+      ],
+      "id": "02",
+      "active": true,
+      "extra": false,
+      "extraSuffix": null,
+      "layout": "profile",
+      "mirrored": false,
+      "focal": "50% 50%"
     },
     {
-      "num": "03",
       "title": "Eksklusiv Company Day eller fest for 35 personer i Ree Park",
       "subtitle": "Pakken inkluderer for 35 personer",
       "sponsor": "Ree Park Safari",
@@ -77,10 +88,16 @@
           "text": "Ree Park",
           "bold": true
         }
-      ]
+      ],
+      "id": "03",
+      "active": true,
+      "extra": false,
+      "extraSuffix": null,
+      "layout": "horizon",
+      "mirrored": false,
+      "focal": "50% 50%"
     },
     {
-      "num": "04",
       "title": "Et års premium pleje af både bil og græsplæne",
       "subtitle": "Pakken inkluderer",
       "sponsor": "Private Car Care · DM Greenkeeping",
@@ -104,10 +121,16 @@
           "text": " af både bil og græsplæne",
           "bold": false
         }
-      ]
+      ],
+      "id": "04",
+      "active": true,
+      "extra": false,
+      "extraSuffix": null,
+      "layout": "horizon",
+      "mirrored": false,
+      "focal": "50% 50%"
     },
     {
-      "num": "05",
       "title": "Investér i flere sunde år sammen",
       "subtitle": "Pakken inkluderer for 2 personer",
       "sponsor": "Cue",
@@ -133,10 +156,16 @@
           "text": " år sammen",
           "bold": false
         }
-      ]
+      ],
+      "id": "05",
+      "active": true,
+      "extra": false,
+      "extraSuffix": null,
+      "layout": "profile",
+      "mirrored": false,
+      "focal": "50% 50%"
     },
     {
-      "num": "06",
       "title": "Oplev Goodwood Festival of Speed med eksklusiv VIP-adgang",
       "subtitle": "Pakken inkluderer for 2 personer",
       "sponsor": "Kim Due",
@@ -160,10 +189,17 @@
           "text": " med eksklusiv VIP-adgang",
           "bold": false
         }
-      ]
+      ],
+      "id": "06",
+      "active": true,
+      "extra": false,
+      "extraSuffix": null,
+      "layout": "horizon",
+      "mirrored": false,
+      "focal": "50% 75%",
+      "titleSizePt": 22
     },
     {
-      "num": "07",
       "title": "Padel og vinsmagning i Aarhus",
       "subtitle": "Pakken inkluderer for op til 30 personer",
       "sponsor": "Pakhus77 · Vininvestoren · Gusto",
@@ -182,10 +218,16 @@
           "text": " i Aarhus",
           "bold": false
         }
-      ]
+      ],
+      "id": "07",
+      "active": true,
+      "extra": false,
+      "extraSuffix": null,
+      "layout": "horizon",
+      "mirrored": false,
+      "focal": "50% 50%"
     },
     {
-      "num": "08",
       "title": "Safari og badeferie i verdensklasse",
       "subtitle": "Pakken inkluderer for 2 personer",
       "sponsor": "Bravo Tours",
@@ -206,10 +248,16 @@
           "text": "i verdensklasse",
           "bold": true
         }
-      ]
+      ],
+      "id": "08",
+      "active": true,
+      "extra": false,
+      "extraSuffix": null,
+      "layout": "horizon",
+      "mirrored": false,
+      "focal": "50% 45%"
     },
     {
-      "num": "09",
       "title": "Eksklusiv VIP-oplevelse hos Selected Car Selection",
       "subtitle": "Pakken inkluderer for 25 personer",
       "sponsor": "Selected Car Collection",
@@ -228,10 +276,16 @@
           "text": " hos Selected Car Selection",
           "bold": false
         }
-      ]
+      ],
+      "id": "09",
+      "active": true,
+      "extra": false,
+      "extraSuffix": null,
+      "layout": "horizon",
+      "mirrored": false,
+      "focal": "50% 50%"
     },
     {
-      "num": "10",
       "title": "Oplev APHACA i Parken — VIP-aften for 16 personer",
       "subtitle": "Pakken inkluderer for 16 personer",
       "sponsor": "Park Lane Copenhagen · Ønskeskyen",
@@ -254,10 +308,16 @@
           "text": "VIP-aften for 16 personer",
           "bold": true
         }
-      ]
+      ],
+      "id": "10",
+      "active": true,
+      "extra": false,
+      "extraSuffix": null,
+      "layout": "profile",
+      "mirrored": false,
+      "focal": "50% 50%"
     },
     {
-      "num": "11",
       "title": "Eksklusiv private dining for 12 personer med intimkoncert af Mille",
       "subtitle": "Pakken inkluderer for 12 personer",
       "sponsor": "Hotel Villa Lejet",
@@ -284,10 +344,16 @@
           "text": "intimkoncert af Mille",
           "bold": true
         }
-      ]
+      ],
+      "id": "11",
+      "active": true,
+      "extra": false,
+      "extraSuffix": null,
+      "layout": "profile",
+      "mirrored": false,
+      "focal": "50% 50%"
     },
     {
-      "num": "12",
       "title": "Ophold og Michelin-middag på d'Angleterre",
       "subtitle": "Pakken inkluderer for 4 personer",
       "sponsor": "Hotel d'Angleterre · Cartier",
@@ -313,10 +379,16 @@
           "text": "d'Angleterre",
           "bold": true
         }
-      ]
+      ],
+      "id": "12",
+      "active": true,
+      "extra": false,
+      "extraSuffix": null,
+      "layout": "horizon",
+      "mirrored": false,
+      "focal": "50% 50%"
     },
     {
-      "num": "13",
       "title": "Piemonte fra cykelsadlen",
       "subtitle": "Pakken inkluderer for 4 par",
       "sponsor": "Doneret af privat person",
@@ -332,10 +404,16 @@
           "text": "Piemonte fra cykelsadlen",
           "bold": false
         }
-      ]
+      ],
+      "id": "13",
+      "active": true,
+      "extra": false,
+      "extraSuffix": null,
+      "layout": "profile",
+      "mirrored": false,
+      "focal": "50% 50%"
     },
     {
-      "num": "14",
       "title": "OMEGA Speedmaster “Silver Snoopy Award”",
       "subtitle": "Specifikationer",
       "sponsor": "Doneret af privat person",
@@ -357,10 +435,16 @@
           "text": "“Silver Snoopy Award”",
           "bold": true
         }
-      ]
+      ],
+      "id": "14",
+      "active": true,
+      "extra": false,
+      "extraSuffix": null,
+      "layout": "profile",
+      "mirrored": false,
+      "focal": "50% 75%"
     },
     {
-      "num": "15",
       "title": "Eksklusivt foredrag med Viktor Axelsen & Morten Ankerdal",
       "subtitle": "En aften om dedikation, mod og at lykkes mod alle odds",
       "sponsor": "Viktor Axelsen · Morten Ankerdal",
@@ -382,10 +466,16 @@
       "donorNames": [
         "Viktor Axelsen",
         "Morten Ankerdal"
-      ]
+      ],
+      "id": "15",
+      "active": true,
+      "extra": false,
+      "extraSuffix": null,
+      "layout": "profile",
+      "mirrored": true,
+      "focal": "50% 50%"
     },
     {
-      "num": "16",
       "title": "Gudinden for ungdom og evig skønhed i marmor",
       "subtitle": "Specifikationer",
       "sponsor": "Zinck Henningsen Art Consulting",
@@ -408,10 +498,16 @@
           "text": "marmor",
           "bold": true
         }
-      ]
+      ],
+      "id": "16",
+      "active": true,
+      "extra": false,
+      "extraSuffix": null,
+      "layout": "profile",
+      "mirrored": false,
+      "focal": "50% 50%"
     },
     {
-      "num": "17",
       "title": "En moderne klassiker fra Eilersen",
       "subtitle": "Aton modulsofa, designet af Jens Juul Eilersen",
       "sponsor": "Eilersen",
@@ -430,10 +526,16 @@
           "text": "fra Eilersen",
           "bold": true
         }
-      ]
+      ],
+      "id": "17",
+      "active": true,
+      "extra": false,
+      "extraSuffix": null,
+      "layout": "horizon",
+      "mirrored": false,
+      "focal": "50% 65%"
     },
     {
-      "num": "18",
       "title": "Den store havefest — komplet festoplevelse for op til 50 personer",
       "subtitle": "Pakken inkluderer for 50 personer",
       "sponsor": "Cocktail Company · Køkken Piraterne · DJ Lee Van",
@@ -455,10 +557,16 @@
           "text": " — komplet festoplevelse for op til 50 personer",
           "bold": false
         }
-      ]
+      ],
+      "id": "18",
+      "active": true,
+      "extra": false,
+      "extraSuffix": null,
+      "layout": "profile",
+      "mirrored": false,
+      "focal": "50% 50%"
     },
     {
-      "num": "19",
       "title": "Rolex Land-Dweller 40 i Oystersteel og hvidguld",
       "subtitle": "Specifikationer",
       "sponsor": "Doneret af privat person",
@@ -478,10 +586,16 @@
           "text": " i Oystersteel og hvidguld",
           "bold": false
         }
-      ]
+      ],
+      "id": "19",
+      "active": true,
+      "extra": false,
+      "extraSuffix": null,
+      "layout": "profile",
+      "mirrored": false,
+      "focal": "50% 50%"
     },
     {
-      "num": "20",
       "title": "Golfophold på Great Northern med undervisning, spa og gastronomi",
       "subtitle": "Pakken inkluderer for 4 personer",
       "sponsor": "Great Northern",
@@ -502,10 +616,16 @@
           "text": " med undervisning, spa og gastronomi",
           "bold": false
         }
-      ]
+      ],
+      "id": "20",
+      "active": true,
+      "extra": false,
+      "extraSuffix": null,
+      "layout": "horizon",
+      "mirrored": false,
+      "focal": "50% 50%"
     },
     {
-      "num": "21",
       "title": "Oplev Malte Ebert på Restaurant Møntergade med vine fra Otto Suenson",
       "subtitle": "Pakken inkluderer for 50 personer",
       "sponsor": "Restaurant Møntergade · Otto Suenson · Kin",
@@ -536,7 +656,14 @@
           "text": " med vine fra Otto Suenson",
           "bold": false
         }
-      ]
+      ],
+      "id": "21",
+      "active": true,
+      "extra": false,
+      "extraSuffix": null,
+      "layout": "profile",
+      "mirrored": false,
+      "focal": "50% 30%"
     }
   ]
 }

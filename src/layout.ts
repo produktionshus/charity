@@ -1,33 +1,24 @@
-// Per-lot layout decisions: profile vs horizon, mirrored vs default,
-// optional photo focal-position overrides. Mirrors the pptxgenjs build's
-// LAYOUT + PROFILE_MIRROR + PROFILE_FRAME logic.
+// Per-lot layout helpers. Source of truth lives in lots.json (layout,
+// mirrored, focal, titleSizePt fields on each lot). These helpers just
+// read those fields off the lot object.
 
-export const PROFILE_LOTS = new Set(['02', '05', '10', '11', '13', '14', '15', '16', '18', '19', '21']);
-export const PROFILE_MIRROR = new Set(['15']);
+import { lotById } from './slides';
 
-// CSS object-position per lot. '50% 50%' = center. Override when the
-// subject sits off-center in the source. Editable in PowerPoint analogue:
-// user can tweak via DevTools or a future controller knob.
-export const PHOTO_FOCAL: Record<string, string> = {
-  '01': '50% 70%',  // Smukfest gate in lower half
-  '06': '50% 75%',  // Goodwood — car in lower portion, less sky
-  '08': '50% 45%',  // safari elephants upper-middle
-  '14': '50% 75%',  // OMEGA watch lower
-  '17': '50% 65%',  // Eilersen sofa lower
-  '21': '50% 30%',  // Malte Ebert face upper
-};
-
-export function lotLayout(num: string): 'profile' | 'horizon' {
-  return PROFILE_LOTS.has(num) ? 'profile' : 'horizon';
+export function lotLayout(id: string): 'profile' | 'horizon' {
+  return lotById(id)?.layout ?? 'horizon';
 }
 
-export function isMirrored(num: string): boolean {
-  return PROFILE_MIRROR.has(num);
+export function isMirrored(id: string): boolean {
+  return !!lotById(id)?.mirrored;
 }
 
-export function photoFocal(num: string): string {
-  return PHOTO_FOCAL[num] || '50% 50%';
+export function photoFocal(id: string): string {
+  return lotById(id)?.focal ?? '50% 50%';
 }
 
-// Per-lot title size override (matches HORIZON_TITLE_SIZE_OVERRIDE from build.js)
-export const HORIZON_TITLE_SIZE_OVERRIDE: Record<string, number> = { '06': 22 };
+// Per-lot title size override (lookup map kept for renderer convenience).
+export const HORIZON_TITLE_SIZE_OVERRIDE: Record<string, number> = new Proxy({}, {
+  get(_t, key: string) {
+    return lotById(key)?.titleSizePt;
+  },
+}) as Record<string, number>;

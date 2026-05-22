@@ -5,7 +5,7 @@
 
 import { SyncClient } from './ws-client';
 import { renderSlide, fitToViewport } from './render';
-import { SLIDES, lotByNum, type Slide } from './slides';
+import { SLIDES, lotById, type Slide } from './slides';
 
 // Mirror controller's saved theme via shared localStorage.
 const savedTheme = localStorage.getItem('controller.theme') || 'forest';
@@ -58,7 +58,7 @@ function setBackgroundSlide(slide: Slide | null) {
 
 // ---- Hammer overlay ----
 function buildHammerOverlay(lotNum: string, finalPrice: number): HTMLElement {
-  const lot = lotByNum(lotNum)!;
+  const lot = lotById(lotNum)!;
   const wrap = document.createElement('div');
   wrap.className = 'hammer-overlay-c';
   const particles = Array.from({ length: 22 }).map(() => {
@@ -77,7 +77,7 @@ function buildHammerOverlay(lotNum: string, finalPrice: number): HTMLElement {
     <div class="flash"></div>
     <div class="card">
       <div class="top"><span class="icon">🔨</span><span>Solgt</span></div>
-      <div class="lot-line">${lot.title}<span class="lot-no">Lot ${lot.num}</span></div>
+      <div class="lot-line">${lot.title}<span class="lot-no">Lot ${lot.id}</span></div>
       <div class="bid">${fmtKr(finalPrice)}<span class="kr">kr</span></div>
       <div class="foot">
         <div class="item"><span>Bud</span><b>${fmtKr(finalPrice)} kr</b></div>
@@ -110,13 +110,13 @@ sync.on((state) => {
     lastBid = null;
   }
 
-  if (slide?.kind === 'lot' && slide.lotNum) {
-    const lot = lotByNum(slide.lotNum)!;
-    lotnumEl.textContent = lot.num;
+  if (slide?.kind === 'lot' && slide.lotId) {
+    const lot = lotById(slide.lotId)!;
+    lotnumEl.textContent = lot.id;
     titleEl.textContent = lot.title;
     donorEl.textContent = lot.sponsor;
 
-    const ls = state.lots?.[slide.lotNum];
+    const ls = state.lots?.[slide.lotId];
     const last = ls?.bids?.length ? ls.bids[ls.bids.length - 1] : null;
     const sold = ls?.status === 'sold';
     if (last != null && !sold) {
@@ -138,9 +138,9 @@ sync.on((state) => {
     }
 
     // Hammer overlay on transition to sold
-    const prev = lastSoldStatus[slide.lotNum];
+    const prev = lastSoldStatus[slide.lotId];
     if (!firstStateMsg && ls?.status === 'sold' && prev !== 'sold' && ls.finalPrice != null) {
-      fireHammer(slide.lotNum, ls.finalPrice);
+      fireHammer(slide.lotId, ls.finalPrice);
       monitor.classList.remove('has-bid');
     }
   } else {
