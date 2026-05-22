@@ -5,49 +5,35 @@
    styles in slides.css stay untouched.
    ============================================ */
 
+/* Palette + theme tokens live in chrome.css :root so the controller,
+   viewer and auctioneer all share the same source of truth. */
 body.controller {
-  --bg-deep:     #03100B;
-  --bg-base:     #061812;
-  --bg-pane:     #0A211A;
-  --bg-card:     #0D2A21;
-  --bg-elev:     #11362A;
-  --bg-input:    #061C15;
-  --bg-glass:    rgba(13, 42, 33, 0.6);
-
+  /* Extras that aren't in chrome.css yet: legacy aliases + accent glows
+     derived from the active theme. */
   --line:        rgba(133, 200, 167, 0.07);
-  --line-2:      rgba(133, 200, 167, 0.14);
+  --line-2:      var(--line-c2);
   --line-3:      rgba(133, 200, 167, 0.22);
 
   --green-100:  #D1FAE5;
-  --green-200:  #A7F3D0;
-  --green-300:  #6EE7B7;
-  --green-400:  #34D399;
-  --green-500:  #10B981;
-  --green-600:  #059669;
-  --green-700:  #047857;
-
-  --gold:       #D9BF8C;
-  --gold-soft:  #8B7B5C;
-
   --rose:       #F87171;
 
-  --text:       #EAF7EE;
-  --text-2:     #A4C2B2;
-  --text-3:     #6C8B7B;
-  --text-4:     #46604F;
+  --text:       var(--text-c);
+  --text-2:     var(--text-c2);
+  --text-3:     var(--text-c3);
+  --text-4:     var(--text-c4);
 
   --shadow-md:  0 4px 20px -2px rgba(0, 0, 0, 0.5);
   --shadow-lg:  0 24px 60px -20px rgba(0, 0, 0, 0.7);
-  --glow:       0 0 32px -4px rgba(52, 211, 153, 0.35);
-  --glow-soft:  0 0 24px -8px rgba(52, 211, 153, 0.5);
+  --glow:       0 0 32px -4px var(--accent-glow);
+  --glow-soft:  0 0 24px -8px var(--accent-glow);
 
   --radius-sm:  6px;
   --radius:     10px;
   --radius-lg:  14px;
 
-  --font-display: 'Inter', -apple-system, system-ui, sans-serif;
-  --font-mono:    'JetBrains Mono', ui-monospace, 'SF Mono', monospace;
-  --font-serif:   'Cormorant Garamond', Georgia, serif;
+  --font-display: var(--font-display-c);
+  --font-mono:    var(--font-mono-c);
+  --font-serif:   var(--font-serif-c);
 
   font-family: var(--font-display);
   background: var(--bg-deep);
@@ -93,16 +79,19 @@ body.controller input { font-family: inherit; }
 .topbar {
   grid-area: topbar;
   display: grid;
-  grid-template-columns: auto auto 1fr auto auto auto;
+  grid-template-columns: auto auto 1fr auto auto;
   align-items: center;
   gap: 18px;
   padding: 0 18px;
   border-bottom: 1px solid var(--line);
-  background: linear-gradient(180deg, rgba(11, 35, 26, 0.7), rgba(6, 24, 18, 0.4));
+  background: linear-gradient(180deg,
+    color-mix(in srgb, var(--bg-pane) 75%, transparent),
+    color-mix(in srgb, var(--bg-base) 45%, transparent));
   backdrop-filter: blur(10px);
   position: relative;
   z-index: 10;
 }
+.topbar-spacer { flex: 1; }
 .brand { display: flex; align-items: center; gap: 12px; }
 .brand-mark {
   width: 30px; height: 30px;
@@ -128,8 +117,8 @@ body.controller input { font-family: inherit; }
   display: inline-flex; align-items: center; gap: 8px;
   padding: 5px 11px 5px 9px;
   border-radius: 999px;
-  background: rgba(16, 185, 129, 0.10);
-  border: 1px solid rgba(16, 185, 129, 0.30);
+  background: color-mix(in srgb, var(--green-500) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--green-500) 35%, transparent);
   font-size: 11px; font-weight: 500;
   color: var(--green-200);
   letter-spacing: 0.02em;
@@ -137,15 +126,15 @@ body.controller input { font-family: inherit; }
 .status-dot {
   width: 7px; height: 7px; border-radius: 50%;
   background: var(--green-400);
-  box-shadow: 0 0 0 0 rgba(52, 211, 153, 0.6);
+  box-shadow: 0 0 0 0 var(--accent-glow);
   animation: pulse 1.8s ease-out infinite;
 }
 .status-pill.disconnected { background: rgba(248,113,113,0.10); border-color: rgba(248,113,113,0.30); color: #FCA5A5; }
 .status-pill.disconnected .status-dot { background: var(--rose); animation: none; }
 @keyframes pulse {
-  0% { box-shadow: 0 0 0 0 rgba(52, 211, 153, 0.6); }
-  70% { box-shadow: 0 0 0 6px rgba(52, 211, 153, 0); }
-  100% { box-shadow: 0 0 0 0 rgba(52, 211, 153, 0); }
+  0% { box-shadow: 0 0 0 0 var(--accent-glow); }
+  70% { box-shadow: 0 0 0 6px transparent; }
+  100% { box-shadow: 0 0 0 0 transparent; }
 }
 
 .stats-strip { display: flex; align-items: center; gap: 28px; justify-self: center; }
@@ -310,6 +299,36 @@ body.controller.show-lot-num .lot-slide-frame::after {
   position: absolute; inset: 0;
   background: linear-gradient(180deg, rgba(3,16,11,0.22) 0%, transparent 35%, rgba(3,16,11,0.35) 100%);
   pointer-events: none;
+}
+
+/* Settings sections + theme picker */
+.setting-section { display: flex; flex-direction: column; gap: 6px; margin: 4px 0 6px; }
+.setting-section-label {
+  font-family: var(--font-mono);
+  font-size: 9.5px; letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--text-3);
+}
+.theme-options { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; }
+.theme-opt {
+  position: relative;
+  cursor: pointer;
+  text-align: center;
+  padding: 8px 4px;
+  background: var(--bg-elev);
+  border: 1px solid var(--line-2);
+  border-radius: 6px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--text-2);
+  transition: 120ms;
+}
+.theme-opt input { position: absolute; opacity: 0; pointer-events: none; }
+.theme-opt:hover { background: var(--bg-card); color: var(--text); border-color: var(--line-3); }
+.theme-opt:has(input:checked) {
+  border-color: rgba(52, 211, 153, 0.6);
+  background: var(--bg-card);
+  color: var(--green-200);
+  box-shadow: 0 0 14px -4px var(--accent-glow);
 }
 
 /* Settings toggle styling */
@@ -860,10 +879,8 @@ body.controller.show-lot-num .lot-slide-frame::after {
 .zone-bid { overflow: hidden; }
 .drawer-tab {
   position: absolute;
-  top: 50%;
-  transform: translateY(-50%);
   width: 28px;
-  height: 110px;
+  height: 96px;
   border: 0;
   cursor: pointer;
   z-index: 6;
@@ -874,12 +891,99 @@ body.controller.show-lot-num .lot-slide-frame::after {
   text-transform: uppercase;
   color: var(--text);
   display: flex; align-items: center; justify-content: center;
+  transition: 120ms;
 }
 .drawer-tab span { writing-mode: vertical-rl; transform: rotate(180deg); }
-.drawer-tab--left  { left: 0; background: var(--bg-elev); border-radius: 0 6px 6px 0; border: 1px solid var(--line-2); border-left: 0; }
-.drawer-tab--left:hover  { background: var(--bg-card); }
-.drawer-tab--right { right: 0; background: linear-gradient(135deg, var(--green-700), #064E3B); border-radius: 6px 0 0 6px; border: 1px solid rgba(52,211,153,0.3); border-right: 0; color: var(--green-200); }
+/* Left edge: two tabs stacked (Sound top / Settings bottom). */
+.drawer-tab--left {
+  left: 0;
+  background: var(--bg-elev);
+  border-radius: 0 6px 6px 0;
+  border: 1px solid var(--line-2);
+  border-left: 0;
+}
+.drawer-tab--left:hover { background: var(--bg-card); }
+.drawer-tab--top    { top: 30%; transform: translateY(-50%); }
+.drawer-tab--bottom { top: 70%; transform: translateY(-50%); }
+.drawer-tab--right {
+  top: 50%;
+  transform: translateY(-50%);
+  right: 0;
+  background: linear-gradient(135deg, var(--green-700), #064E3B);
+  border-radius: 6px 0 0 6px;
+  border: 1px solid rgba(52,211,153,0.3);
+  border-right: 0;
+  color: var(--green-200);
+  height: 130px;
+}
 .drawer-tab--right:hover { filter: brightness(1.1); }
+.drawer-tab.active { filter: brightness(1.2); border-color: rgba(52,211,153,0.55); }
+
+/* ---------- Auction history drawer (right) ---------- */
+.history-sold-list {
+  list-style: none;
+  margin: 0; padding: 0;
+  display: flex; flex-direction: column;
+  gap: 6px;
+  flex: 1; min-height: 0;
+  overflow-y: auto;
+}
+.history-sold-list li {
+  display: grid;
+  grid-template-columns: 32px 1fr auto;
+  gap: 10px;
+  align-items: center;
+  padding: 8px 10px;
+  background: var(--bg-card);
+  border: 1px solid var(--line-2);
+  border-radius: 6px;
+}
+.history-sold-list li .h-num {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--green-300);
+}
+.history-sold-list li .h-title {
+  font-size: 11.5px;
+  color: var(--text-2);
+  line-height: 1.25;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+.history-sold-list li .h-amount {
+  font-feature-settings: 'tnum';
+  font-weight: 700;
+  font-size: 13px;
+  background: linear-gradient(180deg, var(--green-300), var(--green-500));
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+.history-sold-list .h-empty {
+  color: var(--text-3);
+  font-size: 11px;
+  text-align: center;
+  padding: 24px 8px;
+  font-style: italic;
+}
+.history-foot {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--line-2);
+  display: flex; justify-content: space-between; align-items: baseline;
+}
+.history-foot-label {
+  font-family: var(--font-mono);
+  font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase;
+  color: var(--text-3);
+}
+.history-foot-amount {
+  font-size: 16px; font-weight: 700;
+  background: linear-gradient(180deg, var(--green-200), var(--green-500));
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+  font-feature-settings: 'tnum';
+}
 
 .drawer {
   position: absolute;

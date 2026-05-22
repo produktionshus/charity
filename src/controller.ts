@@ -12,9 +12,7 @@ const sync = new SyncClient();
 
 // ---- DOM lookups ----
 const statusPill = document.getElementById('status-pill')!;
-const statTotal   = document.getElementById('stat-total')!;
-const statSold    = document.getElementById('stat-sold')!;
-const statElapsed = document.getElementById('stat-elapsed')!;
+// Topbar stats removed — sidebar foot total + history drawer cover this.
 const navCurrent  = document.getElementById('nav-current')!;
 const navTotal    = document.getElementById('nav-total')!;
 const prevBtn     = document.getElementById('prev')!;
@@ -49,8 +47,12 @@ const lotList       = document.getElementById('lot-list')!;
 // Drawers
 const drawerSettings = document.getElementById('drawer-settings')!;
 const drawerSound    = document.getElementById('drawer-sound')!;
+const drawerHistory  = document.getElementById('drawer-history')!;
 const drawerTabSettings = document.getElementById('drawer-tab-settings')!;
 const drawerTabSound    = document.getElementById('drawer-tab-sound')!;
+const drawerTabHistory  = document.getElementById('drawer-tab-history')!;
+const historySoldListEl = document.getElementById('history-sold-list')!;
+const historyFootAmountEl = document.getElementById('history-foot-amount')!;
 const resetAuctionsBtn  = document.getElementById('reset-auctions')!;
 const soundLotNumEl     = document.getElementById('sound-lot-num')!;
 const soundInitFileEl   = document.getElementById('sound-init-file')   as HTMLSelectElement;
@@ -433,6 +435,39 @@ function maybeFireHammer(state: any) {
   firstStateMsg = false;
 }
 
+function renderHistoryDrawer(state: any) {
+  const rows: string[] = [];
+  let total = 0;
+  for (const lot of LOTS) {
+    const ls = state.lots?.[lot.num];
+    if (ls?.status === 'sold' && typeof ls.finalPrice === 'number') {
+      total += ls.finalPrice;
+      rows.push(`
+        <li data-lot="${lot.num}">
+          <span class="h-num">${lot.num}</span>
+          <span class="h-title">${lot.title}</span>
+          <span class="h-amount">${fmtKr(ls.finalPrice)} kr</span>
+        </li>
+      `);
+    }
+  }
+  if (rows.length === 0) {
+    historySoldListEl.innerHTML = `<li class="h-empty">Ingen hammerslag endnu</li>`;
+  } else {
+    historySoldListEl.innerHTML = rows.join('');
+    // Clicking a row navigates to that lot
+    historySoldListEl.querySelectorAll<HTMLElement>('li[data-lot]').forEach(li => {
+      li.addEventListener('click', () => {
+        const lotNum = li.dataset.lot!;
+        const idx = SLIDES.findIndex(s => s.kind === 'lot' && s.lotNum === lotNum);
+        if (idx >= 0) sync.send({ type: 'nav', slideIdx: idx });
+      });
+      (li.style as any).cursor = 'pointer';
+    });
+  }
+  historyFootAmountEl.textContent = fmtKr(total) + ' kr';
+}
+
 function renderStatsAndProgress(state: any) {
   // Total + sold count
   let total = 0; let soldCount = 0;
@@ -444,8 +479,6 @@ function renderStatsAndProgress(state: any) {
       soldCount += 1;
     }
   }
-  statTotal.innerHTML = `${fmtKr(total)}<span class="unit">kr</span>`;
-  statSold.innerHTML  = `${soldCount}<span class="unit">/ ${lotIds.length}</span>`;
   sidebarTotal.textContent = fmtKr(total) + ' kr';
   const pct = Math.round((soldCount / lotIds.length) * 100);
   progressFill.style.width = pct + '%';
@@ -487,6 +520,7 @@ sync.on((state) => {
   renderBidHero(slide);
   renderSidebar(state);
   renderStatsAndProgress(state);
+  renderHistoryDrawer(state);
   maybeFireHammer(state);
 
   // Re-apply sound config UI for current lot
@@ -547,17 +581,40 @@ hammerslagBtn.addEventListener('click', () => {
   sync.send({ type: 'hammerslag', lotNum: currentLotNum, finalPrice });
 });
 
-// ---- Drawers ----
-function toggleDrawer(drawer: HTMLElement, other: HTMLElement) {
-  const wasOpen = drawer.classList.contains('open');
-  other.classList.remove('open');
-  drawer.classList.toggle('open', !wasOpen);
+// ---- Drawers (mutually exclusive — Sound, Settings, History) ----
+const allDrawers = [drawerSettings, drawerSound, drawerHistory];
+const allTabs    = [drawerTabSettings, drawerTabSound, drawerTabHistory];
+function toggleDrawer(target: HTMLElement, targetTab: HTMLElement) {
+  const wasOpen = target.classList.contains('open');
+  allDrawers.forEach(d => d.classList.remove('open'));
+  allTabs.forEach(t => t.classList.remove('active'));
+  if (!wasOpen) {
+    target.classList.add('open');
+    targetTab.classList.add('active');
+  }
 }
-drawerTabSettings.addEventListener('click', () => toggleDrawer(drawerSettings, drawerSound));
-drawerTabSound.addEventListener('click', () => toggleDrawer(drawerSound, drawerSettings));
+drawerTabSettings.addEventListener('click', () => toggleDrawer(drawerSettings, drawerTabSettings));
+drawerTabSound.addEventListener('click', () => toggleDrawer(drawerSound, drawerTabSound));
+drawerTabHistory.addEventListener('click', () => toggleDrawer(drawerHistory, drawerTabHistory));
 resetAuctionsBtn.addEventListener('click', () => {
   if (!confirm('Nulstil ALLE auktioner? Alle bud + hammerslag slettes.')) return;
   sync.send({ type: 'reset-auctions' } as any);
+});
+
+// Theme picker — switches the dark-chrome palette (forest/marine/dark).
+// Persists to localStorage. Applied as body class consumed by chrome.css.
+const themeRadios = document.querySelectorAll<HTMLInputElement>('input[name="theme"]');
+const savedTheme = localStorage.getItem('controller.theme') || 'forest';
+function applyTheme(name: string) {
+  document.body.classList.remove('theme-forest', 'theme-marine', 'theme-dark');
+  if (name === 'marine' || name === 'dark') document.body.classList.add(`theme-${name}`);
+  else document.body.classList.add('theme-forest');
+  localStorage.setItem('controller.theme', name);
+}
+applyTheme(savedTheme);
+themeRadios.forEach(r => {
+  if (r.value === savedTheme) r.checked = true;
+  r.addEventListener('change', () => { if (r.checked) applyTheme(r.value); });
 });
 
 // Local toggle: show/hide the big lot-num overlay on Nuværende + Næste.
@@ -688,16 +745,6 @@ function tickAuctClock() {
 }
 tickAuctClock();
 setInterval(tickAuctClock, 1000);
-
-// ---- Elapsed timer (local, since app start) ----
-const tStart = Date.now();
-setInterval(() => {
-  const s = Math.floor((Date.now() - tStart) / 1000);
-  const hh = String(Math.floor(s / 3600)).padStart(2, '0');
-  const mm = String(Math.floor((s % 3600) / 60)).padStart(2, '0');
-  const ss = String(s % 60).padStart(2, '0');
-  statElapsed.textContent = `${hh}:${mm}:${ss}`;
-}, 1000);
 
 // ---- Resize: refit slide previews ----
 window.addEventListener('resize', () => {

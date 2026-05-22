@@ -5,6 +5,15 @@ import { SyncClient } from './ws-client';
 import { renderSlide, fitToViewport } from './render';
 import { SLIDES, lotByNum } from './slides';
 
+// Mirror controller's saved theme so all three views share the chrome.
+const savedTheme = localStorage.getItem('controller.theme') || 'forest';
+document.body.classList.add(`theme-${savedTheme}`);
+window.addEventListener('storage', (e) => {
+  if (e.key !== 'controller.theme' || !e.newValue) return;
+  document.body.classList.remove('theme-forest', 'theme-marine', 'theme-dark');
+  document.body.classList.add(`theme-${e.newValue}`);
+});
+
 const stage = document.getElementById('stage')!;
 const slideFrame = document.getElementById('slide-frame')!;
 

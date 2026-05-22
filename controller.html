@@ -9,6 +9,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&family=Cormorant+Garamond:ital,wght@1,500&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/src/styles.css" />
   <link rel="stylesheet" href="/src/slides.css" />
+  <link rel="stylesheet" href="/src/chrome.css" />
   <link rel="stylesheet" href="/src/controller.css" />
 </head>
 <body class="controller">
@@ -25,20 +26,7 @@
 
     <div class="status-pill" id="status-pill"><span class="status-dot"></span>Live · Connected</div>
 
-    <div class="stats-strip">
-      <div class="stat">
-        <span class="stat-label">Indsamlet</span>
-        <span class="stat-value" id="stat-total">0<span class="unit">kr</span></span>
-      </div>
-      <div class="stat">
-        <span class="stat-label">Solgt</span>
-        <span class="stat-value" id="stat-sold">0<span class="unit">/ 21</span></span>
-      </div>
-      <div class="stat">
-        <span class="stat-label">Forløbet</span>
-        <span class="stat-value" id="stat-elapsed">00:00:00</span>
-      </div>
-    </div>
+    <div class="topbar-spacer"></div>
 
     <div id="open-buttons" style="display:flex;gap:6px;">
       <button class="link-btn" data-open="/" title="Open viewer in new window">Viewer ↗</button>
@@ -83,13 +71,22 @@
         <span class="label live"><span class="swatch"></span>Live auktion</span>
       </div>
 
-      <!-- Drawers -->
-      <button class="drawer-tab drawer-tab--left" id="drawer-tab-settings" title="Settings"><span>Settings</span></button>
-      <button class="drawer-tab drawer-tab--right" id="drawer-tab-sound" title="Sound"><span>Sound</span></button>
+      <!-- Drawers — left edge split (Sound top / Settings bottom), right edge = History -->
+      <button class="drawer-tab drawer-tab--left drawer-tab--top" id="drawer-tab-sound" title="Sound"><span>Sound</span></button>
+      <button class="drawer-tab drawer-tab--left drawer-tab--bottom" id="drawer-tab-settings" title="Settings"><span>Settings</span></button>
+      <button class="drawer-tab drawer-tab--right" id="drawer-tab-history" title="Auktions historik"><span>Historik</span></button>
 
       <div class="drawer drawer--left" id="drawer-settings">
         <h3>Settings</h3>
         <p class="drawer-hint">Lokale visningsindstillinger + reset.</p>
+        <div class="setting-section">
+          <span class="setting-section-label">Tema</span>
+          <div class="theme-options">
+            <label class="theme-opt"><input type="radio" name="theme" value="forest" /><span>Forest</span></label>
+            <label class="theme-opt"><input type="radio" name="theme" value="marine" /><span>Marine</span></label>
+            <label class="theme-opt"><input type="radio" name="theme" value="dark" /><span>Dark</span></label>
+          </div>
+        </div>
         <label class="setting-toggle">
           <input type="checkbox" id="toggle-lot-num" />
           <span>Vis lotnummer-overlay i Nuværende + Næste</span>
@@ -98,7 +95,7 @@
         <button id="reset-auctions" class="drawer-danger">Reset all auctions</button>
       </div>
 
-      <div class="drawer drawer--right" id="drawer-sound">
+      <div class="drawer drawer--left" id="drawer-sound">
         <h3>Sound — lot <span id="sound-lot-num">—</span></h3>
         <p class="drawer-hint">Drop .mp3/.wav files into <code>web/public/sounds/</code>.</p>
         <label class="sound-row">
@@ -139,6 +136,16 @@
           <button id="sound-preview-init">Preview init</button>
           <button id="sound-preview-hammer">Preview hammer</button>
           <button id="sound-refresh">Refresh files</button>
+        </div>
+      </div>
+
+      <div class="drawer drawer--right" id="drawer-history">
+        <h3>Auktions historik</h3>
+        <p class="drawer-hint">Solgte lots i kronologisk rækkefølge — så du kan slå op hvad fx lot 03 gik for når du er nået til lot 12.</p>
+        <ol class="history-sold-list" id="history-sold-list"></ol>
+        <div class="history-foot">
+          <span class="history-foot-label">Total</span>
+          <span class="history-foot-amount" id="history-foot-amount">0 kr</span>
         </div>
       </div>
 

@@ -36,6 +36,62 @@
   --font-display-c: 'Inter', -apple-system, system-ui, sans-serif;
   --font-mono-c:    'JetBrains Mono', ui-monospace, monospace;
   --font-serif-c:   'Cormorant Garamond', Georgia, serif;
+
+  --accent-glow: rgba(52, 211, 153, 0.35);
+}
+
+/* ---------- Theme: Marine (blue) ---------- */
+body.theme-marine {
+  --bg-deep:     #050B14;
+  --bg-base:     #0A1422;
+  --bg-pane:     #0F1E2F;
+  --bg-card:     #142A40;
+  --bg-elev:     #1B3552;
+  --bg-input:    #081224;
+
+  --line-c:      rgba(125, 175, 232, 0.08);
+  --line-c2:     rgba(125, 175, 232, 0.16);
+
+  --green-200:  #BFDBFE;
+  --green-300:  #93C5FD;
+  --green-400:  #60A5FA;
+  --green-500:  #3B82F6;
+  --green-600:  #2563EB;
+  --green-700:  #1D4ED8;
+
+  --text-c:     #E8F1FB;
+  --text-c2:    #A8C0DA;
+  --text-c3:    #6F8AA7;
+  --text-c4:    #45607A;
+
+  --accent-glow: rgba(96, 165, 250, 0.40);
+}
+
+/* ---------- Theme: Dark (neutral, white accent) ---------- */
+body.theme-dark {
+  --bg-deep:     #0A0A0B;
+  --bg-base:     #0F0F11;
+  --bg-pane:     #18181B;
+  --bg-card:     #1F1F23;
+  --bg-elev:     #2A2A30;
+  --bg-input:    #0D0D10;
+
+  --line-c:      rgba(255, 255, 255, 0.06);
+  --line-c2:     rgba(255, 255, 255, 0.12);
+
+  --green-200:  #FFFFFF;
+  --green-300:  #E4E4E7;
+  --green-400:  #BCBCC2;
+  --green-500:  #8E8E96;
+  --green-600:  #5E5E66;
+  --green-700:  #404045;
+
+  --text-c:     #F4F4F5;
+  --text-c2:    #B5B5BB;
+  --text-c3:    #7E7E84;
+  --text-c4:    #4F4F54;
+
+  --accent-glow: rgba(255, 255, 255, 0.18);
 }
 
 /* ---------- Viewer 16:9 slide frame ---------- */
