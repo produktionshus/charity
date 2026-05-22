@@ -47,7 +47,7 @@
 html, body { height: 100%; font-family: var(--font-body); }
 
 body.viewer {
-  background: #000;
+  background: var(--bg-deep, #03100B);
   overflow: hidden;
 }
 

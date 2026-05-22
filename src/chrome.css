@@ -39,6 +39,9 @@
 }
 
 /* ---------- Viewer 16:9 slide frame ---------- */
+body.viewer #stage {
+  background: var(--bg-deep);   /* dark forest letterbox outside the 16:9 frame */
+}
 body.viewer #slide-frame {
   position: absolute;
   top: 50%; left: 50%;
