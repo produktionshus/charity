@@ -20,12 +20,18 @@ export class SyncClient {
   private connect() {
     this.ws = new WebSocket(this.url);
     this.ws.onmessage = (ev) => {
-      let msg: ServerMsg;
+      let msg: any;
       try { msg = JSON.parse(ev.data); } catch { return; }
       if (msg.type === 'state') {
         for (const l of this.stateListeners) l(msg.state);
       } else if (msg.type === 'sound-event') {
         for (const l of this.soundListeners) l(msg.event);
+      } else if (msg.type === 'lots-updated') {
+        // Lot bank changed on disk — reload so the bundled lots.json refreshes.
+        // Generator skips this (it's likely the source of the change).
+        if (!document.body.classList.contains('generator')) {
+          setTimeout(() => location.reload(), 200);
+        }
       }
     };
     this.ws.onclose = () => {

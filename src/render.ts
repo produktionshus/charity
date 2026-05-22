@@ -192,7 +192,9 @@ function renderCover(): string {
   `;
 }
 
-export function renderSlide(slide: Slide): HTMLElement {
+// Optional lot override lets the generator render edits live without
+// roundtripping through lots.json / bundled imports.
+export function renderSlide(slide: Slide, lotOverride?: Lot, displayNumOverride?: string): HTMLElement {
   const root = document.createElement('div');
   root.className = `slide-canvas slide-${slide.kind}`;
   if (slide.kind === 'cover') {
@@ -200,12 +202,13 @@ export function renderSlide(slide: Slide): HTMLElement {
   } else if (slide.kind === 'sponsor-index') {
     root.innerHTML = renderSponsorIndex();
   } else if (slide.kind === 'lot') {
-    const lot = lotById(slide.lotId!);
+    const lot = lotOverride ?? lotById(slide.lotId!);
     if (!lot) return root;
-    const layout = lotLayout(slide.lotId!);
-    const displayNum = slide.displayNum ?? displayNumFor(slide.lotId!);
+    const layout = lot.layout || lotLayout(lot.id);
+    const displayNum = displayNumOverride ?? slide.displayNum ?? displayNumFor(slide.lotId!);
     root.classList.add(layout === 'horizon' ? 'layout-horizon' : 'layout-profile');
-    if (isMirrored(slide.lotId!)) root.classList.add('layout-mirrored');
+    const mirrored = lot.mirrored ?? isMirrored(lot.id);
+    if (mirrored) root.classList.add('layout-mirrored');
     root.innerHTML = layout === 'horizon' ? renderHorizonLot(lot, displayNum) : renderProfileLot(lot, displayNum);
   } else if (slide.kind === 'closing') {
     root.innerHTML = renderClosing();

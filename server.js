@@ -1,46 +1,84 @@
-// Dev: Vite middleware for HMR + ws relay.
-// Prod: serve dist/ statics + ws relay. NODE_ENV=production switches modes.
+// Dev: Vite middleware for HMR + ws relay + REST API.
+// Prod: serve dist/ statics + ws relay + REST API.
+// NODE_ENV=production switches modes.
 
 import { createServer } from 'http';
 import { WebSocketServer } from 'ws';
-import { readFileSync, readdirSync, existsSync, mkdirSync } from 'fs';
-import { dirname, resolve } from 'path';
+import { readFileSync, writeFileSync, readdirSync, existsSync, mkdirSync, unlinkSync } from 'fs';
+import { dirname, resolve, extname } from 'path';
 import { fileURLToPath } from 'url';
+import express from 'express';
+import multer from 'multer';
+import { v4 as uuidv4 } from 'uuid';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const isProd = process.env.NODE_ENV === 'production';
 const PORT = parseInt(process.env.PORT || '5180', 10);
 
+// ---- Lots store (lots.json on disk is source of truth) ----
 const lotsPath = resolve(__dirname, 'src/lots.json');
-const lots = JSON.parse(readFileSync(lotsPath, 'utf8')).lots;
+function loadLots() {
+  return JSON.parse(readFileSync(lotsPath, 'utf8'));
+}
+function saveLots(payload) {
+  writeFileSync(lotsPath, JSON.stringify(payload, null, 2), 'utf8');
+}
+
+let lotsFile = loadLots();
+function lots() { return lotsFile.lots; }
+function activeLots() { return lots().filter(l => l.active); }
+
+function rebuildAuctionState() {
+  // Refresh state.lots / sounds dictionaries to include every lot id.
+  for (const l of lots()) {
+    if (!state.lots[l.id]) state.lots[l.id] = { bids: [], finalPrice: null, status: 'pending' };
+    if (!state.sounds[l.id]) state.sounds[l.id] = {};
+  }
+  // Drop entries for deleted lots
+  for (const id of Object.keys(state.lots)) {
+    if (!lots().find(l => l.id === id)) delete state.lots[id];
+  }
+  for (const id of Object.keys(state.sounds)) {
+    if (!lots().find(l => l.id === id)) delete state.sounds[id];
+  }
+  // Rebuild slide list
+  serverSlides.length = 0;
+  serverSlides.push({ kind: 'cover' }, { kind: 'sponsor-index' });
+  for (const l of activeLots()) serverSlides.push({ kind: 'lot', lotId: l.id });
+  serverSlides.push({ kind: 'closing' });
+}
+
 const initialLots = {};
 const initialSounds = {};
-for (const l of lots) {
+for (const l of lots()) {
   initialLots[l.id] = { bids: [], finalPrice: null, status: 'pending' };
   initialSounds[l.id] = {};
 }
-
 const state = { slideIdx: 0, buildStep: 0, lots: initialLots, sounds: initialSounds };
 
-// Mirror of client-side SLIDES so the server can detect lot transitions
-// for auto-firing init sounds.
-const slides = [
+const serverSlides = [
   { kind: 'cover' },
   { kind: 'sponsor-index' },
-  ...lots.filter(l => l.active).map(l => ({ kind: 'lot', lotId: l.id })),
+  ...activeLots().map(l => ({ kind: 'lot', lotId: l.id })),
   { kind: 'closing' },
 ];
 
 function freshLots() {
   const out = {};
-  for (const l of lots) out[l.id] = { bids: [], finalPrice: null, status: 'pending' };
+  for (const l of lots()) out[l.id] = { bids: [], finalPrice: null, status: 'pending' };
   return out;
 }
 
-const soundsDir = isProd
-  ? resolve(__dirname, 'dist/sounds')
-  : resolve(__dirname, 'public/sounds');
-if (!existsSync(soundsDir)) mkdirSync(soundsDir, { recursive: true });
+// ---- Asset directories ----
+const publicDir = resolve(__dirname, isProd ? 'dist' : 'public');
+const assetsDir = resolve(publicDir, 'assets');
+const heroDir   = resolve(assetsDir, 'hero');
+const logoDir   = resolve(assetsDir, 'logo');
+const closingDir = resolve(assetsDir, 'closing');
+const soundsDir = resolve(publicDir, 'sounds');
+for (const d of [heroDir, logoDir, closingDir, soundsDir]) {
+  if (!existsSync(d)) mkdirSync(d, { recursive: true });
+}
 
 function listSounds() {
   try {
@@ -50,26 +88,126 @@ function listSounds() {
   } catch { return []; }
 }
 
+// ---- Multer upload setup ----
+const upload = multer({
+  storage: multer.diskStorage({
+    destination: (req, file, cb) => {
+      const kind = req.body.kind || req.query.kind;
+      if (kind === 'hero')    return cb(null, heroDir);
+      if (kind === 'logo')    return cb(null, logoDir);
+      if (kind === 'closing') return cb(null, closingDir);
+      cb(new Error('Unknown upload kind: ' + kind), '');
+    },
+    filename: (req, file, cb) => {
+      const lotId = req.body.lotId || req.query.lotId;
+      const kind  = req.body.kind  || req.query.kind;
+      const ext   = (extname(file.originalname) || '.jpg').toLowerCase();
+      if (kind === 'hero') return cb(null, `lot-${lotId}_FINAL${ext}`);
+      if (kind === 'logo') return cb(null, `logo-lot-${lotId}.png`);
+      if (kind === 'closing') return cb(null, file.originalname);
+      cb(new Error('Unknown upload kind'), '');
+    },
+  }),
+});
+
+// ---- Express app + API ----
+const app = express();
+app.use(express.json({ limit: '2mb' }));
+
+app.get('/api/sounds', (_req, res) => res.json({ files: listSounds() }));
+
+app.get('/api/lots', (_req, res) => {
+  res.json(lotsFile);
+});
+
+app.post('/api/lots', (req, res) => {
+  const newLot = {
+    id: uuidv4(),
+    title: req.body.title || '',
+    subtitle: req.body.subtitle || '',
+    sponsor: req.body.sponsor || '',
+    bullets: Array.isArray(req.body.bullets) ? req.body.bullets : [],
+    titleParts: req.body.titleParts,
+    donorNames: req.body.donorNames,
+    active: req.body.active ?? false,
+    extra: req.body.extra ?? false,
+    extraSuffix: req.body.extraSuffix ?? null,
+    layout: req.body.layout || 'horizon',
+    mirrored: req.body.mirrored ?? false,
+    focal: req.body.focal || '50% 50%',
+    titleSizePt: req.body.titleSizePt,
+  };
+  lotsFile.lots.push(newLot);
+  saveLots(lotsFile);
+  rebuildAuctionState();
+  broadcastLotsUpdated();
+  res.json(newLot);
+});
+
+app.put('/api/lots/:id', (req, res) => {
+  const lot = lotsFile.lots.find(l => l.id === req.params.id);
+  if (!lot) return res.status(404).json({ error: 'Not found' });
+  Object.assign(lot, req.body);   // shallow merge of provided fields
+  lot.id = req.params.id;          // never let the id be overwritten by body
+  saveLots(lotsFile);
+  rebuildAuctionState();
+  broadcastLotsUpdated();
+  res.json(lot);
+});
+
+app.delete('/api/lots/:id', (req, res) => {
+  const before = lotsFile.lots.length;
+  lotsFile.lots = lotsFile.lots.filter(l => l.id !== req.params.id);
+  if (lotsFile.lots.length === before) return res.status(404).json({ error: 'Not found' });
+  saveLots(lotsFile);
+  rebuildAuctionState();
+  broadcastLotsUpdated();
+  res.json({ ok: true });
+});
+
+app.post('/api/lots/reorder', (req, res) => {
+  const order = Array.isArray(req.body.order) ? req.body.order : null;
+  if (!order) return res.status(400).json({ error: 'Missing order array' });
+  const byId = new Map(lotsFile.lots.map(l => [l.id, l]));
+  const reordered = [];
+  for (const id of order) {
+    const lot = byId.get(id);
+    if (lot) { reordered.push(lot); byId.delete(id); }
+  }
+  // Append any lots that weren't in the order list (shouldn't normally happen)
+  for (const lot of byId.values()) reordered.push(lot);
+  lotsFile.lots = reordered;
+  saveLots(lotsFile);
+  rebuildAuctionState();
+  broadcastLotsUpdated();
+  res.json({ ok: true });
+});
+
+app.post('/api/upload', upload.single('file'), (req, res) => {
+  if (!req.file) return res.status(400).json({ error: 'No file' });
+  res.json({ filename: req.file.filename });
+});
+
+app.delete('/api/upload', (req, res) => {
+  const { kind, lotId } = req.query;
+  let target;
+  if (kind === 'hero') target = resolve(heroDir, `lot-${lotId}_FINAL.jpg`);
+  else if (kind === 'logo') target = resolve(logoDir, `logo-lot-${lotId}.png`);
+  else return res.status(400).json({ error: 'Unknown kind' });
+  try { if (existsSync(target)) unlinkSync(target); } catch {}
+  res.json({ ok: true });
+});
+
 let httpServer;
 if (isProd) {
-  const express = (await import('express')).default;
-  const app = express();
-  app.get('/api/sounds', (req, res) => res.json({ files: listSounds() }));
   app.use(express.static(resolve(__dirname, 'dist')));
-  // SPA fallback: all unmatched -> index.html (viewer route)
-  app.get('*', (req, res) => res.sendFile(resolve(__dirname, 'dist/index.html')));
+  app.get('*', (_req, res) => res.sendFile(resolve(__dirname, 'dist/index.html')));
   httpServer = createServer(app);
 } else {
   const { createServer: createViteServer } = await import('vite');
   const vite = await createViteServer({ server: { middlewareMode: true } });
-  httpServer = createServer((req, res) => {
-    if (req.url === '/api/sounds') {
-      res.setHeader('content-type', 'application/json');
-      res.end(JSON.stringify({ files: listSounds() }));
-      return;
-    }
-    vite.middlewares(req, res);
-  });
+  app.use(vite.middlewares);
+  httpServer = createServer(app);
 }
 
 const wss = new WebSocketServer({ noServer: true });
@@ -81,6 +219,11 @@ httpServer.on('upgrade', (req, socket, head) => {
 
 function broadcast() {
   const str = JSON.stringify({ type: 'state', state });
+  for (const c of wss.clients) if (c.readyState === 1) c.send(str);
+}
+
+function broadcastLotsUpdated() {
+  const str = JSON.stringify({ type: 'lots-updated' });
   for (const c of wss.clients) if (c.readyState === 1) c.send(str);
 }
 
@@ -128,9 +271,8 @@ wss.on('connection', (ws) => {
       if (typeof msg.slideIdx === 'number') { state.slideIdx = msg.slideIdx; state.buildStep = 0; }
       if (typeof msg.buildStep === 'number') state.buildStep = msg.buildStep;
       broadcast();
-      // Auto-fire init sound when slideIdx changes to a lot with initSound config.
       if (typeof msg.slideIdx === 'number' && msg.slideIdx !== prevIdx) {
-        const slide = slides[msg.slideIdx];
+        const slide = serverSlides[msg.slideIdx];
         if (slide?.kind === 'lot' && slide.lotId) emitPlay(slide.lotId, 'init');
       }
       return;
@@ -148,8 +290,6 @@ wss.on('connection', (ws) => {
     } else if (msg.type === 'undo-bid' && state.lots[msg.lotNum]) {
       const ls = state.lots[msg.lotNum];
       if (ls.status === 'sold') {
-        // Roll the sale back; keep the bid history intact so the operator can
-        // continue editing from where it was.
         ls.status = ls.bids.length ? 'live' : 'pending';
         ls.finalPrice = null;
       } else if (ls.bids.length) {
@@ -179,4 +319,5 @@ httpServer.listen(PORT, () => {
   console.log(`viewer      ${proto}://localhost:${PORT}/`);
   console.log(`auctioneer  ${proto}://localhost:${PORT}/auctioneer.html`);
   console.log(`controller  ${proto}://localhost:${PORT}/controller.html`);
+  console.log(`generator   ${proto}://localhost:${PORT}/generator.html`);
 });

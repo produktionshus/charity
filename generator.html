@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="da">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lot Generator — StjerneGolf 2026</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&family=Cormorant+Garamond:ital,wght@1,500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/src/styles.css" />
+  <link rel="stylesheet" href="/src/slides.css" />
+  <link rel="stylesheet" href="/src/chrome.css" />
+  <link rel="stylesheet" href="/src/generator.css" />
+</head>
+<body class="generator">
+  <div class="gen-app">
+    <header class="gen-topbar">
+      <div class="brand">
+        <div class="brand-mark">K</div>
+        <div class="brand-text">
+          <strong>Lot Generator</strong>
+          <small>STJERNEGOLF 2026</small>
+        </div>
+      </div>
+      <span class="gen-status" id="gen-status">Indlæser…</span>
+      <div class="gen-topbar-spacer"></div>
+      <button class="link-btn" id="open-controller">Controller ↗</button>
+      <button class="nav-btn primary" id="new-lot">+ Nyt lot</button>
+    </header>
+
+    <aside class="gen-list">
+      <div class="gen-list-head">
+        <span class="gen-list-title">LOT BANK</span>
+        <span class="gen-list-meta" id="gen-list-meta">0 lots</span>
+      </div>
+      <div class="gen-list-rows" id="gen-list-rows"></div>
+    </aside>
+
+    <main class="gen-edit">
+      <div class="gen-edit-pane">
+        <div class="gen-edit-head">
+          <span class="gen-edit-id">ID: <code id="edit-id">—</code></span>
+          <span class="gen-edit-display">Vises som <b id="edit-display-num">—</b></span>
+          <button class="drawer-danger" id="delete-lot" style="margin-left:auto;display:none">Slet lot</button>
+        </div>
+
+        <div class="gen-form" id="gen-form">
+          <div class="row">
+            <label class="setting-toggle"><input type="checkbox" id="f-active" /><span>Active (med i deck)</span></label>
+            <label class="setting-toggle"><input type="checkbox" id="f-extra" /><span>Ekstra-lot (bryder med nummerering)</span></label>
+          </div>
+          <div class="row" id="row-extra-suffix" style="display:none">
+            <label>Ekstra-suffix (fx 07A eller EXT)
+              <input type="text" id="f-extra-suffix" />
+            </label>
+          </div>
+
+          <label>Titel
+            <input type="text" id="f-title" placeholder="Hovedtitel" />
+          </label>
+          <label>Subtitle
+            <input type="text" id="f-subtitle" placeholder="Pakken inkluderer …" />
+          </label>
+          <label>Sponsor / donor
+            <input type="text" id="f-sponsor" placeholder="Sponsor navn (eller 'Doneret af privat person')" />
+          </label>
+
+          <label>Bullets (én per linje)
+            <textarea id="f-bullets" rows="6"></textarea>
+          </label>
+          <label>Donor names (én per linje — overskriver sponsor-logo hvis udfyldt)
+            <textarea id="f-donor-names" rows="2"></textarea>
+          </label>
+
+          <div class="row">
+            <label>Layout
+              <select id="f-layout">
+                <option value="horizon">Horizon (foto top, tekst bund)</option>
+                <option value="profile">Profile (foto venstre, tekst højre)</option>
+              </select>
+            </label>
+            <label class="setting-toggle"><input type="checkbox" id="f-mirrored" /><span>Mirrored (profile only)</span></label>
+          </div>
+
+          <div class="row">
+            <label>Fokus X %
+              <input type="range" id="f-focal-x" min="0" max="100" step="1" value="50" />
+              <span class="range-val" id="f-focal-x-val">50%</span>
+            </label>
+            <label>Fokus Y %
+              <input type="range" id="f-focal-y" min="0" max="100" step="1" value="50" />
+              <span class="range-val" id="f-focal-y-val">50%</span>
+            </label>
+          </div>
+
+          <label>Titel-størrelse override (pt, valgfrit)
+            <input type="number" id="f-title-size" min="10" max="40" step="1" placeholder="auto" />
+          </label>
+
+          <div class="upload-grid">
+            <div class="upload-cell">
+              <label>Hero-billede</label>
+              <img id="hero-preview" class="upload-preview" />
+              <input type="file" id="f-hero" accept="image/*" />
+            </div>
+            <div class="upload-cell">
+              <label>Sponsor-logo (PNG transparent)</label>
+              <img id="logo-preview" class="upload-preview logo" />
+              <input type="file" id="f-logo" accept="image/png,image/jpeg,image/webp" />
+            </div>
+          </div>
+
+          <div class="row gen-save-row">
+            <button class="nav-btn primary" id="save-lot">Gem ændringer</button>
+            <span class="gen-save-meta" id="gen-save-meta"></span>
+          </div>
+        </div>
+      </div>
+
+      <div class="gen-preview-pane">
+        <div class="gen-preview-head">
+          <span>Live preview</span>
+          <span class="preview-meta" id="preview-meta"></span>
+        </div>
+        <div class="gen-preview-frame" id="gen-preview-frame"></div>
+      </div>
+    </main>
+  </div>
+
+  <script type="module" src="/src/generator.ts"></script>
+</body>
+</html>
