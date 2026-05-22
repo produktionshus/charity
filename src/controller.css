@@ -1183,6 +1183,14 @@ body.controller.theme-kidsaid .btn-primary {
   background: linear-gradient(180deg, #3FA34D 0%, #2F7A39 100%) !important;
   color: #FFFFFF !important;
 }
+/* Bid input: white bg vs white text would be invisible. Force dark green text. */
+body.controller.theme-kidsaid .bid-input input,
+body.controller.theme-kidsaid .bid-input .prefix {
+  color: #2F7A39 !important;
+}
+body.controller.theme-kidsaid .bid-input input::placeholder {
+  color: rgba(47, 122, 57, 0.45) !important;
+}
 /* Live-panel gradient went white-to-green which buried the "Nuværende"
    label. Use a solid green panel under KidsAid. */
 body.controller.theme-kidsaid .panel.live {
