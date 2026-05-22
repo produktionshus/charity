@@ -102,7 +102,6 @@ sync.on((state) => {
 
   if (slide?.kind === 'lot' && slide.lotNum) {
     const lot = lotByNum(slide.lotNum)!;
-    monitor.classList.add('show-header');
     lotnumEl.textContent = lot.num;
     titleEl.textContent = lot.title;
     donorEl.textContent = lot.sponsor;
@@ -112,6 +111,7 @@ sync.on((state) => {
     const sold = ls?.status === 'sold';
     if (last != null && !sold) {
       monitor.classList.add('has-bid');
+      monitor.classList.add('show-header');
       bidEl.classList.remove('idle');
       bidEl.innerHTML = `${fmtKr(last)}<span class="kr">kr</span>`;
       if (lastBid !== last) {
@@ -122,6 +122,7 @@ sync.on((state) => {
       lastBid = last;
     } else if (!sold) {
       monitor.classList.remove('has-bid');
+      monitor.classList.remove('show-header');
       bidEl.innerHTML = `—<span class="kr">kr</span>`;
       lastBid = null;
     }

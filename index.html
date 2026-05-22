@@ -12,7 +12,12 @@
   <link rel="stylesheet" href="/src/chrome.css" />
 </head>
 <body class="viewer">
-  <main id="stage"></main>
+  <main id="stage">
+    <!-- 16:9 letterbox frame — slide + ribbon + hammer overlay all live
+         inside this frame so the auction chrome aligns with the slide,
+         not the viewport letterbox. -->
+    <div id="slide-frame"></div>
+  </main>
   <script type="module" src="/src/viewer.ts"></script>
 </body>
 </html>

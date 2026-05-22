@@ -192,6 +192,7 @@ function updateAuctioneerBid(slide: Slide | null) {
     const last = ls?.bids?.length ? ls.bids[ls.bids.length - 1] : null;
     if (last != null) {
       auctStage.classList.add('has-bid');
+      auctStage.classList.add('show-header');
       auctBid.classList.remove('idle');
       auctBid.innerHTML = `${fmtKr(last)}<span class="kr">kr</span>`;
       // re-fire bump
@@ -200,11 +201,13 @@ function updateAuctioneerBid(slide: Slide | null) {
       auctBid.classList.add('bid-bump');
     } else {
       auctStage.classList.remove('has-bid');
+      auctStage.classList.remove('show-header');
       auctBid.classList.add('idle');
       auctBid.innerHTML = `—<span class="kr">kr</span>`;
     }
   } else {
     auctStage.classList.remove('has-bid');
+    auctStage.classList.remove('show-header');
   }
 }
 
@@ -222,7 +225,6 @@ function renderAuctioneerPanel(slide: Slide | null) {
 
   if (slide.kind === 'lot' && slide.lotNum) {
     const lot = lotByNum(slide.lotNum)!;
-    auctStage.classList.add('show-header');
     auctLotnum.textContent = lot.num;
     auctTitle.textContent = lot.title;
     auctDonor.textContent = lot.sponsor;
@@ -230,10 +232,12 @@ function renderAuctioneerPanel(slide: Slide | null) {
     const last = ls?.bids?.length ? ls.bids[ls.bids.length - 1] : null;
     if (last != null) {
       auctStage.classList.add('has-bid');
+      auctStage.classList.add('show-header');
       auctBid.classList.remove('idle');
       auctBid.innerHTML = `${fmtKr(last)}<span class="kr">kr</span>`;
     } else {
       auctStage.classList.remove('has-bid');
+      auctStage.classList.remove('show-header');
       auctBid.classList.add('idle');
       auctBid.innerHTML = `—<span class="kr">kr</span>`;
     }

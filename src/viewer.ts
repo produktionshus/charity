@@ -6,6 +6,7 @@ import { renderSlide, fitToViewport } from './render';
 import { SLIDES, lotByNum } from './slides';
 
 const stage = document.getElementById('stage')!;
+const slideFrame = document.getElementById('slide-frame')!;
 
 let currentSlideIdx = -1;
 let currentEl: HTMLElement | null = null;
@@ -60,8 +61,8 @@ function swapSlide(idx: number) {
   if (!slide) { console.warn('no slide at idx', idx, 'of', SLIDES.length); return; }
   const next = renderSlide(slide);
   next.classList.add('entering');
-  stage.appendChild(next);
-  fitToViewport(stage, next);
+  slideFrame.appendChild(next);
+  fitToViewport(slideFrame, next);
   next.getBoundingClientRect();  // reflow
   next.classList.remove('entering');
   // Trigger build-in animation on this slide (per-element fades start at t=0)
@@ -73,7 +74,7 @@ function swapSlide(idx: number) {
 }
 
 // ---- Ribbon (B-style) ----
-function getRibbon(): HTMLElement | null { return stage.querySelector('.stage-ribbon'); }
+function getRibbon(): HTMLElement | null { return slideFrame.querySelector('.stage-ribbon'); }
 
 function mountOrUpdateRibbon(lotNum: string, bid: number) {
   const lot = lotByNum(lotNum)!;
@@ -81,7 +82,7 @@ function mountOrUpdateRibbon(lotNum: string, bid: number) {
   if (!ribbon) {
     ribbon = document.createElement('div');
     ribbon.className = 'stage-ribbon';
-    stage.appendChild(ribbon);
+    slideFrame.appendChild(ribbon);
   }
   ribbon.innerHTML = `
     <div class="sr-lot">
@@ -146,14 +147,14 @@ function buildHammerOverlay(lotNum: string, finalPrice: number): HTMLElement {
   return wrap;
 }
 function clearHammerOverlay() {
-  const el = stage.querySelector('.hammer-overlay-c') as HTMLElement | null;
+  const el = slideFrame.querySelector('.hammer-overlay-c') as HTMLElement | null;
   if (!el || el.classList.contains('fading')) return;
   el.classList.add('fading');
   setTimeout(() => el.remove(), 340);
 }
 function fireHammer(lotNum: string, finalPrice: number) {
   clearHammerOverlay();
-  stage.appendChild(buildHammerOverlay(lotNum, finalPrice));
+  slideFrame.appendChild(buildHammerOverlay(lotNum, finalPrice));
 }
 
 sync.on((state) => {
@@ -219,7 +220,7 @@ sync.onSound(async (event) => {
   }
 });
 
-window.addEventListener('resize', () => { if (currentEl) fitToViewport(stage, currentEl); });
+window.addEventListener('resize', () => { if (currentEl) fitToViewport(slideFrame, currentEl); });
 
 bootRender();
 console.log('viewer booted, SLIDES count =', SLIDES.length);
