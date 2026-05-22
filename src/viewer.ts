@@ -174,6 +174,10 @@ function fireHammer(lotNum: string, finalPrice: number) {
   slideFrame.appendChild(buildHammerOverlay(lotNum, finalPrice));
 }
 
+// Refresh on boot so the in-bundle lots.json snapshot is replaced with
+// whatever's currently on the server's volume.
+refreshLotsFromServer().then(() => { if (currentSlideIdx >= 0) swapSlide(currentSlideIdx); });
+
 sync.onLotsUpdated(async () => {
   await refreshLotsFromServer();
   // Re-render current slide with fresh data (no full reload, no flash).

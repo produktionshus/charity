@@ -4,7 +4,7 @@
 
 import { createServer } from 'http';
 import { WebSocketServer } from 'ws';
-import { readFileSync, writeFileSync, readdirSync, existsSync, mkdirSync, unlinkSync } from 'fs';
+import { readFileSync, writeFileSync, readdirSync, existsSync, mkdirSync, unlinkSync, cpSync, copyFileSync } from 'fs';
 import { dirname, resolve, extname } from 'path';
 import { fileURLToPath } from 'url';
 import express from 'express';
@@ -15,8 +15,41 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const isProd = process.env.NODE_ENV === 'production';
 const PORT = parseInt(process.env.PORT || '5180', 10);
 
-// ---- Lots store (lots.json on disk is source of truth) ----
-const lotsPath = resolve(__dirname, 'src/lots.json');
+// ---- Persistent storage paths ----
+// In dev these default to in-repo locations (src/lots.json, public/assets).
+// In prod (Railway), mount a volume and set LOTS_PATH / ASSETS_DIR /
+// SOUNDS_DIR to point inside it so uploads + lots.json edits survive
+// redeploys.
+const seedLotsPath  = resolve(__dirname, 'src/lots.json');
+const seedAssetsDir = resolve(__dirname, 'public/assets');
+const seedSoundsDir = resolve(__dirname, 'public/sounds');
+const lotsPath  = process.env.LOTS_PATH  || seedLotsPath;
+const assetsDir = process.env.ASSETS_DIR || seedAssetsDir;
+const soundsDir = process.env.SOUNDS_DIR || seedSoundsDir;
+
+// First-boot seed: if the persisted location is empty/missing, copy the
+// in-repo defaults across. No-op in dev because the paths are identical.
+function seedIfMissing() {
+  if (!existsSync(lotsPath)) {
+    mkdirSync(dirname(lotsPath), { recursive: true });
+    copyFileSync(seedLotsPath, lotsPath);
+    console.log(`seeded lots.json -> ${lotsPath}`);
+  }
+  if (!existsSync(assetsDir) || readdirSync(assetsDir).length === 0) {
+    mkdirSync(assetsDir, { recursive: true });
+    if (existsSync(seedAssetsDir)) {
+      cpSync(seedAssetsDir, assetsDir, { recursive: true });
+      console.log(`seeded assets -> ${assetsDir}`);
+    }
+  }
+  if (!existsSync(soundsDir)) {
+    mkdirSync(soundsDir, { recursive: true });
+    if (existsSync(seedSoundsDir)) {
+      cpSync(seedSoundsDir, soundsDir, { recursive: true });
+    }
+  }
+}
+seedIfMissing();
 function loadLots() {
   return JSON.parse(readFileSync(lotsPath, 'utf8'));
 }
@@ -69,13 +102,10 @@ function freshLots() {
   return out;
 }
 
-// ---- Asset directories ----
-const publicDir = resolve(__dirname, isProd ? 'dist' : 'public');
-const assetsDir = resolve(publicDir, 'assets');
-const heroDir   = resolve(assetsDir, 'hero');
-const logoDir   = resolve(assetsDir, 'logo');
+// ---- Asset subdirectories (derived from ASSETS_DIR) ----
+const heroDir    = resolve(assetsDir, 'hero');
+const logoDir    = resolve(assetsDir, 'logo');
 const closingDir = resolve(assetsDir, 'closing');
-const soundsDir = resolve(publicDir, 'sounds');
 for (const d of [heroDir, logoDir, closingDir, soundsDir]) {
   if (!existsSync(d)) mkdirSync(d, { recursive: true });
 }
@@ -200,6 +230,12 @@ app.delete('/api/upload', (req, res) => {
   try { if (existsSync(target)) unlinkSync(target); } catch {}
   res.json({ ok: true });
 });
+
+// Asset routes resolve against the persisted volume in prod, in-repo
+// public/assets in dev. Mounted before the SPA fallback / vite middleware
+// so they always win.
+app.use('/assets', express.static(assetsDir));
+app.use('/sounds', express.static(soundsDir));
 
 let httpServer;
 if (isProd) {

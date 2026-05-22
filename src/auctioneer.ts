@@ -100,6 +100,12 @@ function fireHammer(lotNum: string, finalPrice: number) {
 }
 
 // ---- State sync ----
+// Refresh once on boot — server's volume can have lots newer than bundle.
+refreshLotsFromServer().then(() => {
+  const slide = SLIDES[currentIdx];
+  if (slide) setBackgroundSlide(slide);
+});
+
 sync.onLotsUpdated(async () => {
   await refreshLotsFromServer();
   const slide = SLIDES[currentIdx];

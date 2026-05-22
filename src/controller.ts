@@ -489,6 +489,9 @@ function renderStatsAndProgress(state: any) {
 // ---- Boot ----
 navTotal.textContent = String(SLIDES.length);
 
+// Refresh once on boot so we pick up any volume-side changes.
+refreshLotsFromServer().catch(() => {});
+
 sync.onLotsUpdated(async () => {
   await refreshLotsFromServer();
   // Force a re-render: invalidate the slide-cache markers so the next state
