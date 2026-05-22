@@ -37,7 +37,8 @@ export interface AppState {
   slideIdx: number;
   buildStep: number;
   lots: Record<string, LotBidState>;
-  sounds: Record<string, LotSoundConfig>;   // keyed by lot num
+  sounds: Record<string, LotSoundConfig>;   // keyed by lot id
+  soundDefaults: LotSoundConfig;             // fallback when a lot has no override
 }
 
 export type ServerMsg =
@@ -54,7 +55,8 @@ export type ClientMsg =
   | { type: 'set-sound'; lotNum: string; config: LotSoundConfig }
   | { type: 'play-sound'; lotNum: string; which: 'init' | 'hammer' | 'manual'; fileOverride?: string }
   | { type: 'stop-sound' }
-  | { type: 'undo-bid'; lotNum: string };
+  | { type: 'undo-bid'; lotNum: string }
+  | { type: 'set-sound-defaults'; config: LotSoundConfig };
 
 export function initialLotBidState(): LotBidState {
   return { bids: [], finalPrice: null, status: 'pending' };

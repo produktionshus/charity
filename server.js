@@ -87,7 +87,7 @@ for (const l of lots()) {
   initialLots[l.id] = { bids: [], finalPrice: null, status: 'pending' };
   initialSounds[l.id] = {};
 }
-const state = { slideIdx: 0, buildStep: 0, lots: initialLots, sounds: initialSounds };
+const state = { slideIdx: 0, buildStep: 0, lots: initialLots, sounds: initialSounds, soundDefaults: {} };
 
 const serverSlides = [
   { kind: 'cover' },
@@ -126,6 +126,7 @@ const upload = multer({
       if (kind === 'hero')    return cb(null, heroDir);
       if (kind === 'logo')    return cb(null, logoDir);
       if (kind === 'closing') return cb(null, closingDir);
+      if (kind === 'sound')   return cb(null, soundsDir);
       cb(new Error('Unknown upload kind: ' + kind), '');
     },
     filename: (req, file, cb) => {
@@ -135,6 +136,15 @@ const upload = multer({
       if (kind === 'hero') return cb(null, `lot-${lotId}_FINAL${ext}`);
       if (kind === 'logo') return cb(null, `logo-lot-${lotId}.png`);
       if (kind === 'closing') return cb(null, file.originalname);
+      if (kind === 'sound') {
+        const which = req.body.which || req.query.which;
+        const e = (extname(file.originalname) || '.mp3').toLowerCase();
+        if (!['init', 'hammer'].includes(which)) {
+          return cb(new Error('sound upload needs which=init|hammer'), '');
+        }
+        // lotId set -> per-lot override; otherwise -> deck-wide default.
+        return cb(null, lotId ? `${lotId}-${which}${e}` : `default-${which}${e}`);
+      }
       cb(new Error('Unknown upload kind'), '');
     },
   }),
@@ -225,6 +235,15 @@ app.post('/api/upload', upload.single('file'), (req, res) => {
     const lot = lotsFile.lots.find(l => l.id === lotId);
     if (lot) { lot.heroExt = ext; saveLots(lotsFile); broadcastLotsUpdated(); }
   }
+  // Sound: bind the uploaded file to the lot's init / hammer slot (or to
+  // the deck-wide defaults when no lotId is supplied).
+  if (kind === 'sound') {
+    const which = req.body.which || req.query.which;
+    const target = lotId ? (state.sounds[lotId] = state.sounds[lotId] || {}) : state.soundDefaults;
+    if (which === 'init')   target.initSound = req.file.filename;
+    if (which === 'hammer') target.hammerSound = req.file.filename;
+    broadcast();
+  }
   res.json({ filename: req.file.filename });
 });
 
@@ -281,14 +300,16 @@ function broadcastSoundEvent(event) {
 
 function emitPlay(lotNum, which, fileOverride) {
   const cfg = state.sounds[lotNum] || {};
+  const def = state.soundDefaults || {};
   let file, offset = 0;
   if (fileOverride) {
     file = fileOverride;
-    offset = (which === 'init' ? (cfg.initStartOffset ?? 0) : 0);
+    offset = (which === 'init' ? (cfg.initStartOffset ?? def.initStartOffset ?? 0) : 0);
   } else if (which === 'init') {
-    file = cfg.initSound; offset = cfg.initStartOffset ?? 0;
+    file = cfg.initSound ?? def.initSound;
+    offset = cfg.initStartOffset ?? def.initStartOffset ?? 0;
   } else if (which === 'hammer') {
-    file = cfg.hammerSound;
+    file = cfg.hammerSound ?? def.hammerSound;
   }
   if (!file) return;
   soundEventId += 1;
@@ -296,8 +317,8 @@ function emitPlay(lotNum, which, fileOverride) {
     action: 'play',
     file,
     offset,
-    fadeIn: cfg.fadeInSec ?? 0,
-    fadeOut: cfg.fadeOutSec ?? 0,
+    fadeIn: cfg.fadeInSec ?? def.fadeInSec ?? 0,
+    fadeOut: cfg.fadeOutSec ?? def.fadeOutSec ?? 0,
     lotNum,
     which,
     eventId: soundEventId,
@@ -346,6 +367,8 @@ wss.on('connection', (ws) => {
       state.lots = freshLots();
     } else if (msg.type === 'set-sound' && state.sounds[msg.lotNum]) {
       state.sounds[msg.lotNum] = { ...state.sounds[msg.lotNum], ...msg.config };
+    } else if (msg.type === 'set-sound-defaults') {
+      state.soundDefaults = { ...state.soundDefaults, ...msg.config };
     } else if (msg.type === 'play-sound' && state.sounds[msg.lotNum]) {
       emitPlay(msg.lotNum, msg.which, msg.fileOverride);
       return;

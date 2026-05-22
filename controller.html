@@ -102,6 +102,20 @@
           <input type="checkbox" id="toggle-lot-num" />
           <span>Vis lotnummer-overlay i Nuværende + Næste</span>
         </label>
+        <div class="setting-section">
+          <span class="setting-section-label">Standard lyde</span>
+          <p class="drawer-hint">Bruges på alle lots medmindre lottet selv har en lyd sat.</p>
+          <label class="sound-row">
+            <span>Init (default)</span>
+            <input type="file" id="default-init-upload" accept="audio/*" class="sound-upload" />
+            <span class="sound-row-current" id="default-init-current">—</span>
+          </label>
+          <label class="sound-row">
+            <span>Hammerslag (default)</span>
+            <input type="file" id="default-hammer-upload" accept="audio/*" class="sound-upload" />
+            <span class="sound-row-current" id="default-hammer-current">—</span>
+          </label>
+        </div>
         <p class="drawer-hint" style="margin-top:0.6rem">Advanced — affects all connected clients:</p>
         <button id="reset-auctions" class="drawer-danger">Reset all auctions</button>
       </div>
@@ -112,6 +126,7 @@
         <label class="sound-row">
           <span>Init sound</span>
           <select id="sound-init-file"><option value="">(none)</option></select>
+          <input type="file" id="sound-init-upload" accept="audio/*" class="sound-upload" />
         </label>
         <label class="sound-row">
           <span>Init start offset (sec)</span>
@@ -123,6 +138,7 @@
         <label class="sound-row">
           <span>Hammerslag sound</span>
           <select id="sound-hammer-file"><option value="">(none)</option></select>
+          <input type="file" id="sound-hammer-upload" accept="audio/*" class="sound-upload" />
         </label>
         <label class="sound-row">
           <span>Fade in (sec)</span>

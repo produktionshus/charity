@@ -1191,6 +1191,57 @@ body.controller.theme-kidsaid .bid-input .prefix {
 body.controller.theme-kidsaid .bid-input input::placeholder {
   color: rgba(47, 122, 57, 0.45) !important;
 }
+/* History drawer + sidebar foot — flatten gradients so amounts read on
+   the dark-green drawer + sidebar backgrounds. */
+body.controller.theme-kidsaid .history-sold-list .h-amount,
+body.controller.theme-kidsaid .history-foot-amount,
+body.controller.theme-kidsaid .sidebar-foot .total-amount {
+  background: none !important;
+  -webkit-background-clip: initial !important;
+  background-clip: initial !important;
+  -webkit-text-fill-color: #FFFFFF !important;
+  color: #FFFFFF !important;
+}
+/* History rows inherited white bg (var --bg-card). Override on KidsAid so
+   the white text reads. */
+body.controller.theme-kidsaid .history-sold-list li {
+  background: rgba(255, 255, 255, 0.08) !important;
+  border-color: rgba(255, 255, 255, 0.18) !important;
+}
+body.controller.theme-kidsaid .history-sold-list li .h-num,
+body.controller.theme-kidsaid .history-sold-list li .h-title {
+  color: #FFFFFF !important;
+}
+/* Sound + Settings drawer inputs (selects, number/text inputs, color
+   swatch wrapper, setting-toggle text) had white-on-white text. Force
+   dark-green text on white inputs and white text on dark backdrops. */
+body.controller.theme-kidsaid .sound-row select,
+body.controller.theme-kidsaid .sound-row input[type='number'],
+body.controller.theme-kidsaid .sound-row input[type='text'] {
+  color: #2F7A39 !important;
+  background: #FFFFFF !important;
+}
+body.controller.theme-kidsaid .sound-row > span,
+body.controller.theme-kidsaid .setting-section-label,
+body.controller.theme-kidsaid .drawer h3,
+body.controller.theme-kidsaid .drawer-hint,
+body.controller.theme-kidsaid .drawer-hint code {
+  color: #FFFFFF !important;
+}
+body.controller.theme-kidsaid .setting-toggle,
+body.controller.theme-kidsaid .theme-opt,
+body.controller.theme-kidsaid .color-opt {
+  color: #FFFFFF !important;
+}
+body.controller.theme-kidsaid .setting-toggle span,
+body.controller.theme-kidsaid .theme-opt span,
+body.controller.theme-kidsaid .color-opt span {
+  color: #FFFFFF !important;
+}
+body.controller.theme-kidsaid .sound-preview-row button,
+body.controller.theme-kidsaid .sound-play-row .sound-play {
+  color: #FFFFFF !important;
+}
 /* Live-panel gradient went white-to-green which buried the "Nuværende"
    label. Use a solid green panel under KidsAid. */
 body.controller.theme-kidsaid .panel.live {

@@ -572,6 +572,7 @@ sync.on((state) => {
   renderSidebar(state);
   renderStatsAndProgress(state);
   renderHistoryDrawer(state);
+  refreshDefaultSoundLabels();
   maybeFireHammer(state);
 
   // Re-apply sound config UI for current lot
@@ -823,6 +824,52 @@ function playPreview(file: string | null, offset = 0) {
 }
 soundPreviewInitBtn.addEventListener('click', () => playPreview(soundInitFileEl.value, parseFloat(soundInitNumEl.value) || 0));
 soundPreviewHammerBtn.addEventListener('click', () => playPreview(soundHammerFileEl.value, 0));
+
+// ---- Sound uploads (per-lot override + deck-wide defaults) ----
+async function uploadSound(file: File, which: 'init' | 'hammer', lotId: string | null) {
+  const fd = new FormData();
+  fd.append('kind', 'sound');
+  fd.append('which', which);
+  if (lotId) fd.append('lotId', lotId);
+  fd.append('file', file);
+  try {
+    statusPill.textContent = `Uploading ${which}…`;
+    const res = await fetch('/api/upload', { method: 'POST', body: fd });
+    const data = await res.json();
+    await loadSoundFiles();
+    // Auto-select the just-uploaded file in the current dropdown.
+    if (lotId === currentLotNum) {
+      if (which === 'init') { soundInitFileEl.value = data.filename; pushSoundConfig(); }
+      else { soundHammerFileEl.value = data.filename; pushSoundConfig(); }
+    }
+  } catch (e) { console.warn('sound upload failed', e); }
+}
+
+const soundInitUploadEl   = document.getElementById('sound-init-upload')   as HTMLInputElement;
+const soundHammerUploadEl = document.getElementById('sound-hammer-upload') as HTMLInputElement;
+soundInitUploadEl.addEventListener('change', () => {
+  if (soundInitUploadEl.files?.[0] && currentLotNum) uploadSound(soundInitUploadEl.files[0], 'init', currentLotNum);
+});
+soundHammerUploadEl.addEventListener('change', () => {
+  if (soundHammerUploadEl.files?.[0] && currentLotNum) uploadSound(soundHammerUploadEl.files[0], 'hammer', currentLotNum);
+});
+
+const defaultInitUploadEl   = document.getElementById('default-init-upload')   as HTMLInputElement;
+const defaultHammerUploadEl = document.getElementById('default-hammer-upload') as HTMLInputElement;
+const defaultInitCurrentEl  = document.getElementById('default-init-current')!;
+const defaultHammerCurrentEl = document.getElementById('default-hammer-current')!;
+defaultInitUploadEl.addEventListener('change', () => {
+  if (defaultInitUploadEl.files?.[0]) uploadSound(defaultInitUploadEl.files[0], 'init', null);
+});
+defaultHammerUploadEl.addEventListener('change', () => {
+  if (defaultHammerUploadEl.files?.[0]) uploadSound(defaultHammerUploadEl.files[0], 'hammer', null);
+});
+
+function refreshDefaultSoundLabels() {
+  const d = lastState?.soundDefaults || {};
+  defaultInitCurrentEl.textContent   = d.initSound   || '—';
+  defaultHammerCurrentEl.textContent = d.hammerSound || '—';
+}
 
 // ---- Open viewers in new windows ----
 document.querySelectorAll<HTMLButtonElement>('#open-buttons button').forEach(btn => {
