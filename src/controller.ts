@@ -325,27 +325,28 @@ function renderBidHero(slide: Slide | null) {
 function renderSidebar(state: any) {
   // Build once, then update classes / badges per state change.
   if (!lotList.dataset.built) {
-    const groups: Array<{ label: string; slides: Array<{ slide: Slide; idx: number }> }> = [
-      { label: 'Bordplan', slides: [] },
-      { label: 'Cover', slides: [] },
-      { label: 'Sponsorer', slides: [] },
-      { label: 'Lots', slides: [] },
-      { label: 'Afslutning', slides: [] },
-    ];
-    SLIDES.forEach((s, i) => {
-      if (s.kind === 'bordplan') groups[0].slides.push({ slide: s, idx: i });
-      else if (s.kind === 'cover') groups[1].slides.push({ slide: s, idx: i });
-      else if (s.kind === 'sponsor-index') groups[2].slides.push({ slide: s, idx: i });
-      else if (s.kind === 'lot') groups[3].slides.push({ slide: s, idx: i });
-      else if (s.kind === 'closing') groups[4].slides.push({ slide: s, idx: i });
-    });
-    for (const g of groups) {
-      if (!g.slides.length) continue;
-      const lbl = document.createElement('div');
-      lbl.className = 'lot-section-label';
-      lbl.textContent = g.label;
-      lotList.appendChild(lbl);
-      for (const { slide, idx } of g.slides) {
+    // Render slides in deck order (SLIDES array). Section labels are
+    // inserted lazily when the kind transitions — keeps the sidebar
+    // honest about cross-type ordering set in the generator.
+    let lastKind: string | null = null;
+    const labelFor = (k: string) =>
+      k === 'cover' ? 'Cover'
+        : k === 'bordplan' ? 'Bordplan'
+        : k === 'sponsor-index' ? 'Sponsorer'
+        : k === 'lot' ? 'Lots'
+        : k === 'closing' ? 'Afslutning'
+        : k;
+    for (let i = 0; i < SLIDES.length; i++) {
+      const slide = SLIDES[i];
+      const idx = i;
+      if (slide.kind !== lastKind) {
+        const lbl = document.createElement('div');
+        lbl.className = 'lot-section-label';
+        lbl.textContent = labelFor(slide.kind);
+        lotList.appendChild(lbl);
+        lastKind = slide.kind;
+      }
+      {
         const row = document.createElement('div');
         row.className = 'lot-row';
         row.dataset.idx = String(idx);
