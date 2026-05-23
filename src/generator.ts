@@ -79,6 +79,7 @@ const covTitleEl       = document.getElementById('cov-title')      as HTMLInputE
 const covSubtitleEl    = document.getElementById('cov-subtitle')   as HTMLInputElement;
 const covAttributionEl = document.getElementById('cov-attribution') as HTMLInputElement;
 const covLogoFileEl    = document.getElementById('cov-logo-file')  as HTMLInputElement;
+const covActiveEl      = document.getElementById('cov-active')     as HTMLInputElement;
 const covSaveBtn       = document.getElementById('cov-save')!;
 const bpLabelEl     = document.getElementById('bp-label')      as HTMLInputElement;
 const bpEventNameEl = document.getElementById('bp-event-name') as HTMLInputElement;
@@ -97,6 +98,7 @@ const bpNumPrefixEl = document.getElementById('bp-num-prefix') as HTMLInputEleme
 const bpNumSkipEl   = document.getElementById('bp-num-skip')   as HTMLInputElement;
 const bpOverridesListEl = document.getElementById('bp-overrides-list')!;
 const bpOverridesResetBtn = document.getElementById('bp-overrides-reset')!;
+const bpActiveEl    = document.getElementById('bp-active')     as HTMLInputElement;
 const bpSaveBtn     = document.getElementById('bp-save')!;
 const bpSaveMetaEl  = document.getElementById('bp-save-meta')!;
 
@@ -494,9 +496,7 @@ function populateBordplanForm(item: BordplanItem) {
   deleteBtn.style.display = 'inline-flex';
   duplicateBtn.style.display = 'inline-flex';
   resetFocalBtn.style.display = 'none';
-  fActive.checked = !!item.active;
-  // Reuse the active checkbox in the lot form? Bordplan has no extra/title etc.
-  // For now we drive active via the bordplan save (config + active in single PUT).
+  bpActiveEl.checked = !!item.active;
   bpLabelEl.value = item.label ?? '';
   bpEventNameEl.value = item.eventName ?? '';
   const c = item.config;
@@ -536,7 +536,7 @@ function readBordplanForm(): Partial<BordplanItem> {
     },
   };
   return {
-    active: fActive.checked,
+    active: bpActiveEl.checked,
     label: bpLabelEl.value,
     eventName: bpEventNameEl.value,
     config,
@@ -671,7 +671,7 @@ function openOverridePopover(anchor: HTMLElement, tableId: string) {
 }
 
 // Bordplan form change handlers
-[bpLabelEl, bpEventNameEl, bpColsEl, bpRowsEl, bpSeatsEl, bpColAislesEl, bpRowAislesEl, bpRemovedEl, bpNumModeEl, bpNumOriginEl, bpNumDirEl, bpNumClusterDirEl, bpNumStartEl, bpNumPrefixEl, bpNumSkipEl]
+[bpActiveEl, bpLabelEl, bpEventNameEl, bpColsEl, bpRowsEl, bpSeatsEl, bpColAislesEl, bpRowAislesEl, bpRemovedEl, bpNumModeEl, bpNumOriginEl, bpNumDirEl, bpNumClusterDirEl, bpNumStartEl, bpNumPrefixEl, bpNumSkipEl]
   .forEach(el => el.addEventListener('input', () => { setDirty(true); refreshPreview(); }));
 
 // ---- Cover form ----
@@ -681,7 +681,7 @@ function populateCoverForm(item: CoverItem) {
   deleteBtn.style.display = 'inline-flex';
   duplicateBtn.style.display = 'inline-flex';
   resetFocalBtn.style.display = 'none';
-  fActive.checked = !!item.active;
+  covActiveEl.checked = !!item.active;
   covLabelEl.value = item.label ?? '';
   covTitleEl.value = item.title ?? '';
   covSubtitleEl.value = item.subtitle ?? '';
@@ -690,7 +690,7 @@ function populateCoverForm(item: CoverItem) {
 }
 function readCoverForm(): Partial<CoverItem> {
   return {
-    active: fActive.checked,
+    active: covActiveEl.checked,
     label: covLabelEl.value,
     title: covTitleEl.value,
     subtitle: covSubtitleEl.value,
@@ -698,7 +698,7 @@ function readCoverForm(): Partial<CoverItem> {
     logoFile: covLogoFileEl.value || undefined,
   };
 }
-[covLabelEl, covTitleEl, covSubtitleEl, covAttributionEl, covLogoFileEl]
+[covActiveEl, covLabelEl, covTitleEl, covSubtitleEl, covAttributionEl, covLogoFileEl]
   .forEach(el => el.addEventListener('input', () => { setDirty(true); refreshPreview(); }));
 covSaveBtn.addEventListener('click', async () => {
   if (!selectedId) return;
