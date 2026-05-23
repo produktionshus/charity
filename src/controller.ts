@@ -326,16 +326,18 @@ function renderSidebar(state: any) {
   // Build once, then update classes / badges per state change.
   if (!lotList.dataset.built) {
     const groups: Array<{ label: string; slides: Array<{ slide: Slide; idx: number }> }> = [
+      { label: 'Bordplan', slides: [] },
       { label: 'Cover', slides: [] },
       { label: 'Sponsorer', slides: [] },
       { label: 'Lots', slides: [] },
       { label: 'Afslutning', slides: [] },
     ];
     SLIDES.forEach((s, i) => {
-      if (s.kind === 'cover') groups[0].slides.push({ slide: s, idx: i });
-      else if (s.kind === 'sponsor-index') groups[1].slides.push({ slide: s, idx: i });
-      else if (s.kind === 'lot') groups[2].slides.push({ slide: s, idx: i });
-      else if (s.kind === 'closing') groups[3].slides.push({ slide: s, idx: i });
+      if (s.kind === 'bordplan') groups[0].slides.push({ slide: s, idx: i });
+      else if (s.kind === 'cover') groups[1].slides.push({ slide: s, idx: i });
+      else if (s.kind === 'sponsor-index') groups[2].slides.push({ slide: s, idx: i });
+      else if (s.kind === 'lot') groups[3].slides.push({ slide: s, idx: i });
+      else if (s.kind === 'closing') groups[4].slides.push({ slide: s, idx: i });
     });
     for (const g of groups) {
       if (!g.slides.length) continue;
@@ -348,8 +350,18 @@ function renderSidebar(state: any) {
         row.className = 'lot-row';
         row.dataset.idx = String(idx);
         const lot = slide.kind === 'lot' ? lotById(slide.lotId!) : null;
-        const numLabel = lot ? `Lot ${displayNumFor(lot.id)}` : (slide.kind === 'cover' ? 'Cover' : slide.kind === 'sponsor-index' ? 'Sponsorer' : 'Afslutning');
-        const name = lot ? lot.title : (slide.kind === 'cover' ? 'Auktionens forside' : slide.kind === 'sponsor-index' ? 'Auktionens sponsorer' : 'Tak for i aften');
+        const numLabel = lot
+          ? `Lot ${displayNumFor(lot.id)}`
+          : (slide.kind === 'cover' ? 'Cover'
+            : slide.kind === 'sponsor-index' ? 'Sponsorer'
+            : slide.kind === 'bordplan' ? 'Bordplan'
+            : 'Afslutning');
+        const name = lot
+          ? lot.title
+          : (slide.kind === 'cover' ? 'Auktionens forside'
+            : slide.kind === 'sponsor-index' ? 'Auktionens sponsorer'
+            : slide.kind === 'bordplan' ? 'Bordplan'
+            : 'Tak for i aften');
         row.innerHTML = `
           <div class="lot-num-side">${lot ? displayNumFor(lot.id) : ''}</div>
           <div class="thumb">

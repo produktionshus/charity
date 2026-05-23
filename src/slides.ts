@@ -4,18 +4,32 @@
 // activation flips don't require any file rename.
 
 import lotsJson from './lots.json';
+import type { FloorPlanConfig } from './bordplan-engine';
 
-export type SlideKind = 'cover' | 'sponsor-index' | 'lot' | 'closing';
+export type SlideKind = 'cover' | 'sponsor-index' | 'lot' | 'closing' | 'bordplan';
 
 export interface Slide {
   id: string;
   kind: SlideKind;
-  lotId?: string;          // stable lot id (UUID or original digit)
-  displayNum?: string;     // derived display number, e.g. "03" or "07A"
+  lotId?: string;            // stable lot id (UUID or original digit)
+  displayNum?: string;       // derived display number, e.g. "03" or "07A"
+  itemId?: string;           // for non-lot items (bordplan etc.) — id from lots.json item
+}
+
+export interface BordplanItem {
+  id: string;
+  kind: 'bordplan';
+  active: boolean;
+  label?: string;            // human-friendly name shown in the generator
+  config: FloorPlanConfig;
+  overrides?: Record<string, { label?: string; active?: boolean }>;
+  eventName?: string;        // header text override
+  org?: string;
 }
 
 export interface Lot {
   id: string;
+  kind?: 'lot';                     // optional discriminator (default 'lot')
   title: string;
   subtitle: string;
   sponsor: string;
@@ -33,8 +47,19 @@ export interface Lot {
   heroScale?: number;               // zoom multiplier on the hero image, default 1.0
 }
 
-// All lots from the bank (active + inactive). Generator edits this list.
-export const ALL_LOTS = (lotsJson.lots as Lot[]);
+export type DeckItem = Lot | BordplanItem;
+function isLot(item: DeckItem): item is Lot {
+  return (item as any).kind === undefined || (item as any).kind === 'lot';
+}
+function isBordplan(item: DeckItem): item is BordplanItem {
+  return (item as any).kind === 'bordplan';
+}
+
+// All items from the bank (active + inactive). Generator edits this list.
+// Lots have no kind field (or 'lot'); bordplan items use kind='bordplan'.
+export const ALL_ITEMS: DeckItem[] = (lotsJson.lots as DeckItem[]);
+// Back-compat alias: most existing code treats this as a Lot[] list.
+export const ALL_LOTS = ALL_ITEMS.filter(isLot) as Lot[];
 
 // Compute display-num: active non-extra lots get sequential 01..NN by order;
 // extras get either their manually-set suffix or auto "<prev>A","<prev>B".
@@ -83,29 +108,47 @@ export function displayNumFor(id: string): string {
 }
 
 function buildSlides(): Slide[] {
-  return [
-    { id: 'cover', kind: 'cover' },
-    { id: 'sponsor-index', kind: 'sponsor-index' },
-    ...ACTIVE_LOTS.map(l => ({
-      id: `lot-${l.id}`,
-      kind: 'lot' as const,
-      lotId: l.id,
-      displayNum: DISPLAY_NUMS.get(l.id),
-    })),
-    { id: 'closing', kind: 'closing' },
-  ];
+  // Order: bordplan items first (entrance signage shown to guests as they
+  // arrive), then cover, sponsor-index, lot items, closing. Once the
+  // generator gains cross-type drag-reorder this fixed order is replaced
+  // with the item-array order verbatim.
+  const slides: Slide[] = [];
+  for (const item of ALL_ITEMS) {
+    if (item.active && isBordplan(item)) {
+      slides.push({ id: `bordplan-${item.id}`, kind: 'bordplan', itemId: item.id });
+    }
+  }
+  slides.push({ id: 'cover', kind: 'cover' });
+  slides.push({ id: 'sponsor-index', kind: 'sponsor-index' });
+  for (const item of ALL_ITEMS) {
+    if (item.active && isLot(item)) {
+      slides.push({
+        id: `lot-${item.id}`, kind: 'lot',
+        lotId: item.id, displayNum: DISPLAY_NUMS.get(item.id),
+      });
+    }
+  }
+  slides.push({ id: 'closing', kind: 'closing' });
+  return slides;
+}
+
+export function bordplanById(id: string): BordplanItem | undefined {
+  const item = ALL_ITEMS.find(i => i.id === id && isBordplan(i));
+  return item as BordplanItem | undefined;
 }
 
 export const SLIDES: Slide[] = buildSlides();
 
-// Pull the latest lot bank from the server and mutate the exported arrays /
+// Pull the latest items bank from the server and mutate the exported arrays /
 // maps in place so consumers see fresh data without a full page reload.
 export async function refreshLotsFromServer(): Promise<void> {
   const res = await fetch('/api/lots');
   if (!res.ok) return;
   const data = await res.json();
+  ALL_ITEMS.length = 0;
+  for (const i of data.lots) ALL_ITEMS.push(i);
   ALL_LOTS.length = 0;
-  for (const l of data.lots) ALL_LOTS.push(l);
+  for (const i of ALL_ITEMS) if (isLot(i)) ALL_LOTS.push(i);
   ACTIVE_LOTS.length = 0;
   for (const l of ALL_LOTS.filter(l => l.active)) ACTIVE_LOTS.push(l);
   DISPLAY_NUMS.clear();

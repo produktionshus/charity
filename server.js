@@ -76,9 +76,7 @@ function rebuildAuctionState() {
   }
   // Rebuild slide list
   serverSlides.length = 0;
-  serverSlides.push({ kind: 'cover' }, { kind: 'sponsor-index' });
-  for (const l of activeLots()) serverSlides.push({ kind: 'lot', lotId: l.id });
-  serverSlides.push({ kind: 'closing' });
+  for (const s of buildServerSlides()) serverSlides.push(s);
 }
 
 const initialLots = {};
@@ -89,12 +87,19 @@ for (const l of lots()) {
 }
 const state = { slideIdx: 0, buildStep: 0, lots: initialLots, sounds: initialSounds, soundDefaults: {} };
 
-const serverSlides = [
-  { kind: 'cover' },
-  { kind: 'sponsor-index' },
-  ...activeLots().map(l => ({ kind: 'lot', lotId: l.id })),
-  { kind: 'closing' },
-];
+function buildServerSlides() {
+  const out = [];
+  for (const item of lots()) {
+    if (item.active && item.kind === 'bordplan') out.push({ kind: 'bordplan', itemId: item.id });
+  }
+  out.push({ kind: 'cover' }, { kind: 'sponsor-index' });
+  for (const item of lots()) {
+    if (item.active && (!item.kind || item.kind === 'lot')) out.push({ kind: 'lot', lotId: item.id });
+  }
+  out.push({ kind: 'closing' });
+  return out;
+}
+const serverSlides = buildServerSlides();
 
 function freshLots() {
   const out = {};

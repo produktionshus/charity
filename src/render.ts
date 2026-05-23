@@ -2,8 +2,9 @@
 // Each animated element carries class="build-item" and an inline
 // transition-delay derived from its build group + in-group index.
 
-import { LOTS, SLIDES, lotById, displayNumFor, type Slide, type Lot } from './slides';
+import { LOTS, SLIDES, lotById, bordplanById, displayNumFor, type Slide, type Lot } from './slides';
 import { lotLayout, isMirrored, photoFocal, HORIZON_TITLE_SIZE_OVERRIDE } from './layout';
+import { renderBordplanSlide } from './render-bordplan';
 
 const SLIDE_W_IN = 13.333;
 const SLIDE_H_IN = 7.5;
@@ -267,6 +268,14 @@ export function renderSlide(slide: Slide, lotOverride?: Lot, displayNumOverride?
     root.innerHTML = layout === 'horizon' ? renderHorizonLot(lot, displayNum) : renderProfileLot(lot, displayNum);
   } else if (slide.kind === 'closing') {
     root.innerHTML = renderClosing();
+  } else if (slide.kind === 'bordplan') {
+    const item = bordplanById(slide.itemId!);
+    if (!item) return root;
+    root.innerHTML = renderBordplanSlide(item.config, {
+      eventName: item.eventName,
+      org: item.org,
+      overrides: item.overrides,
+    });
   }
   return root;
 }
