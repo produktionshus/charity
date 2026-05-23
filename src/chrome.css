@@ -7,6 +7,26 @@
    untouched — these are additive.
    ============================================ */
 
+/* Local font bundle — works offline at the venue, no Google Fonts CDN. */
+@font-face { font-family: 'Inter'; font-style: normal; font-weight: 400; font-display: block;
+  src: url('/fonts/inter/400.ttf') format('truetype'); }
+@font-face { font-family: 'Inter'; font-style: normal; font-weight: 500; font-display: block;
+  src: url('/fonts/inter/500.ttf') format('truetype'); }
+@font-face { font-family: 'Inter'; font-style: normal; font-weight: 600; font-display: block;
+  src: url('/fonts/inter/600.ttf') format('truetype'); }
+@font-face { font-family: 'Inter'; font-style: normal; font-weight: 700; font-display: block;
+  src: url('/fonts/inter/700.ttf') format('truetype'); }
+@font-face { font-family: 'Inter'; font-style: normal; font-weight: 800; font-display: block;
+  src: url('/fonts/inter/800.ttf') format('truetype'); }
+@font-face { font-family: 'JetBrains Mono'; font-style: normal; font-weight: 400; font-display: block;
+  src: url('/fonts/jetbrains-mono/400.ttf') format('truetype'); }
+@font-face { font-family: 'JetBrains Mono'; font-style: normal; font-weight: 500; font-display: block;
+  src: url('/fonts/jetbrains-mono/500.ttf') format('truetype'); }
+@font-face { font-family: 'JetBrains Mono'; font-style: normal; font-weight: 600; font-display: block;
+  src: url('/fonts/jetbrains-mono/600.ttf') format('truetype'); }
+@font-face { font-family: 'Cormorant Garamond'; font-style: italic; font-weight: 500; font-display: block;
+  src: url('/fonts/cormorant-garamond/italic-500.ttf') format('truetype'); }
+
 :root {
   --bg-deep:     #03100B;
   --bg-base:     #061812;
