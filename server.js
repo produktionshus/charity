@@ -179,6 +179,17 @@ app.post('/api/lots', (req, res) => {
       config: req.body.config || {},
       overrides: req.body.overrides || {},
     };
+  } else if (kind === 'cover') {
+    newItem = {
+      id: uuidv4(),
+      kind: 'cover',
+      active: req.body.active ?? true,
+      label: req.body.label || 'Cover',
+      title: req.body.title || 'AUKTION',
+      subtitle: req.body.subtitle || 'STJERNEGOLF 2026',
+      attribution: req.body.attribution || '',
+      logoFile: req.body.logoFile || 'artsolo-logo.png',
+    };
   } else {
     newItem = {
       id: uuidv4(),

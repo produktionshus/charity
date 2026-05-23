@@ -27,6 +27,17 @@ export interface BordplanItem {
   org?: string;
 }
 
+export interface CoverItem {
+  id: string;
+  kind: 'cover';
+  active: boolean;
+  label?: string;            // generator label
+  title?: string;            // big word, default "AUKTION"
+  subtitle?: string;         // default "STJERNEGOLF 2026"
+  attribution?: string;      // default "AUKTION VED KASPER NIELSEN"
+  logoFile?: string;         // relative to /assets/, default 'artsolo-logo.png'
+}
+
 export interface Lot {
   id: string;
   kind?: 'lot';                     // optional discriminator (default 'lot')
@@ -47,12 +58,15 @@ export interface Lot {
   heroScale?: number;               // zoom multiplier on the hero image, default 1.0
 }
 
-export type DeckItem = Lot | BordplanItem;
+export type DeckItem = Lot | BordplanItem | CoverItem;
 function isLot(item: DeckItem): item is Lot {
   return (item as any).kind === undefined || (item as any).kind === 'lot';
 }
 function isBordplan(item: DeckItem): item is BordplanItem {
   return (item as any).kind === 'bordplan';
+}
+function isCover(item: DeckItem): item is CoverItem {
+  return (item as any).kind === 'cover';
 }
 
 // All items from the bank (active + inactive). Generator edits this list.
@@ -108,26 +122,36 @@ export function displayNumFor(id: string): string {
 }
 
 function buildSlides(): Slide[] {
-  // Order: bordplan items first (entrance signage shown to guests as they
-  // arrive), then cover, sponsor-index, lot items, closing. Once the
-  // generator gains cross-type drag-reorder this fixed order is replaced
-  // with the item-array order verbatim.
+  // Items emit in their array order, so dragging in the generator literally
+  // shapes the deck flow. The implicit slots (sponsor-index between covers
+  // and lots; closing at the end) sit at fixed positions for now —
+  // turning them into items is a future step.
   const slides: Slide[] = [];
-  for (const item of ALL_ITEMS) {
-    if (item.active && isBordplan(item)) {
-      slides.push({ id: `bordplan-${item.id}`, kind: 'bordplan', itemId: item.id });
+  let hasCover = false;
+  let lotsEmitted = false;
+  const flushSponsorIndex = () => {
+    if (!slides.some(s => s.kind === 'sponsor-index')) {
+      slides.push({ id: 'sponsor-index', kind: 'sponsor-index' });
     }
-  }
-  slides.push({ id: 'cover', kind: 'cover' });
-  slides.push({ id: 'sponsor-index', kind: 'sponsor-index' });
+  };
   for (const item of ALL_ITEMS) {
-    if (item.active && isLot(item)) {
+    if (!item.active) continue;
+    if (isBordplan(item)) {
+      slides.push({ id: `bordplan-${item.id}`, kind: 'bordplan', itemId: item.id });
+    } else if (isCover(item)) {
+      slides.push({ id: `cover-${item.id}`, kind: 'cover', itemId: item.id });
+      hasCover = true;
+    } else if (isLot(item)) {
+      // First lot encountered triggers sponsor-index just before it.
+      if (!lotsEmitted) { flushSponsorIndex(); lotsEmitted = true; }
       slides.push({
         id: `lot-${item.id}`, kind: 'lot',
         lotId: item.id, displayNum: DISPLAY_NUMS.get(item.id),
       });
     }
   }
+  if (!hasCover) slides.unshift({ id: 'cover', kind: 'cover' });
+  if (!lotsEmitted) flushSponsorIndex();
   slides.push({ id: 'closing', kind: 'closing' });
   return slides;
 }
@@ -135,6 +159,10 @@ function buildSlides(): Slide[] {
 export function bordplanById(id: string): BordplanItem | undefined {
   const item = ALL_ITEMS.find(i => i.id === id && isBordplan(i));
   return item as BordplanItem | undefined;
+}
+export function coverById(id: string): CoverItem | undefined {
+  const item = ALL_ITEMS.find(i => i.id === id && isCover(i));
+  return item as CoverItem | undefined;
 }
 
 export const SLIDES: Slide[] = buildSlides();

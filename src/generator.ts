@@ -2,8 +2,8 @@
 // Reads + writes through /api/lots; broadcasts ws 'lots-updated' so the
 // viewer / auctioneer / controller refresh themselves on save.
 
-import { renderSlide, fitToViewport } from './render';
-import type { Lot, BordplanItem, DeckItem } from './slides';
+import { renderSlide, renderCover, fitToViewport } from './render';
+import type { Lot, BordplanItem, CoverItem, DeckItem } from './slides';
 import { renderBordplanSlide } from './render-bordplan';
 import type { FloorPlanConfig } from './bordplan-engine';
 
@@ -58,17 +58,28 @@ let lotsBank: Lot[] = [];     // filtered alias = items where kind!=='bordplan'
 let selectedId: string | null = null;
 let dirty = false;
 
-function itemKind(item: DeckItem | undefined): 'lot' | 'bordplan' {
+function itemKind(item: DeckItem | undefined): 'lot' | 'bordplan' | 'cover' {
   if (item && (item as any).kind === 'bordplan') return 'bordplan';
+  if (item && (item as any).kind === 'cover') return 'cover';
   return 'lot';
 }
 function isBordplanItem(item: DeckItem | undefined): item is BordplanItem {
   return !!item && (item as any).kind === 'bordplan';
 }
+function isCoverItem(item: DeckItem | undefined): item is CoverItem {
+  return !!item && (item as any).kind === 'cover';
+}
 
 // ---- Bordplan form DOM ----
 const formLot = document.getElementById('gen-form')!;
 const formBordplan = document.getElementById('gen-form-bordplan')!;
+const formCover = document.getElementById('gen-form-cover')!;
+const covLabelEl       = document.getElementById('cov-label')      as HTMLInputElement;
+const covTitleEl       = document.getElementById('cov-title')      as HTMLInputElement;
+const covSubtitleEl    = document.getElementById('cov-subtitle')   as HTMLInputElement;
+const covAttributionEl = document.getElementById('cov-attribution') as HTMLInputElement;
+const covLogoFileEl    = document.getElementById('cov-logo-file')  as HTMLInputElement;
+const covSaveBtn       = document.getElementById('cov-save')!;
 const bpLabelEl     = document.getElementById('bp-label')      as HTMLInputElement;
 const bpEventNameEl = document.getElementById('bp-event-name') as HTMLInputElement;
 const bpColsEl      = document.getElementById('bp-cols')       as HTMLInputElement;
@@ -218,6 +229,10 @@ function renderList() {
       dn = 'BP';
       title = item.label || item.eventName || '(uden navn)';
       badge = !item.active ? 'INACTIVE' : 'BORDPLAN';
+    } else if (isCoverItem(item)) {
+      dn = 'CV';
+      title = item.label || item.title || '(uden navn)';
+      badge = !item.active ? 'INACTIVE' : 'COVER';
     }
     row.innerHTML = `
       <span class="drag-handle">⋮⋮</span>
@@ -279,8 +294,9 @@ async function onDrop(e: DragEvent) {
   clearDropMarkers();
   const order = Array.from(listRows.querySelectorAll<HTMLElement>('.gen-row'))
     .map(el => el.dataset.id!);
-  const byId = new Map(lotsBank.map(l => [l.id, l]));
-  lotsBank = order.map(id => byId.get(id)!).filter(Boolean);
+  const byId = new Map(itemsBank.map(i => [i.id, i]));
+  itemsBank = order.map(id => byId.get(id)!).filter(Boolean);
+  lotsBank = itemsBank.filter(i => itemKind(i) === 'lot') as Lot[];
   try {
     await api('/api/lots/reorder', {
       method: 'POST',
@@ -308,13 +324,17 @@ function selectLot(id: string) {
   const item = itemsBank.find(i => i.id === id);
   if (!item) return;
   const kind = itemKind(item);
+  formLot.style.display = 'none';
+  formBordplan.style.display = 'none';
+  formCover.style.display = 'none';
   if (kind === 'bordplan') {
-    formLot.style.display = 'none';
     formBordplan.style.display = 'flex';
     populateBordplanForm(item as BordplanItem);
+  } else if (kind === 'cover') {
+    formCover.style.display = 'flex';
+    populateCoverForm(item as CoverItem);
   } else {
     formLot.style.display = 'flex';
-    formBordplan.style.display = 'none';
     populateForm(item as Lot);
   }
   refreshPreview();
@@ -444,6 +464,17 @@ function refreshPreview() {
     renderOverridesList(merged.overrides || {});
     return;
   }
+  if (isCoverItem(item)) {
+    const merged: CoverItem = { ...item, ...readCoverForm() };
+    const slideEl = document.createElement('div');
+    slideEl.className = 'slide-canvas slide-cover';
+    slideEl.classList.add('is-visible', 'no-build');
+    slideEl.innerHTML = renderCover(merged);
+    wrap.appendChild(slideEl);
+    requestAnimationFrame(() => fitToViewport(wrap, slideEl));
+    previewMeta.textContent = 'cover slide';
+    return;
+  }
   const baseLot = item as Lot;
   const livePatch = readForm();
   const merged: Lot = { ...baseLot, ...livePatch } as Lot;
@@ -461,7 +492,7 @@ function populateBordplanForm(item: BordplanItem) {
   editIdEl.textContent = item.id;
   editDisplayNumEl.textContent = 'BP';
   deleteBtn.style.display = 'inline-flex';
-  duplicateBtn.style.display = 'none';
+  duplicateBtn.style.display = 'inline-flex';
   resetFocalBtn.style.display = 'none';
   fActive.checked = !!item.active;
   // Reuse the active checkbox in the lot form? Bordplan has no extra/title etc.
@@ -643,6 +674,53 @@ function openOverridePopover(anchor: HTMLElement, tableId: string) {
 [bpLabelEl, bpEventNameEl, bpColsEl, bpRowsEl, bpSeatsEl, bpColAislesEl, bpRowAislesEl, bpRemovedEl, bpNumModeEl, bpNumOriginEl, bpNumDirEl, bpNumClusterDirEl, bpNumStartEl, bpNumPrefixEl, bpNumSkipEl]
   .forEach(el => el.addEventListener('input', () => { setDirty(true); refreshPreview(); }));
 
+// ---- Cover form ----
+function populateCoverForm(item: CoverItem) {
+  editIdEl.textContent = item.id;
+  editDisplayNumEl.textContent = 'COVER';
+  deleteBtn.style.display = 'inline-flex';
+  duplicateBtn.style.display = 'inline-flex';
+  resetFocalBtn.style.display = 'none';
+  fActive.checked = !!item.active;
+  covLabelEl.value = item.label ?? '';
+  covTitleEl.value = item.title ?? '';
+  covSubtitleEl.value = item.subtitle ?? '';
+  covAttributionEl.value = item.attribution ?? '';
+  covLogoFileEl.value = item.logoFile ?? '';
+}
+function readCoverForm(): Partial<CoverItem> {
+  return {
+    active: fActive.checked,
+    label: covLabelEl.value,
+    title: covTitleEl.value,
+    subtitle: covSubtitleEl.value,
+    attribution: covAttributionEl.value,
+    logoFile: covLogoFileEl.value || undefined,
+  };
+}
+[covLabelEl, covTitleEl, covSubtitleEl, covAttributionEl, covLogoFileEl]
+  .forEach(el => el.addEventListener('input', () => { setDirty(true); refreshPreview(); }));
+covSaveBtn.addEventListener('click', async () => {
+  if (!selectedId) return;
+  const patch = readCoverForm();
+  try {
+    statusEl.textContent = 'Gemmer cover…';
+    const updated = await api(`/api/lots/${encodeURIComponent(selectedId)}`, {
+      method: 'PUT',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(patch),
+    });
+    const idx = itemsBank.findIndex(i => i.id === selectedId);
+    if (idx >= 0) itemsBank[idx] = updated;
+    setDirty(false);
+    renderList();
+    refreshPreview();
+    statusEl.textContent = 'Gemt';
+  } catch (e: any) {
+    statusEl.textContent = 'Save failed: ' + e.message;
+  }
+});
+
 bpSaveBtn.addEventListener('click', async () => {
   if (!selectedId) return;
   const patch = readBordplanForm();
@@ -714,6 +792,32 @@ saveBtn.addEventListener('click', async () => {
 });
 
 // ---- New / Delete ----
+const newCoverBtn = document.getElementById('new-cover')!;
+newCoverBtn.addEventListener('click', async () => {
+  try {
+    const created = await api('/api/lots', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        kind: 'cover',
+        active: true,
+        label: 'Cover',
+        title: 'AUKTION',
+        subtitle: 'STJERNEGOLF 2026',
+        attribution: 'AUKTION VED KASPER NIELSEN',
+        logoFile: 'artsolo-logo.png',
+      } as any),
+    });
+    itemsBank.push(created);
+    selectedId = created.id;
+    renderList();
+    selectLot(created.id);
+    statusEl.textContent = 'Cover oprettet';
+  } catch (e: any) {
+    statusEl.textContent = 'Create cover failed: ' + e.message;
+  }
+});
+
 const newBordplanBtn = document.getElementById('new-bordplan')!;
 newBordplanBtn.addEventListener('click', async () => {
   try {
@@ -773,27 +877,45 @@ newLotBtn.addEventListener('click', async () => {
 // ---- Duplicate / Reset focal ----
 duplicateBtn.addEventListener('click', async () => {
   if (!selectedId) return;
-  const lot = lotsBank.find(l => l.id === selectedId);
-  if (!lot) return;
+  const item = itemsBank.find(i => i.id === selectedId);
+  if (!item) return;
   if (dirty && !confirm('Du har ugemte ændringer. Duplicate uden at gemme dem?')) return;
-  const dup = {
-    ...lot,
-    id: undefined,    // server assigns new UUID
-    title: lot.title + ' (kopi)',
-    active: false,
-  };
-  delete (dup as any).id;
+  let dup: any;
+  if (isBordplanItem(item)) {
+    dup = {
+      kind: 'bordplan',
+      active: false,
+      label: (item.label || 'Bordplan') + ' (kopi)',
+      eventName: item.eventName,
+      org: item.org,
+      config: JSON.parse(JSON.stringify(item.config)),
+      overrides: JSON.parse(JSON.stringify(item.overrides || {})),
+    };
+  } else if (isCoverItem(item)) {
+    dup = {
+      kind: 'cover',
+      active: false,
+      label: (item.label || 'Cover') + ' (kopi)',
+      title: item.title,
+      subtitle: item.subtitle,
+      attribution: item.attribution,
+      logoFile: item.logoFile,
+    };
+  } else {
+    const lot = item as Lot;
+    dup = { ...lot, title: lot.title + ' (kopi)', active: false };
+    delete dup.id;
+  }
   try {
     const created = await api('/api/lots', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify(dup),
     });
-    lotsBank.push(created);
+    itemsBank.push(created);
     selectedId = created.id;
     renderList();
-    populateForm(created);
-    refreshPreview();
+    selectLot(created.id);
     statusEl.textContent = 'Duplikeret';
   } catch (e: any) {
     statusEl.textContent = 'Duplicate failed: ' + e.message;

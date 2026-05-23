@@ -2,7 +2,7 @@
 // Each animated element carries class="build-item" and an inline
 // transition-delay derived from its build group + in-group index.
 
-import { LOTS, SLIDES, lotById, bordplanById, displayNumFor, type Slide, type Lot } from './slides';
+import { LOTS, SLIDES, lotById, bordplanById, coverById, displayNumFor, type Slide, type Lot, type CoverItem } from './slides';
 import { lotLayout, isMirrored, photoFocal, HORIZON_TITLE_SIZE_OVERRIDE } from './layout';
 import { renderBordplanSlide } from './render-bordplan';
 
@@ -236,14 +236,18 @@ function renderClosing(): string {
 }
 
 // ---- Cover ----
-function renderCover(): string {
+export function renderCover(item?: CoverItem): string {
+  const title = item?.title ?? 'AUKTION';
+  const sub   = item?.subtitle ?? 'STJERNEGOLF 2026';
+  const attr  = item?.attribution ?? 'AUKTION VED KASPER NIELSEN';
+  const logo  = item?.logoFile ?? 'artsolo-logo.png';
   return `
     <div class="cover-content">
-      <h1 class="cover-title build-item" style="transition-delay:${delay(0)}ms">AUKTION</h1>
+      <h1 class="cover-title build-item" style="transition-delay:${delay(0)}ms">${title}</h1>
       <div class="accent-line build-item" style="transition-delay:${delay(1)}ms"></div>
-      <p class="cover-sub build-item" style="transition-delay:${delay(2)}ms">STJERNEGOLF 2026</p>
-      <p class="cover-attr build-item" style="transition-delay:${delay(3)}ms">AUKTION VED KASPER NIELSEN</p>
-      <img class="cover-artsolo build-item" style="transition-delay:${delay(4)}ms" src="/assets/artsolo-logo.png" alt="artsolo" />
+      <p class="cover-sub build-item" style="transition-delay:${delay(2)}ms">${sub}</p>
+      <p class="cover-attr build-item" style="transition-delay:${delay(3)}ms">${attr}</p>
+      ${logo ? `<img class="cover-artsolo build-item" style="transition-delay:${delay(4)}ms" src="/assets/${logo}" alt="" />` : ''}
     </div>
   `;
 }
@@ -254,7 +258,8 @@ export function renderSlide(slide: Slide, lotOverride?: Lot, displayNumOverride?
   const root = document.createElement('div');
   root.className = `slide-canvas slide-${slide.kind}`;
   if (slide.kind === 'cover') {
-    root.innerHTML = renderCover();
+    const item = slide.itemId ? coverById(slide.itemId) : undefined;
+    root.innerHTML = renderCover(item);
   } else if (slide.kind === 'sponsor-index') {
     root.innerHTML = renderSponsorIndex();
   } else if (slide.kind === 'lot') {

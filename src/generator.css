@@ -325,6 +325,24 @@ body.generator {
   border-color: var(--green-500);
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--green-500) 15%, transparent);
 }
+/* KidsAid theme — bg-input is white, text was also white. Force dark
+   green text + placeholder so inputs stay readable in the cream theme. */
+body.theme-kidsaid .gen-form input[type='text'],
+body.theme-kidsaid .gen-form input[type='number'],
+body.theme-kidsaid .gen-form select,
+body.theme-kidsaid .gen-form textarea {
+  color: #1F5024 !important;
+  background: #FFFFFF !important;
+}
+body.theme-kidsaid .gen-form input::placeholder,
+body.theme-kidsaid .gen-form textarea::placeholder {
+  color: rgba(31, 80, 36, 0.45) !important;
+}
+body.theme-kidsaid .gen-edit-id code {
+  color: #1F5024 !important;
+  background: #FFFFFF !important;
+  border: 1px solid rgba(31, 80, 36, 0.2);
+}
 .gen-form textarea { resize: vertical; min-height: 60px; font-family: var(--font-display-c); }
 .field-hint {
   color: var(--text-c4);

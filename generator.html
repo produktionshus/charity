@@ -28,6 +28,7 @@
       <button class="link-btn" id="open-controller">Controller ↗</button>
       <button class="nav-btn primary" id="new-lot">+ Nyt lot</button>
       <button class="nav-btn" id="new-bordplan">+ Nyt bordplan</button>
+      <button class="nav-btn" id="new-cover">+ Nyt cover</button>
     </header>
 
     <aside class="gen-list">
@@ -213,6 +214,28 @@
           <div class="row gen-save-row">
             <button class="nav-btn primary" id="bp-save">Gem bordplan</button>
             <span class="gen-save-meta" id="bp-save-meta"></span>
+          </div>
+        </div>
+
+        <!-- Cover form -->
+        <div class="gen-form" id="gen-form-cover" style="display:none">
+          <label>Label (intern)
+            <input type="text" id="cov-label" placeholder="fx Cover" />
+          </label>
+          <label>Hovedord (stort)
+            <input type="text" id="cov-title" placeholder="AUKTION" />
+          </label>
+          <label>Undertitel
+            <input type="text" id="cov-subtitle" placeholder="STJERNEGOLF 2026" />
+          </label>
+          <label>Auktionarius / attribution
+            <input type="text" id="cov-attribution" placeholder="AUKTION VED KASPER NIELSEN" />
+          </label>
+          <label>Logo-fil (relativt til /assets/)
+            <input type="text" id="cov-logo-file" placeholder="artsolo-logo.png" />
+          </label>
+          <div class="row gen-save-row">
+            <button class="nav-btn primary" id="cov-save">Gem cover</button>
           </div>
         </div>
       </div>

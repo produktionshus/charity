@@ -1,6 +1,48 @@
 {
   "lots": [
     {
+      "id": "bordplan-stjernegolf-2026",
+      "kind": "bordplan",
+      "active": true,
+      "label": "Stjernegolf 2026 bordplan",
+      "eventName": "STJERNEGOLF 2026",
+      "org": "KidsAid × Luminance",
+      "config": {
+        "cols": 9,
+        "rows": 11,
+        "seatsPerTable": 4,
+        "colAislesAfter": [],
+        "rowAislesAfter": [
+          3,
+          6
+        ],
+        "removedCells": [
+          {
+            "col": 3,
+            "row": 10
+          },
+          {
+            "col": 4,
+            "row": 10
+          },
+          {
+            "col": 5,
+            "row": 10
+          }
+        ],
+        "numbering": {
+          "mode": "cluster-continuous",
+          "origin": "top-left",
+          "direction": "col-major",
+          "clusterDirection": "col-major",
+          "startAt": 1,
+          "prefix": "",
+          "skip": []
+        }
+      },
+      "overrides": {}
+    },
+    {
       "title": "4 VIP-billetter til Smukfest og overnatning i bøgeskoven",
       "subtitle": "Pakken inkluderer for 4 personer",
       "sponsor": "Smukfest",
@@ -725,48 +767,6 @@
       "mirrored": false,
       "focal": "64% 83%",
       "heroScale": 1.1
-    },
-    {
-      "id": "bordplan-stjernegolf-2026",
-      "kind": "bordplan",
-      "active": true,
-      "label": "Stjernegolf 2026 bordplan",
-      "eventName": "STJERNEGOLF 2026",
-      "org": "KidsAid × Luminance",
-      "config": {
-        "cols": 9,
-        "rows": 11,
-        "seatsPerTable": 4,
-        "colAislesAfter": [],
-        "rowAislesAfter": [
-          3,
-          6
-        ],
-        "removedCells": [
-          {
-            "col": 3,
-            "row": 10
-          },
-          {
-            "col": 4,
-            "row": 10
-          },
-          {
-            "col": 5,
-            "row": 10
-          }
-        ],
-        "numbering": {
-          "mode": "cluster-continuous",
-          "origin": "top-left",
-          "direction": "col-major",
-          "clusterDirection": "col-major",
-          "startAt": 1,
-          "prefix": "",
-          "skip": []
-        }
-      },
-      "overrides": {}
     }
   ]
 }
