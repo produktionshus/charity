@@ -3,7 +3,9 @@
 // viewer / auctioneer / controller refresh themselves on save.
 
 import { renderSlide, fitToViewport } from './render';
-import type { Lot } from './slides';
+import type { Lot, BordplanItem, DeckItem } from './slides';
+import { renderBordplanSlide } from './render-bordplan';
+import type { FloorPlanConfig } from './bordplan-engine';
 
 // Mirror controller's saved theme for visual consistency.
 const savedTheme = localStorage.getItem('controller.theme') || 'forest';
@@ -49,9 +51,65 @@ const heroPreview = document.getElementById('hero-preview') as HTMLImageElement;
 const logoPreview = document.getElementById('logo-preview') as HTMLImageElement;
 
 // ---- State ----
-let lotsBank: Lot[] = [];
+// itemsBank holds the full deck: lots + bordplan items (potentially other
+// types later). Keep lotsBank alias for the existing UI code paths.
+let itemsBank: DeckItem[] = [];
+let lotsBank: Lot[] = [];     // filtered alias = items where kind!=='bordplan'
 let selectedId: string | null = null;
 let dirty = false;
+
+function itemKind(item: DeckItem | undefined): 'lot' | 'bordplan' {
+  if (item && (item as any).kind === 'bordplan') return 'bordplan';
+  return 'lot';
+}
+function isBordplanItem(item: DeckItem | undefined): item is BordplanItem {
+  return !!item && (item as any).kind === 'bordplan';
+}
+
+// ---- Bordplan form DOM ----
+const formLot = document.getElementById('gen-form')!;
+const formBordplan = document.getElementById('gen-form-bordplan')!;
+const bpLabelEl     = document.getElementById('bp-label')      as HTMLInputElement;
+const bpEventNameEl = document.getElementById('bp-event-name') as HTMLInputElement;
+const bpColsEl      = document.getElementById('bp-cols')       as HTMLInputElement;
+const bpRowsEl      = document.getElementById('bp-rows')       as HTMLInputElement;
+const bpSeatsEl     = document.getElementById('bp-seats')      as HTMLInputElement;
+const bpColAislesEl = document.getElementById('bp-col-aisles') as HTMLInputElement;
+const bpRowAislesEl = document.getElementById('bp-row-aisles') as HTMLInputElement;
+const bpRemovedEl   = document.getElementById('bp-removed')    as HTMLTextAreaElement;
+const bpNumModeEl   = document.getElementById('bp-num-mode')   as HTMLSelectElement;
+const bpNumOriginEl = document.getElementById('bp-num-origin') as HTMLSelectElement;
+const bpNumDirEl    = document.getElementById('bp-num-dir')    as HTMLSelectElement;
+const bpNumClusterDirEl = document.getElementById('bp-num-clusterdir') as HTMLSelectElement;
+const bpNumStartEl  = document.getElementById('bp-num-start')  as HTMLInputElement;
+const bpNumPrefixEl = document.getElementById('bp-num-prefix') as HTMLInputElement;
+const bpNumSkipEl   = document.getElementById('bp-num-skip')   as HTMLInputElement;
+const bpOverridesListEl = document.getElementById('bp-overrides-list')!;
+const bpOverridesResetBtn = document.getElementById('bp-overrides-reset')!;
+const bpSaveBtn     = document.getElementById('bp-save')!;
+const bpSaveMetaEl  = document.getElementById('bp-save-meta')!;
+
+function parseIntList(str: string): number[] {
+  if (!str.trim()) return [];
+  return str.split(/[,\s]+/).map(s => parseInt(s, 10)).filter(n => Number.isFinite(n));
+}
+function parseIntList1(str: string): number[] {
+  return parseIntList(str).map(n => n - 1);
+}
+function parseCellList1(str: string): Array<{ col: number; row: number }> {
+  if (!str.trim()) return [];
+  return str.split(/[;\n]+/).map(pair => {
+    const p = pair.split(/[,\s]+/).map(s => parseInt(s, 10)).filter(n => Number.isFinite(n));
+    if (p.length < 2) return null;
+    return { col: p[0] - 1, row: p[1] - 1 };
+  }).filter(Boolean) as Array<{ col: number; row: number }>;
+}
+function formatIntList1(arr: number[]): string {
+  return (arr || []).map(n => n + 1).join(', ');
+}
+function formatCellList1(arr: Array<{ col: number; row: number }>): string {
+  return (arr || []).map(c => `${c.col + 1},${c.row + 1}`).join('; ');
+}
 
 // ---- Title <-> markdown conversion (bold via **...**, break via newline) ----
 function partsToMarkdown(parts: Lot['titleParts']): string {
@@ -99,10 +157,11 @@ async function loadBank() {
   statusEl.textContent = 'Henter…';
   try {
     const data = await api('/api/lots');
-    lotsBank = data.lots;
-    statusEl.textContent = `${lotsBank.length} lots indlæst`;
+    itemsBank = data.lots;
+    lotsBank = itemsBank.filter(i => itemKind(i) === 'lot') as Lot[];
+    statusEl.textContent = `${itemsBank.length} items indlæst (${lotsBank.length} lots)`;
     renderList();
-    if (!selectedId && lotsBank.length) selectLot(lotsBank[0].id);
+    if (!selectedId && itemsBank.length) selectLot(itemsBank[0].id);
     else if (selectedId) selectLot(selectedId);
   } catch (e: any) {
     statusEl.textContent = 'Fejl: ' + e.message;
@@ -135,24 +194,38 @@ function computeDisplayNums(): Map<string, string> {
 function renderList() {
   const displayNums = computeDisplayNums();
   listRows.innerHTML = '';
-  listMeta.textContent = `${lotsBank.filter(l => l.active).length} aktive · ${lotsBank.length} total`;
-  for (const lot of lotsBank) {
+  const activeCount = itemsBank.filter(i => i.active).length;
+  listMeta.textContent = `${activeCount} aktive · ${itemsBank.length} total`;
+  for (const item of itemsBank) {
     const row = document.createElement('div');
     row.className = 'gen-row';
-    row.dataset.id = lot.id;
+    row.dataset.id = item.id;
     row.draggable = true;
-    if (lot.id === selectedId) row.classList.add('selected');
-    if (!lot.active) row.classList.add('inactive');
-    if (lot.extra) row.classList.add('extra');
-    const dn = displayNums.get(lot.id) ?? '—';
-    const badge = !lot.active ? 'INACTIVE' : lot.extra ? 'EXTRA' : '';
+    if (item.id === selectedId) row.classList.add('selected');
+    if (!item.active) row.classList.add('inactive');
+    const kind = itemKind(item);
+    row.classList.add(`kind-${kind}`);
+    let dn = '—';
+    let title = '';
+    let badge = !item.active ? 'INACTIVE' : '';
+    if (kind === 'lot') {
+      const lot = item as Lot;
+      if (lot.extra) row.classList.add('extra');
+      dn = displayNums.get(lot.id) ?? '—';
+      title = lot.title || '(uden titel)';
+      badge = !lot.active ? 'INACTIVE' : lot.extra ? 'EXTRA' : '';
+    } else if (isBordplanItem(item)) {
+      dn = 'BP';
+      title = item.label || item.eventName || '(uden navn)';
+      badge = !item.active ? 'INACTIVE' : 'BORDPLAN';
+    }
     row.innerHTML = `
       <span class="drag-handle">⋮⋮</span>
       <span class="gen-row-num">${dn}</span>
-      <span class="gen-row-title">${escapeHtml(lot.title || '(uden titel)')}</span>
+      <span class="gen-row-title">${escapeHtml(title)}</span>
       <span class="gen-row-badge">${badge}</span>
     `;
-    row.addEventListener('click', () => selectLot(lot.id));
+    row.addEventListener('click', () => selectLot(item.id));
     row.addEventListener('dragstart', onDragStart);
     row.addEventListener('dragover', onDragOver);
     row.addEventListener('drop', onDrop);
@@ -229,14 +302,23 @@ function onDragEnd(e: DragEvent) {
 // ---- Select + form binding ----
 function selectLot(id: string) {
   if (dirty && id !== selectedId) {
-    if (!confirm('Du har ugemte ændringer. Skift lot og kassér?')) return;
+    if (!confirm('Du har ugemte ændringer. Skift item og kassér?')) return;
   }
   selectedId = id;
-  const lot = lotsBank.find(l => l.id === id);
-  if (!lot) return;
-  populateForm(lot);
+  const item = itemsBank.find(i => i.id === id);
+  if (!item) return;
+  const kind = itemKind(item);
+  if (kind === 'bordplan') {
+    formLot.style.display = 'none';
+    formBordplan.style.display = 'flex';
+    populateBordplanForm(item as BordplanItem);
+  } else {
+    formLot.style.display = 'flex';
+    formBordplan.style.display = 'none';
+    populateForm(item as Lot);
+  }
   refreshPreview();
-  renderList();   // update selected highlight
+  renderList();
   setDirty(false);
   renderValidation();
 }
@@ -341,14 +423,30 @@ function escapeHtml(s: string): string {
 
 function refreshPreview() {
   if (!selectedId) return;
-  const baseLot = lotsBank.find(l => l.id === selectedId);
-  if (!baseLot) return;
-  const livePatch = readForm();
-  const merged: Lot = { ...baseLot, ...livePatch } as Lot;
+  const item = itemsBank.find(i => i.id === selectedId);
+  if (!item) return;
   previewFrame.innerHTML = '';
   const wrap = document.createElement('div');
   wrap.className = 'slide-frame';
   previewFrame.appendChild(wrap);
+  if (isBordplanItem(item)) {
+    const merged: BordplanItem = { ...item, ...readBordplanForm() };
+    const slideEl = document.createElement('div');
+    slideEl.className = 'slide-canvas slide-bordplan';
+    slideEl.classList.add('is-visible', 'no-build');
+    slideEl.innerHTML = renderBordplanSlide(merged.config, {
+      eventName: merged.eventName, org: merged.org, overrides: merged.overrides,
+    });
+    wrap.appendChild(slideEl);
+    requestAnimationFrame(() => fitToViewport(wrap, slideEl));
+    previewMeta.textContent = `bordplan · ${merged.config.cols}×${merged.config.rows}`;
+    wireBordplanTableClicks(slideEl);
+    renderOverridesList(merged.overrides || {});
+    return;
+  }
+  const baseLot = item as Lot;
+  const livePatch = readForm();
+  const merged: Lot = { ...baseLot, ...livePatch } as Lot;
   const slide = { id: `lot-${merged.id}`, kind: 'lot' as const, lotId: merged.id };
   const dn = computeDisplayNums().get(merged.id) ?? '—';
   previewMeta.textContent = `${merged.layout || 'horizon'}${merged.mirrored ? ' · mirror' : ''} · vises som ${dn}`;
@@ -357,6 +455,216 @@ function refreshPreview() {
   wrap.appendChild(slideEl);
   requestAnimationFrame(() => fitToViewport(wrap, slideEl));
 }
+
+// ---- Bordplan form ----
+function populateBordplanForm(item: BordplanItem) {
+  editIdEl.textContent = item.id;
+  editDisplayNumEl.textContent = 'BP';
+  deleteBtn.style.display = 'inline-flex';
+  duplicateBtn.style.display = 'none';
+  resetFocalBtn.style.display = 'none';
+  fActive.checked = !!item.active;
+  // Reuse the active checkbox in the lot form? Bordplan has no extra/title etc.
+  // For now we drive active via the bordplan save (config + active in single PUT).
+  bpLabelEl.value = item.label ?? '';
+  bpEventNameEl.value = item.eventName ?? '';
+  const c = item.config;
+  bpColsEl.value = String(c.cols);
+  bpRowsEl.value = String(c.rows);
+  bpSeatsEl.value = String(c.seatsPerTable);
+  bpColAislesEl.value = formatIntList1(c.colAislesAfter || []);
+  bpRowAislesEl.value = formatIntList1(c.rowAislesAfter || []);
+  bpRemovedEl.value = formatCellList1(c.removedCells || []);
+  bpNumModeEl.value = c.numbering.mode;
+  bpNumOriginEl.value = c.numbering.origin;
+  bpNumDirEl.value = c.numbering.direction;
+  bpNumClusterDirEl.value = c.numbering.clusterDirection || c.numbering.direction;
+  bpNumStartEl.value = String(c.numbering.startAt ?? 1);
+  bpNumPrefixEl.value = c.numbering.prefix ?? '';
+  bpNumSkipEl.value = (c.numbering.skip || []).join(', ');
+}
+
+function readBordplanForm(): Partial<BordplanItem> {
+  const baseItem = itemsBank.find(i => i.id === selectedId);
+  const existingOverrides = isBordplanItem(baseItem) ? (baseItem.overrides || {}) : {};
+  const config: FloorPlanConfig = {
+    cols: parseInt(bpColsEl.value, 10) || 1,
+    rows: parseInt(bpRowsEl.value, 10) || 1,
+    seatsPerTable: parseInt(bpSeatsEl.value, 10) || 4,
+    colAislesAfter: parseIntList1(bpColAislesEl.value),
+    rowAislesAfter: parseIntList1(bpRowAislesEl.value),
+    removedCells: parseCellList1(bpRemovedEl.value),
+    numbering: {
+      mode: bpNumModeEl.value as any,
+      origin: bpNumOriginEl.value as any,
+      direction: bpNumDirEl.value as any,
+      clusterDirection: bpNumClusterDirEl.value as any,
+      startAt: parseInt(bpNumStartEl.value, 10) || 1,
+      prefix: bpNumPrefixEl.value || '',
+      skip: parseIntList(bpNumSkipEl.value),
+    },
+  };
+  return {
+    active: fActive.checked,
+    label: bpLabelEl.value,
+    eventName: bpEventNameEl.value,
+    config,
+    overrides: existingOverrides,
+  };
+}
+
+// ---- Overrides list + popover ----
+function renderOverridesList(overrides: Record<string, { label?: string; active?: boolean }>) {
+  bpOverridesListEl.innerHTML = '';
+  const entries = Object.entries(overrides);
+  if (!entries.length) {
+    bpOverridesListEl.innerHTML = '<li class="ov-empty">Ingen overrides.</li>';
+    return;
+  }
+  for (const [id, ov] of entries) {
+    const li = document.createElement('li');
+    const desc = [];
+    if (ov.label != null) desc.push(`omdøbt: "${escapeHtml(ov.label)}"`);
+    if (ov.active === false) desc.push('deaktiveret');
+    li.innerHTML = `<span><code>${id}</code> — ${desc.join(', ') || '—'}</span><button class="ov-clear" data-id="${id}">Ryd</button>`;
+    bpOverridesListEl.appendChild(li);
+  }
+  bpOverridesListEl.querySelectorAll<HTMLButtonElement>('.ov-clear').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const id = btn.dataset.id!;
+      const baseItem = itemsBank.find(i => i.id === selectedId);
+      if (!isBordplanItem(baseItem)) return;
+      baseItem.overrides = baseItem.overrides || {};
+      delete baseItem.overrides[id];
+      setDirty(true);
+      refreshPreview();
+    });
+  });
+}
+
+bpOverridesResetBtn.addEventListener('click', () => {
+  const baseItem = itemsBank.find(i => i.id === selectedId);
+  if (!isBordplanItem(baseItem)) return;
+  if (!confirm('Nulstil alle bord-overrides for denne plan?')) return;
+  baseItem.overrides = {};
+  setDirty(true);
+  refreshPreview();
+});
+
+let popoverEl: HTMLElement | null = null;
+function closePopover() {
+  if (popoverEl) { popoverEl.remove(); popoverEl = null; }
+}
+document.addEventListener('click', (e) => {
+  if (popoverEl && !(e.target as HTMLElement).closest('.bp-override-pop, .bp-table')) {
+    closePopover();
+  }
+});
+
+function wireBordplanTableClicks(slideEl: HTMLElement) {
+  slideEl.querySelectorAll<HTMLElement>('.bp-table').forEach(cell => {
+    cell.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const tableId = cell.dataset.tableId!;
+      openOverridePopover(cell, tableId);
+    });
+  });
+}
+
+function openOverridePopover(anchor: HTMLElement, tableId: string) {
+  closePopover();
+  const baseItem = itemsBank.find(i => i.id === selectedId);
+  if (!isBordplanItem(baseItem)) return;
+  const overrides = baseItem.overrides || {};
+  const current = overrides[tableId] || {};
+  const isGhost = anchor.classList.contains('bp-ghost');
+
+  const pop = document.createElement('div');
+  pop.className = 'bp-override-pop';
+  const rect = anchor.getBoundingClientRect();
+  const parentRect = previewFrame.getBoundingClientRect();
+  pop.style.left = `${rect.right - parentRect.left + 8}px`;
+  pop.style.top  = `${rect.top - parentRect.top}px`;
+  pop.innerHTML = `
+    <span class="pop-id">${tableId}</span>
+    ${isGhost
+      ? `<span style="font-size:11px;color:var(--text-c2)">Ghost-celle. Gendan?</span>
+         <div class="pop-actions"><button class="pop-restore">Gendan via removed-list</button></div>`
+      : `<input type="text" placeholder="label-override (fx VIP)" value="${escapeHtml(current.label ?? '')}" />
+         <div class="pop-actions">
+           <button class="pop-save">Gem label</button>
+           <button class="pop-del">${current.active === false ? 'Aktiver' : 'Deaktiver'}</button>
+         </div>`}
+  `;
+  previewFrame.appendChild(pop);
+  popoverEl = pop;
+
+  if (isGhost) {
+    pop.querySelector('.pop-restore')!.addEventListener('click', () => {
+      // Strip the cell from config.removedCells
+      const cellMatch = /^c(\d+)r(\d+)$/.exec(tableId);
+      if (!cellMatch) return;
+      const c = parseInt(cellMatch[1], 10);
+      const r = parseInt(cellMatch[2], 10);
+      baseItem.config.removedCells = (baseItem.config.removedCells || [])
+        .filter(cc => !(cc.col === c && cc.row === r));
+      bpRemovedEl.value = formatCellList1(baseItem.config.removedCells);
+      closePopover();
+      setDirty(true);
+      refreshPreview();
+    });
+    return;
+  }
+
+  const input = pop.querySelector<HTMLInputElement>('input')!;
+  pop.querySelector('.pop-save')!.addEventListener('click', () => {
+    baseItem.overrides = baseItem.overrides || {};
+    const next = { ...(baseItem.overrides[tableId] || {}) };
+    next.label = input.value.trim() || undefined;
+    if (next.label == null && next.active === undefined) delete baseItem.overrides[tableId];
+    else baseItem.overrides[tableId] = next;
+    closePopover();
+    setDirty(true);
+    refreshPreview();
+  });
+  pop.querySelector('.pop-del')!.addEventListener('click', () => {
+    baseItem.overrides = baseItem.overrides || {};
+    const next = { ...(baseItem.overrides[tableId] || {}) };
+    next.active = next.active === false ? true : false;
+    if (next.active === true && next.label == null) delete baseItem.overrides[tableId];
+    else baseItem.overrides[tableId] = next;
+    closePopover();
+    setDirty(true);
+    refreshPreview();
+  });
+}
+
+// Bordplan form change handlers
+[bpLabelEl, bpEventNameEl, bpColsEl, bpRowsEl, bpSeatsEl, bpColAislesEl, bpRowAislesEl, bpRemovedEl, bpNumModeEl, bpNumOriginEl, bpNumDirEl, bpNumClusterDirEl, bpNumStartEl, bpNumPrefixEl, bpNumSkipEl]
+  .forEach(el => el.addEventListener('input', () => { setDirty(true); refreshPreview(); }));
+
+bpSaveBtn.addEventListener('click', async () => {
+  if (!selectedId) return;
+  const patch = readBordplanForm();
+  try {
+    statusEl.textContent = 'Gemmer bordplan…';
+    const updated = await api(`/api/lots/${encodeURIComponent(selectedId)}`, {
+      method: 'PUT',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(patch),
+    });
+    const idx = itemsBank.findIndex(i => i.id === selectedId);
+    if (idx >= 0) itemsBank[idx] = updated;
+    setDirty(false);
+    renderList();
+    refreshPreview();
+    statusEl.textContent = 'Gemt';
+    bpSaveMetaEl.className = 'gen-save-meta saved';
+    bpSaveMetaEl.textContent = 'GEMT';
+  } catch (e: any) {
+    statusEl.textContent = 'Save failed: ' + e.message;
+  }
+});
 
 // ---- Form bindings ----
 function onFormChange() {
@@ -406,6 +714,41 @@ saveBtn.addEventListener('click', async () => {
 });
 
 // ---- New / Delete ----
+const newBordplanBtn = document.getElementById('new-bordplan')!;
+newBordplanBtn.addEventListener('click', async () => {
+  try {
+    const created = await api('/api/lots', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        kind: 'bordplan',
+        active: true,
+        label: 'Stjernegolf 2026 bordplan',
+        eventName: 'STJERNEGOLF 2026',
+        config: {
+          cols: 9, rows: 11, seatsPerTable: 4,
+          colAislesAfter: [],
+          rowAislesAfter: [3, 6],
+          removedCells: [{ col: 3, row: 10 }, { col: 4, row: 10 }, { col: 5, row: 10 }],
+          numbering: {
+            mode: 'cluster-continuous', origin: 'top-left',
+            direction: 'col-major', clusterDirection: 'col-major',
+            startAt: 1, prefix: '', skip: [],
+          },
+        },
+        overrides: {},
+      } as any),
+    });
+    itemsBank.push(created);
+    selectedId = created.id;
+    renderList();
+    selectLot(created.id);
+    statusEl.textContent = 'Bordplan oprettet';
+  } catch (e: any) {
+    statusEl.textContent = 'Create bordplan failed: ' + e.message;
+  }
+});
+
 newLotBtn.addEventListener('click', async () => {
   try {
     const created = await api('/api/lots', {

@@ -166,27 +166,42 @@ app.get('/api/lots', (_req, res) => {
 });
 
 app.post('/api/lots', (req, res) => {
-  const newLot = {
-    id: uuidv4(),
-    title: req.body.title || '',
-    subtitle: req.body.subtitle || '',
-    sponsor: req.body.sponsor || '',
-    bullets: Array.isArray(req.body.bullets) ? req.body.bullets : [],
-    titleParts: req.body.titleParts,
-    donorNames: req.body.donorNames,
-    active: req.body.active ?? false,
-    extra: req.body.extra ?? false,
-    extraSuffix: req.body.extraSuffix ?? null,
-    layout: req.body.layout || 'horizon',
-    mirrored: req.body.mirrored ?? false,
-    focal: req.body.focal || '50% 50%',
-    titleSizePt: req.body.titleSizePt,
-  };
-  lotsFile.lots.push(newLot);
+  const kind = req.body.kind || 'lot';
+  let newItem;
+  if (kind === 'bordplan') {
+    newItem = {
+      id: uuidv4(),
+      kind: 'bordplan',
+      active: req.body.active ?? false,
+      label: req.body.label || '',
+      eventName: req.body.eventName || '',
+      org: req.body.org || '',
+      config: req.body.config || {},
+      overrides: req.body.overrides || {},
+    };
+  } else {
+    newItem = {
+      id: uuidv4(),
+      title: req.body.title || '',
+      subtitle: req.body.subtitle || '',
+      sponsor: req.body.sponsor || '',
+      bullets: Array.isArray(req.body.bullets) ? req.body.bullets : [],
+      titleParts: req.body.titleParts,
+      donorNames: req.body.donorNames,
+      active: req.body.active ?? false,
+      extra: req.body.extra ?? false,
+      extraSuffix: req.body.extraSuffix ?? null,
+      layout: req.body.layout || 'horizon',
+      mirrored: req.body.mirrored ?? false,
+      focal: req.body.focal || '50% 50%',
+      titleSizePt: req.body.titleSizePt,
+    };
+  }
+  lotsFile.lots.push(newItem);
   saveLots(lotsFile);
   rebuildAuctionState();
   broadcastLotsUpdated();
-  res.json(newLot);
+  res.json(newItem);
 });
 
 app.put('/api/lots/:id', (req, res) => {

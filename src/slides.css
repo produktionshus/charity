@@ -321,8 +321,8 @@
 
 /* ---- Bordplan (table-plan) slide — KidsAid Green palette ---- */
 :root {
-  --bp-canvas: #0c6638;
-  --bp-canvas-hi: #0f7641;
+  --bp-canvas: #3FA34D;
+  --bp-canvas-hi: #2F7A39;
   --bp-paper: #f5ede0;
   --bp-paper-hi: #fbf7ed;
   --bp-paper-dim: #d8cfb9;

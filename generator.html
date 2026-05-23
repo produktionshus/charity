@@ -27,6 +27,7 @@
       <div class="gen-topbar-spacer"></div>
       <button class="link-btn" id="open-controller">Controller ↗</button>
       <button class="nav-btn primary" id="new-lot">+ Nyt lot</button>
+      <button class="nav-btn" id="new-bordplan">+ Nyt bordplan</button>
     </header>
 
     <aside class="gen-list">
@@ -122,6 +123,96 @@
           <div class="row gen-save-row">
             <button class="nav-btn primary" id="save-lot">Gem ændringer</button>
             <span class="gen-save-meta" id="gen-save-meta"></span>
+          </div>
+        </div>
+
+        <!-- Bordplan-specific form (mutually exclusive with the lot form) -->
+        <div class="gen-form" id="gen-form-bordplan" style="display:none">
+          <label>Label (intern)
+            <input type="text" id="bp-label" placeholder="fx Stjernegolf 2026 bordplan" />
+          </label>
+          <label>Event-titel (vises i header)
+            <input type="text" id="bp-event-name" placeholder="STJERNEGOLF 2026" />
+          </label>
+          <div class="row">
+            <label>Kolonner (cols)
+              <input type="number" id="bp-cols" min="1" max="30" />
+            </label>
+            <label>Rækker (rows)
+              <input type="number" id="bp-rows" min="1" max="40" />
+            </label>
+          </div>
+          <label>Stole per bord
+            <input type="number" id="bp-seats" min="2" max="20" />
+          </label>
+          <div class="row">
+            <label>Aisles efter kolonne (1-indexeret, kommasepareret)
+              <input type="text" id="bp-col-aisles" placeholder="fx 3, 6" />
+            </label>
+            <label>Aisles efter række (1-indexeret, kommasepareret)
+              <input type="text" id="bp-row-aisles" placeholder="fx 3, 6" />
+            </label>
+          </div>
+          <label>Fjernede celler (col,row pairs adskilt af ;)
+            <textarea id="bp-removed" rows="2" placeholder="4,11; 5,11; 6,11"></textarea>
+          </label>
+          <div class="row">
+            <label>Nummerering — mode
+              <select id="bp-num-mode">
+                <option value="across">across (linear)</option>
+                <option value="cluster-continuous">cluster-continuous (default)</option>
+                <option value="cluster-prefix">cluster-prefix (A1, B1…)</option>
+              </select>
+            </label>
+            <label>Origin (hjørne for nr 1)
+              <select id="bp-num-origin">
+                <option value="top-left">top-left</option>
+                <option value="top-right">top-right</option>
+                <option value="bottom-left">bottom-left</option>
+                <option value="bottom-right">bottom-right</option>
+              </select>
+            </label>
+          </div>
+          <div class="row">
+            <label>Direction (inden i cluster)
+              <select id="bp-num-dir">
+                <option value="row-major">row-major</option>
+                <option value="col-major">col-major</option>
+                <option value="snake-row">snake-row</option>
+                <option value="snake-col">snake-col</option>
+              </select>
+            </label>
+            <label>Cluster direction
+              <select id="bp-num-clusterdir">
+                <option value="row-major">row-major</option>
+                <option value="col-major">col-major</option>
+                <option value="snake-row">snake-row</option>
+                <option value="snake-col">snake-col</option>
+              </select>
+            </label>
+          </div>
+          <div class="row">
+            <label>Start nummer
+              <input type="number" id="bp-num-start" min="1" value="1" />
+            </label>
+            <label>Prefix (fx "T")
+              <input type="text" id="bp-num-prefix" />
+            </label>
+          </div>
+          <label>Skip nummre (kommasepareret, fx "13")
+            <input type="text" id="bp-num-skip" />
+          </label>
+
+          <div class="setting-section">
+            <span class="setting-section-label">Admin — per-bord overrides</span>
+            <p class="drawer-hint" id="bp-overrides-hint">Klik et bord i preview for at omdøbe eller deaktivere det. Reset under nedenfor rydder alle overrides for denne plan.</p>
+            <button class="link-btn" id="bp-overrides-reset">Nulstil alle bord-overrides</button>
+            <ul class="bp-overrides-list" id="bp-overrides-list"></ul>
+          </div>
+
+          <div class="row gen-save-row">
+            <button class="nav-btn primary" id="bp-save">Gem bordplan</button>
+            <span class="gen-save-meta" id="bp-save-meta"></span>
           </div>
         </div>
       </div>

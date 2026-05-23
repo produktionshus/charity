@@ -97,6 +97,88 @@ body.generator {
 .gen-validation .v-warn  { color: var(--gold); }
 .gen-validation.warn-only { background: rgba(217, 191, 140, 0.06); border-color: rgba(217, 191, 140, 0.3); }
 
+/* Bordplan list row styling (kind badge) */
+.gen-row.kind-bordplan .gen-row-badge {
+  background: rgba(40, 161, 74, 0.18);
+  color: var(--green-300);
+}
+.gen-row.kind-bordplan .gen-row-num { color: var(--gold); }
+
+.bp-overrides-list {
+  list-style: none;
+  margin: 4px 0 0;
+  padding: 0;
+  display: flex; flex-direction: column;
+  gap: 4px;
+  max-height: 140px;
+  overflow-y: auto;
+}
+.bp-overrides-list li {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+  padding: 5px 8px;
+  background: var(--bg-card);
+  border: 1px solid var(--line-c2);
+  border-radius: 4px;
+  font-size: 11px;
+  color: var(--text-c2);
+}
+.bp-overrides-list .ov-clear {
+  background: none; border: 0; color: var(--text-c3); cursor: pointer;
+  font-size: 11px;
+}
+.bp-overrides-list .ov-clear:hover { color: #F87171; }
+.bp-overrides-list .ov-empty {
+  text-align: center;
+  font-style: italic;
+  color: var(--text-c4);
+  font-size: 11px;
+  padding: 6px;
+}
+
+/* Bordplan preview: tables are clickable in admin mode */
+.gen-preview-frame .bp-table { cursor: pointer; }
+.gen-preview-frame .bp-table.bp-ghost { cursor: pointer; }
+.gen-preview-frame .bp-table:hover {
+  outline: 2px solid var(--green-300);
+  outline-offset: 1px;
+}
+
+/* Override popover */
+.bp-override-pop {
+  position: absolute;
+  background: rgba(3, 16, 11, 0.96);
+  border: 1px solid var(--line-c2);
+  border-radius: 8px;
+  padding: 10px 12px;
+  z-index: 10;
+  display: flex; flex-direction: column;
+  gap: 6px;
+  min-width: 180px;
+  box-shadow: 0 10px 30px -8px rgba(0,0,0,0.6);
+}
+.bp-override-pop .pop-id {
+  font-family: var(--font-mono-c);
+  font-size: 9px; letter-spacing: 0.16em; color: var(--text-c3);
+}
+.bp-override-pop input[type='text'] {
+  background: var(--bg-input); color: var(--text-c);
+  border: 1px solid var(--line-c2);
+  padding: 5px 8px; border-radius: 4px;
+  font: inherit; font-size: 12px;
+}
+.bp-override-pop .pop-actions {
+  display: flex; gap: 4px;
+}
+.bp-override-pop .pop-actions button {
+  flex: 1; padding: 5px 8px; border-radius: 4px;
+  font-size: 11px; cursor: pointer; border: 1px solid var(--line-c2);
+  background: var(--bg-elev); color: var(--text-c);
+}
+.bp-override-pop .pop-actions .pop-del { background: #7A2828; border-color: #7A2828; }
+.bp-override-pop .pop-actions .pop-restore { background: var(--green-700); color: #fff; border-color: var(--green-600); }
+
 .gen-list {
   grid-area: list;
   background: var(--bg-pane);
