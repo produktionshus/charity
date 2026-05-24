@@ -35,11 +35,26 @@ function seedIfMissing() {
     copyFileSync(seedLotsPath, lotsPath);
     console.log(`seeded lots.json -> ${lotsPath}`);
   }
-  if (!existsSync(assetsDir) || readdirSync(assetsDir).length === 0) {
-    mkdirSync(assetsDir, { recursive: true });
-    if (existsSync(seedAssetsDir)) {
-      cpSync(seedAssetsDir, assetsDir, { recursive: true });
-      console.log(`seeded assets -> ${assetsDir}`);
+  // Top-level assets dir + per-subdir seed. We seed any subdirectory of
+  // the volume that's missing or empty so new asset groups (apples,
+  // wish-loop, media, …) populate when redeploying, even if the volume
+  // already has other files in it.
+  if (!existsSync(assetsDir)) mkdirSync(assetsDir, { recursive: true });
+  if (existsSync(seedAssetsDir)) {
+    for (const entry of readdirSync(seedAssetsDir, { withFileTypes: true })) {
+      const seedPath = resolve(seedAssetsDir, entry.name);
+      const livePath = resolve(assetsDir, entry.name);
+      if (entry.isDirectory()) {
+        if (!existsSync(livePath) || readdirSync(livePath).length === 0) {
+          cpSync(seedPath, livePath, { recursive: true });
+          console.log(`seeded assets/${entry.name} -> ${livePath}`);
+        }
+      } else {
+        if (!existsSync(livePath)) {
+          copyFileSync(seedPath, livePath);
+          console.log(`seeded assets/${entry.name}`);
+        }
+      }
     }
   }
   if (!existsSync(soundsDir)) {
