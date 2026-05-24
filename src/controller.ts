@@ -659,6 +659,55 @@ function renderPresetChips() {
 }
 renderPresetChips();
 
+// ---- Sound countdown mirror (matches auctioneer overlay) ----
+const ctrlSoundCountdownEl = document.getElementById('ctrl-sound-countdown')! as HTMLDivElement;
+const ctrlSoundFileEl      = document.getElementById('ctrl-sound-file')!;
+const ctrlSoundBarFillEl   = document.getElementById('ctrl-sound-bar-fill')! as HTMLDivElement;
+const ctrlSoundRemainingEl = document.getElementById('ctrl-sound-remaining')!;
+let ctrlCountdownRaf = 0;
+let ctrlCountdownProbe: HTMLAudioElement | null = null;
+function ctrlStopCountdown() {
+  if (ctrlCountdownRaf) { cancelAnimationFrame(ctrlCountdownRaf); ctrlCountdownRaf = 0; }
+  if (ctrlCountdownProbe) { try { ctrlCountdownProbe.pause(); } catch {} ctrlCountdownProbe = null; }
+  ctrlSoundCountdownEl.classList.remove('open', 'center-large');
+  ctrlSoundBarFillEl.style.width = '0%';
+}
+sync.onSound((event) => {
+  if (event.action === 'stop') { ctrlStopCountdown(); return; }
+  ctrlStopCountdown();
+  const probe = new Audio(`/sounds/${event.file}`);
+  probe.preload = 'metadata';
+  probe.muted = true;
+  ctrlCountdownProbe = probe;
+  ctrlSoundFileEl.textContent = `${event.file} (${event.which})`;
+  ctrlSoundCountdownEl.classList.add('open');
+  ctrlSoundCountdownEl.classList.toggle('center-large', event.which === 'init');
+  ctrlSoundRemainingEl.textContent = '…';
+  ctrlSoundBarFillEl.style.width = '0%';
+  const startCountdown = (duration: number) => {
+    const totalPlay = Math.max(0.1, duration - event.offset);
+    const startTs = performance.now();
+    const tick = () => {
+      if (ctrlCountdownProbe !== probe) return;
+      const elapsed = (performance.now() - startTs) / 1000;
+      const remaining = Math.max(0, totalPlay - elapsed);
+      const pct = Math.min(100, (elapsed / totalPlay) * 100);
+      ctrlSoundBarFillEl.style.width = pct + '%';
+      ctrlSoundRemainingEl.textContent = remaining.toFixed(1) + 's';
+      if (remaining <= 0) { ctrlStopCountdown(); return; }
+      ctrlCountdownRaf = requestAnimationFrame(tick);
+    };
+    ctrlCountdownRaf = requestAnimationFrame(tick);
+  };
+  const onMeta = () => {
+    if (!isFinite(probe.duration) || probe.duration <= 0) return;
+    startCountdown(probe.duration);
+  };
+  probe.addEventListener('loadedmetadata', onMeta);
+  probe.addEventListener('durationchange', onMeta);
+  probe.load();
+});
+
 const bidPresetsInput = document.getElementById('bid-presets') as HTMLInputElement | null;
 const bidPresetsSave  = document.getElementById('bid-presets-save') as HTMLButtonElement | null;
 if (bidPresetsSave && bidPresetsInput) {

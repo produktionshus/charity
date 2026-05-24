@@ -193,6 +193,7 @@ function stopCountdown() {
 }
 
 sync.onSound((event) => {
+  console.log('[auct] sound-event', event);
   if (event.action === 'stop') { stopCountdown(); return; }
   stopCountdown();
   const probe = new Audio(`/sounds/${event.file}`);
@@ -201,10 +202,13 @@ sync.onSound((event) => {
   countdownProbe = probe;
   soundFileEl.textContent = `${event.file} (${event.which})`;
   soundCountdownEl.classList.add('open');
-  // Init lyd: stort centralt overlay for auctioneer. Hammer lyd: kompakt bottom-right.
   soundCountdownEl.classList.toggle('center-large', event.which === 'init');
-  probe.addEventListener('loadedmetadata', () => {
-    const totalPlay = Math.max(0.1, probe.duration - event.offset);
+  // Show an immediate "loading…" remaining so the operator sees the overlay
+  // even before metadata resolves (some browsers stall on preload=metadata).
+  soundRemainingEl.textContent = '…';
+  soundBarFillEl.style.width = '0%';
+  const startCountdown = (duration: number) => {
+    const totalPlay = Math.max(0.1, duration - event.offset);
     const startTs = performance.now();
     const tick = () => {
       if (countdownProbe !== probe) return;
@@ -217,7 +221,19 @@ sync.onSound((event) => {
       countdownRaf = requestAnimationFrame(tick);
     };
     countdownRaf = requestAnimationFrame(tick);
-  });
+  };
+  const onMeta = () => {
+    if (!isFinite(probe.duration) || probe.duration <= 0) {
+      console.warn('[auct] probe.duration invalid', probe.duration);
+      return;
+    }
+    startCountdown(probe.duration);
+  };
+  probe.addEventListener('loadedmetadata', onMeta);
+  probe.addEventListener('durationchange', onMeta);
+  // Force the browser to actually fetch metadata. preload='metadata' alone
+  // is a hint that some browsers ignore until play() / load() is called.
+  probe.load();
 });
 
 // Keyboard nav (lets a client review slides without the controller)

@@ -350,7 +350,15 @@
       "extraSuffix": null,
       "layout": "horizon",
       "mirrored": false,
-      "focal": "50% 50%"
+      "focal": "50% 50%",
+      "sound": {
+        "hammerSound": "09-hammer.mp3",
+        "initStartOffset": 0,
+        "fadeInSec": 0,
+        "fadeOutSec": 0,
+        "initVolume": 1,
+        "hammerVolume": 1
+      }
     },
     {
       "title": "Oplev APHACA i Parken — VIP-aften for 16 personer",

@@ -89,15 +89,41 @@ const initialSoundDefaults = (lotsFile.meta && lotsFile.meta.soundDefaults) ? { 
 const state = { slideIdx: 0, buildStep: 0, lots: initialLots, sounds: initialSounds, soundDefaults: initialSoundDefaults };
 
 function buildServerSlides() {
+  // Mirror client's buildSlides — items emit in array order. Auto-emit
+  // sponsor-index / cover / closing fallbacks only when no explicit item exists.
   const out = [];
+  let hasCover = false;
+  let hasClosing = false;
+  let hasSponsorIndex = false;
+  let lotsEmitted = false;
   for (const item of lots()) {
-    if (item.active && item.kind === 'bordplan') out.push({ kind: 'bordplan', itemId: item.id });
+    if (!item.active) continue;
+    if (item.kind === 'bordplan') {
+      out.push({ kind: 'bordplan', itemId: item.id });
+    } else if (item.kind === 'cover') {
+      out.push({ kind: 'cover', itemId: item.id });
+      hasCover = true;
+    } else if (item.kind === 'closing') {
+      out.push({ kind: 'closing', itemId: item.id });
+      hasClosing = true;
+    } else if (item.kind === 'sponsor-index') {
+      out.push({ kind: 'sponsor-index', itemId: item.id });
+      hasSponsorIndex = true;
+    } else if (!item.kind || item.kind === 'lot') {
+      if (!lotsEmitted) {
+        if (!hasSponsorIndex && !out.some(s => s.kind === 'sponsor-index')) {
+          out.push({ kind: 'sponsor-index' });
+        }
+        lotsEmitted = true;
+      }
+      out.push({ kind: 'lot', lotId: item.id });
+    }
   }
-  out.push({ kind: 'cover' }, { kind: 'sponsor-index' });
-  for (const item of lots()) {
-    if (item.active && (!item.kind || item.kind === 'lot')) out.push({ kind: 'lot', lotId: item.id });
+  if (!hasCover) out.unshift({ kind: 'cover' });
+  if (!lotsEmitted && !hasSponsorIndex && !out.some(s => s.kind === 'sponsor-index')) {
+    out.push({ kind: 'sponsor-index' });
   }
-  out.push({ kind: 'closing' });
+  if (!hasClosing) out.push({ kind: 'closing' });
   return out;
 }
 const serverSlides = buildServerSlides();
