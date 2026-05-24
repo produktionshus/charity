@@ -208,6 +208,66 @@ body.generator {
   font-size: 11px;
 }
 .closing-add-row input[type='file'] { display: none; }
+
+/* Wish-loop apple picker */
+.wl-apple-list {
+  list-style: none;
+  margin: 6px 0 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 6px;
+  max-height: 480px;
+  overflow-y: auto;
+}
+.wl-apple-list li {
+  position: relative;
+  display: flex; flex-direction: column;
+  background: #0D2A21;
+  border: 2px solid var(--line-c2);
+  border-radius: 6px;
+  padding: 4px 4px 6px;
+  font-size: 11px;
+  color: #E4DFC8;
+  cursor: pointer;
+  user-select: none;
+}
+.wl-apple-list li.selected { border-color: #D9B26A; background: rgba(217, 178, 106, 0.18); color: #FFFCF3; }
+.wl-apple-list li.dragging { opacity: 0.4; }
+.wl-apple-list li.drag-over { outline: 2px dashed var(--green-400); }
+.wl-apple-list img {
+  width: 100%; height: 80px;
+  object-fit: contain;
+  background: rgba(255,255,255,0.04);
+  border-radius: 3px;
+}
+.wl-apple-list .wl-fname {
+  font-family: var(--font-mono);
+  font-weight: 600;
+  font-size: 11px;
+  margin-top: 4px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  text-align: center;
+  letter-spacing: 0.02em;
+}
+.wl-apple-list .wl-fname .num {
+  color: #D9B26A;
+  margin-right: 4px;
+  font-size: 9px;
+  letter-spacing: 0.08em;
+}
+.wl-apple-list .wl-pick-idx {
+  position: absolute;
+  top: 2px; right: 4px;
+  background: var(--green-400);
+  color: var(--text-c);
+  font-family: var(--font-mono);
+  font-size: 9px; font-weight: 700;
+  padding: 1px 5px;
+  border-radius: 8px;
+  display: none;
+}
+.wl-apple-list li.selected .wl-pick-idx { display: inline-block; }
 .gen-preview-frame .bp-table.bp-ghost { cursor: pointer; }
 .gen-preview-frame .bp-table:hover {
   outline: 2px solid var(--green-300);

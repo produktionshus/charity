@@ -28,6 +28,8 @@
       <button class="nav-btn" id="new-cover">+ Nyt cover</button>
       <button class="nav-btn" id="new-closing">+ Nyt closing</button>
       <button class="nav-btn" id="new-sponsorindex">+ Nyt sponsor-indeks</button>
+      <button class="nav-btn" id="new-wishloop">+ Nyt ønske-loop</button>
+      <button class="nav-btn" id="new-media">+ Nyt media</button>
     </header>
 
     <aside class="gen-list">
@@ -115,7 +117,7 @@
             <div class="upload-cell">
               <label>Sponsor-logo (PNG transparent)</label>
               <img id="logo-preview" class="upload-preview logo" />
-              <input type="file" id="f-logo" accept="image/png,image/jpeg,image/webp" />
+              <input type="file" id="f-logo" accept="image/png,image/jpeg,image/webp,image/svg+xml" />
             </div>
           </div>
 
@@ -218,6 +220,127 @@
           </div>
         </div>
 
+        <!-- Media form -->
+        <div class="gen-form" id="gen-form-media" style="display:none">
+          <label class="setting-toggle"><input type="checkbox" id="md-active" /><span>Active (med i deck)</span></label>
+          <label>Label (intern)
+            <input type="text" id="md-label" placeholder="fx Velkomst-billede" />
+          </label>
+          <label>Mode
+            <select id="md-mode">
+              <option value="image">Billede</option>
+              <option value="video">Video</option>
+            </select>
+          </label>
+          <label>Source URL (relativ til /assets/media/ eller absolut)
+            <input type="text" id="md-src" placeholder="/assets/media/velkomst.jpg" />
+            <input type="file" id="md-upload" accept="image/*,video/*" style="margin-top:4px" />
+          </label>
+          <label>Alt-tekst (kun billede)
+            <input type="text" id="md-alt" placeholder="Beskrivelse for screen readers" />
+          </label>
+          <div class="row">
+            <label>Fit
+              <select id="md-fit">
+                <option value="cover">cover (fyld + crop)</option>
+                <option value="contain">contain (fuld synlig + letterbox)</option>
+              </select>
+            </label>
+            <label>BG-farve (letterbox)
+              <input type="color" id="md-bg" value="#000000" />
+            </label>
+          </div>
+          <div class="row" id="md-video-opts">
+            <label class="setting-toggle"><input type="checkbox" id="md-autoplay" checked /><span>Autoplay</span></label>
+            <label class="setting-toggle"><input type="checkbox" id="md-loop" checked /><span>Loop</span></label>
+            <label class="setting-toggle"><input type="checkbox" id="md-muted" checked /><span>Muted</span></label>
+          </div>
+          <div class="row gen-save-row">
+            <button class="nav-btn primary" id="md-save">Gem media</button>
+          </div>
+        </div>
+
+        <!-- Wish-loop form -->
+        <div class="gen-form" id="gen-form-wishloop" style="display:none">
+          <label class="setting-toggle"><input type="checkbox" id="wl-active" /><span>Active (med i deck)</span></label>
+          <label>Label (intern)
+            <input type="text" id="wl-label" placeholder="fx Ønske-loop 1/4" />
+          </label>
+          <div class="setting-section">
+            <span class="setting-section-label">Top-venstre tekst</span>
+            <label>Pretitle (gold mono)
+              <input type="text" id="wl-eyebrow-pre" placeholder="Stjernegolf 2026 · Auktion" />
+            </label>
+            <label>Titel (cream display)
+              <input type="text" id="wl-eyebrow-title" placeholder="Børnenes ønsker" />
+            </label>
+          </div>
+          <div class="setting-section">
+            <span class="setting-section-label">Top-højre (samarbejdspartner)</span>
+            <label class="setting-toggle"><input type="checkbox" id="wl-sponsor-enabled" checked /><span>Vis top-højre block</span></label>
+            <label>Pretitle (fx "Præsenteret af" / "I samarbejde med")
+              <input type="text" id="wl-sponsor-pre" placeholder="Præsenteret af" />
+            </label>
+            <label>Mode
+              <select id="wl-sponsor-mode">
+                <option value="text">Tekst</option>
+                <option value="logo">Transparent PNG logo</option>
+              </select>
+            </label>
+            <label>Tekst (når mode=Tekst)
+              <input type="text" id="wl-sponsor" placeholder="Ønskeskyen" />
+            </label>
+            <label>Logo URL (når mode=Logo, relativt til /assets/wish-loop/)
+              <input type="text" id="wl-sponsor-logo" placeholder="onskeskyen-logo.png" />
+              <input type="file" id="wl-sponsor-logo-upload" accept="image/png,image/jpeg,image/webp,image/svg+xml" style="margin-top:4px" />
+            </label>
+          </div>
+          <label>Baggrundsvideo (URL eller relativ til /assets/wish-loop/)
+            <input type="text" id="wl-video-src" placeholder="/assets/wish-loop/bg.mp4" />
+            <input type="file" id="wl-video-upload" accept="video/*" style="margin-top:4px" />
+          </label>
+          <div class="row">
+            <label>Direction
+              <select id="wl-direction">
+                <option value="stack">stack (polaroid)</option>
+                <option value="cinema">cinema (cross-fade)</option>
+                <option value="drift">drift (lateral glide)</option>
+              </select>
+            </label>
+            <label>Stack depth (kun ved stack)
+              <input type="number" id="wl-stack-depth" min="2" max="6" value="3" />
+            </label>
+          </div>
+          <label>Sekunder per kort
+            <input type="range" id="wl-per-card" min="2" max="12" step="1" value="5" />
+            <span class="range-val" id="wl-per-card-val">5s</span>
+          </label>
+          <label>Video blur (px)
+            <input type="range" id="wl-blur" min="0" max="80" step="2" value="36" />
+            <span class="range-val" id="wl-blur-val">36px</span>
+          </label>
+          <label>Video darken (0–0.9)
+            <input type="range" id="wl-darken" min="0" max="0.9" step="0.05" value="0.5" />
+            <span class="range-val" id="wl-darken-val">0.50</span>
+          </label>
+          <div class="row">
+            <label class="setting-toggle"><input type="checkbox" id="wl-chrome" checked /><span>Vis chrome (counter + sponsor)</span></label>
+            <label class="setting-toggle"><input type="checkbox" id="wl-pause-hover" checked /><span>Pause on hover</span></label>
+          </div>
+          <div class="setting-section">
+            <span class="setting-section-label">Æbler i denne loop (drag for rækkefølge)</span>
+            <p class="drawer-hint">Klik for at tilvælge/fravælge. Upload-knap nederst lægger nye æbler i poolen.</p>
+            <ul class="wl-apple-list" id="wl-apple-list"></ul>
+            <label class="closing-add-row">
+              <input type="file" id="wl-apple-upload" accept="image/png,image/jpeg,image/webp,image/svg+xml" multiple />
+              <span>+ Upload æble-PNG(er) til poolen</span>
+            </label>
+          </div>
+          <div class="row gen-save-row">
+            <button class="nav-btn primary" id="wl-save">Gem ønske-loop</button>
+          </div>
+        </div>
+
         <!-- Sponsor-index form -->
         <div class="gen-form" id="gen-form-sponsorindex" style="display:none">
           <label class="setting-toggle"><input type="checkbox" id="si-active" /><span>Active (med i deck)</span></label>
@@ -253,7 +376,7 @@
             <p class="drawer-hint">Tilføj logo-fil (upload til /assets/closing/). Klik <code>W</code> for wordmark, <code>S</code> for stacked (påvirker padding).</p>
             <ul class="closing-logo-list" id="cl-logo-list"></ul>
             <label class="closing-add-row">
-              <input type="file" id="cl-logo-upload" accept="image/png,image/jpeg,image/webp" multiple />
+              <input type="file" id="cl-logo-upload" accept="image/png,image/jpeg,image/webp,image/svg+xml" multiple />
               <span>+ Upload logo(er)</span>
             </label>
           </div>

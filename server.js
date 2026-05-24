@@ -58,6 +58,26 @@ function saveLots(payload) {
 }
 
 let lotsFile = loadLots();
+
+// Ensure a default cover item exists at the top of the deck so the operator
+// has something to edit. Without this, buildSlides falls back to an
+// anonymous cover that isn't in itemsBank, so the generator can't reach it.
+(function ensureCoverItem() {
+  const hasCover = (lotsFile.lots || []).some(l => l && l.kind === 'cover');
+  if (hasCover) return;
+  const cover = {
+    id: uuidv4(),
+    kind: 'cover',
+    active: true,
+    label: 'Cover',
+    title: 'AUKTION',
+    subtitle: (lotsFile.meta && lotsFile.meta.eventSubtitle) || 'STJERNEGOLF 2026',
+    attribution: 'AUKTION VED KASPER NIELSEN',
+    logoFile: 'artsolo-logo.png',
+  };
+  lotsFile.lots = [cover, ...(lotsFile.lots || [])];
+  saveLots(lotsFile);
+})();
 function lots() { return lotsFile.lots; }
 function activeLots() { return lots().filter(l => l.active); }
 
@@ -109,6 +129,10 @@ function buildServerSlides() {
     } else if (item.kind === 'sponsor-index') {
       out.push({ kind: 'sponsor-index', itemId: item.id });
       hasSponsorIndex = true;
+    } else if (item.kind === 'wish-loop') {
+      out.push({ kind: 'wish-loop', itemId: item.id });
+    } else if (item.kind === 'media') {
+      out.push({ kind: 'media', itemId: item.id });
     } else if (!item.kind || item.kind === 'lot') {
       if (!lotsEmitted) {
         if (!hasSponsorIndex && !out.some(s => s.kind === 'sponsor-index')) {
@@ -138,7 +162,10 @@ function freshLots() {
 const heroDir    = resolve(assetsDir, 'hero');
 const logoDir    = resolve(assetsDir, 'logo');
 const closingDir = resolve(assetsDir, 'closing');
-for (const d of [heroDir, logoDir, closingDir, soundsDir]) {
+const applesDir  = resolve(assetsDir, 'apples');
+const wishLoopDir = resolve(assetsDir, 'wish-loop');
+const mediaDir    = resolve(assetsDir, 'media');
+for (const d of [heroDir, logoDir, closingDir, applesDir, wishLoopDir, mediaDir, soundsDir]) {
   if (!existsSync(d)) mkdirSync(d, { recursive: true });
 }
 
@@ -155,10 +182,13 @@ const upload = multer({
   storage: multer.diskStorage({
     destination: (req, file, cb) => {
       const kind = req.body.kind || req.query.kind;
-      if (kind === 'hero')    return cb(null, heroDir);
-      if (kind === 'logo')    return cb(null, logoDir);
-      if (kind === 'closing') return cb(null, closingDir);
-      if (kind === 'sound')   return cb(null, soundsDir);
+      if (kind === 'hero')      return cb(null, heroDir);
+      if (kind === 'logo')      return cb(null, logoDir);
+      if (kind === 'closing')   return cb(null, closingDir);
+      if (kind === 'apple')     return cb(null, applesDir);
+      if (kind === 'wish-bg')   return cb(null, wishLoopDir);
+      if (kind === 'media')     return cb(null, mediaDir);
+      if (kind === 'sound')     return cb(null, soundsDir);
       cb(new Error('Unknown upload kind: ' + kind), '');
     },
     filename: (req, file, cb) => {
@@ -168,6 +198,9 @@ const upload = multer({
       if (kind === 'hero') return cb(null, `lot-${lotId}_FINAL${ext}`);
       if (kind === 'logo') return cb(null, `logo-lot-${lotId}.png`);
       if (kind === 'closing') return cb(null, file.originalname);
+      if (kind === 'apple')   return cb(null, file.originalname);
+      if (kind === 'wish-bg') return cb(null, file.originalname);
+      if (kind === 'media')   return cb(null, file.originalname);
       if (kind === 'sound') {
         const which = req.body.which || req.query.which;
         const e = (extname(file.originalname) || '.mp3').toLowerCase();
@@ -187,6 +220,16 @@ const app = express();
 app.use(express.json({ limit: '2mb' }));
 
 app.get('/api/sounds', (_req, res) => res.json({ files: listSounds() }));
+
+app.get('/api/apples', (_req, res) => {
+  const applesDir = resolve(assetsDir, 'apples');
+  try {
+    const files = readdirSync(applesDir)
+      .filter(f => /\.(png|jpe?g|webp)$/i.test(f))
+      .sort();
+    res.json({ files });
+  } catch { res.json({ files: [] }); }
+});
 
 app.get('/api/lots', (_req, res) => {
   res.json(lotsFile);
@@ -260,6 +303,44 @@ app.post('/api/lots', (req, res) => {
       active: req.body.active ?? true,
       label: req.body.label || 'Sponsor-indeks',
       title: req.body.title || 'AUKTIONENS SPONSORER',
+    };
+  } else if (kind === 'media') {
+    newItem = {
+      id: uuidv4(),
+      kind: 'media',
+      active: req.body.active ?? true,
+      label: req.body.label || 'Media',
+      mode: req.body.mode || 'image',
+      src: req.body.src || '',
+      alt: req.body.alt || '',
+      videoMuted:    req.body.videoMuted    ?? true,
+      videoLoop:     req.body.videoLoop     ?? true,
+      videoAutoplay: req.body.videoAutoplay ?? true,
+      fit:           req.body.fit           || 'cover',
+      bgColor:       req.body.bgColor       || '#000',
+    };
+  } else if (kind === 'wish-loop') {
+    newItem = {
+      id: uuidv4(),
+      kind: 'wish-loop',
+      active: req.body.active ?? true,
+      label: req.body.label || 'Ønske-loop',
+      videoSrc: req.body.videoSrc || '/assets/wish-loop/bg.mp4',
+      cards: Array.isArray(req.body.cards) ? req.body.cards : [],
+      direction: req.body.direction || 'stack',
+      perCardSeconds: req.body.perCardSeconds ?? 5,
+      stackDepth: req.body.stackDepth ?? 3,
+      pauseOnHover: req.body.pauseOnHover ?? true,
+      videoBlur: req.body.videoBlur ?? 36,
+      videoDarken: req.body.videoDarken ?? 0.5,
+      chrome: req.body.chrome ?? true,
+      eyebrowPretitle: req.body.eyebrowPretitle ?? 'Stjernegolf 2026 · Auktion',
+      eyebrowTitle:    req.body.eyebrowTitle    ?? 'Børnenes ønsker',
+      sponsorEnabled:  req.body.sponsorEnabled  ?? true,
+      sponsorPretitle: req.body.sponsorPretitle ?? 'Præsenteret af',
+      sponsorMode:     req.body.sponsorMode     || 'text',
+      sponsorMark:     req.body.sponsorMark     || 'Ønskeskyen',
+      sponsorLogo:     req.body.sponsorLogo     || '',
     };
   } else {
     newItem = {

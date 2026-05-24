@@ -5,3 +5,7 @@ dist/
 .env
 .env.local
 .DS_Store
+
+# Large source videos (kept locally as backup; only the encoded mp4 ships)
+public/assets/wish-loop/_*.mov
+public/assets/wish-loop/*.mov

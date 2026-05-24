@@ -276,7 +276,7 @@ function renderAuctioneerPanel(slide: Slide | null) {
     auctStage.classList.remove('has-bid');
     auctStage.classList.remove('show-header');
     auctLotnum.textContent = '—';
-    auctTitle.textContent = slide.kind === 'cover' ? 'Cover' : slide.kind === 'sponsor-index' ? 'Sponsorer' : slide.kind === 'closing' ? 'Tak for i aften' : '';
+    auctTitle.textContent = slide.kind === 'cover' ? 'Cover' : slide.kind === 'sponsor-index' ? 'Sponsorer' : slide.kind === 'closing' ? 'Tak for i aften' : slide.kind === 'wish-loop' ? 'Børnenes ønsker' : slide.kind === 'media' ? 'Media' : '';
     auctDonor.textContent = '';
     auctBid.classList.add('idle');
     auctBid.innerHTML = `—<span class="kr">kr</span>`;
@@ -339,6 +339,8 @@ function renderSidebar(state: any) {
         : k === 'bordplan' ? 'Bordplan'
         : k === 'sponsor-index' ? 'Sponsorer'
         : k === 'lot' ? 'Lots'
+        : k === 'wish-loop' ? 'Ønske-loop'
+        : k === 'media' ? 'Media'
         : k === 'closing' ? 'Afslutning'
         : k;
     for (let i = 0; i < SLIDES.length; i++) {
@@ -361,12 +363,16 @@ function renderSidebar(state: any) {
           : (slide.kind === 'cover' ? 'Cover'
             : slide.kind === 'sponsor-index' ? 'Sponsorer'
             : slide.kind === 'bordplan' ? 'Bordplan'
+            : slide.kind === 'wish-loop' ? 'Ønske-loop'
+            : slide.kind === 'media' ? 'Media'
             : 'Afslutning');
         const name = lot
           ? lot.title
           : (slide.kind === 'cover' ? 'Auktionens forside'
             : slide.kind === 'sponsor-index' ? 'Auktionens sponsorer'
             : slide.kind === 'bordplan' ? 'Bordplan'
+            : slide.kind === 'wish-loop' ? 'Børnenes ønsker'
+            : slide.kind === 'media' ? 'Media'
             : 'Tak for i aften');
         row.innerHTML = `
           <div class="lot-num-side">${lot ? displayNumFor(lot.id) : ''}</div>

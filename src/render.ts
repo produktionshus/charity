@@ -2,7 +2,7 @@
 // Each animated element carries class="build-item" and an inline
 // transition-delay derived from its build group + in-group index.
 
-import { LOTS, SLIDES, lotById, bordplanById, coverById, closingById, sponsorIndexById, displayNumFor, type Slide, type Lot, type CoverItem, type ClosingItem, type SponsorIndexItem } from './slides';
+import { LOTS, SLIDES, lotById, bordplanById, coverById, closingById, sponsorIndexById, wishLoopById, mediaById, displayNumFor, type Slide, type Lot, type CoverItem, type ClosingItem, type SponsorIndexItem, type WishLoopItem, type MediaItem } from './slides';
 import { lotLayout, isMirrored, photoFocal, HORIZON_TITLE_SIZE_OVERRIDE } from './layout';
 import { renderBordplanSlide } from './render-bordplan';
 
@@ -233,6 +233,63 @@ export function renderClosing(item?: ClosingItem): string {
   `;
 }
 
+// ---- Media (generic 16:9 image or video slide, fullscreen) ----
+export function renderMedia(item?: MediaItem): string {
+  if (!item || !item.src) {
+    return `<div style="width:100%;height:100%;background:#000;color:#888;display:grid;place-items:center;font-family:'Plus Jakarta Sans',sans-serif">Media (no source)</div>`;
+  }
+  const bg = item.bgColor || '#000';
+  const fit = item.fit === 'contain' ? 'contain' : 'cover';
+  if (item.mode === 'video') {
+    const muted = item.videoMuted !== false;     // default true
+    const loop = item.videoLoop !== false;        // default true
+    const autoplay = item.videoAutoplay !== false; // default true
+    return `<div style="width:100%;height:100%;background:${bg};position:relative;overflow:hidden">
+      <video src="${item.src}" ${autoplay ? 'autoplay' : ''} ${muted ? 'muted' : ''} ${loop ? 'loop' : ''} playsinline style="width:100%;height:100%;object-fit:${fit};display:block"></video>
+    </div>`;
+  }
+  return `<div style="width:100%;height:100%;background:${bg};position:relative;overflow:hidden">
+    <img src="${item.src}" alt="${(item.alt || '').replace(/"/g, '&quot;')}" style="width:100%;height:100%;object-fit:${fit};display:block" />
+  </div>`;
+}
+
+// ---- Wish Loop ----
+// Embeds the standalone /wish-loop/ static module in an iframe. The host
+// passes the item's config via the iframe src query string so the loop has
+// data on first load; postMessage handles runtime tweaks if needed.
+export function renderWishLoop(item?: WishLoopItem): string {
+  if (!item) {
+    return `<div style="background:#06100a;color:#F4ECD8;display:grid;place-items:center;width:100%;height:100%;font-family:'Plus Jakarta Sans',sans-serif">Wish Loop (no config)</div>`;
+  }
+  const cfg = {
+    videoSrc: item.videoSrc || '',
+    cards: item.cards || [],
+    direction: item.direction,
+    perCardSeconds: item.perCardSeconds,
+    stackDepth: item.stackDepth,
+    pauseOnHover: item.pauseOnHover,
+    videoBlur: item.videoBlur,
+    videoDarken: item.videoDarken,
+    chrome: item.chrome,
+    eyebrowPretitle: item.eyebrowPretitle,
+    eyebrowTitle: item.eyebrowTitle,
+    sponsorEnabled: item.sponsorEnabled,
+    sponsorPretitle: item.sponsorPretitle,
+    sponsorMode: item.sponsorMode,
+    sponsorMark: item.sponsorMark,
+    sponsorLogo: item.sponsorLogo,
+  };
+  const cfgEncoded = encodeURIComponent(JSON.stringify(cfg));
+  // Hash the cfg so the iframe URL only changes when the config actually
+  // changes. That prevents constant remounts (which restart the apple
+  // preload + loop) when the surrounding state broadcasts come in.
+  let h = 0;
+  for (let i = 0; i < cfgEncoded.length; i++) {
+    h = ((h << 5) - h + cfgEncoded.charCodeAt(i)) | 0;
+  }
+  return `<iframe src="/wish-loop/index.html?v=${(h >>> 0).toString(36)}#cfg=${cfgEncoded}" style="border:0;width:100%;height:100%;background:#06100a" allow="autoplay" title="Ønske-loop"></iframe>`;
+}
+
 // ---- Cover ----
 export function renderCover(item?: CoverItem): string {
   const title = item?.title ?? 'AUKTION';
@@ -273,6 +330,12 @@ export function renderSlide(slide: Slide, lotOverride?: Lot, displayNumOverride?
   } else if (slide.kind === 'closing') {
     const item = slide.itemId ? closingById(slide.itemId) : undefined;
     root.innerHTML = renderClosing(item);
+  } else if (slide.kind === 'wish-loop') {
+    const item = slide.itemId ? wishLoopById(slide.itemId) : undefined;
+    root.innerHTML = renderWishLoop(item);
+  } else if (slide.kind === 'media') {
+    const item = slide.itemId ? mediaById(slide.itemId) : undefined;
+    root.innerHTML = renderMedia(item);
   } else if (slide.kind === 'bordplan') {
     const item = bordplanById(slide.itemId!);
     if (!item) return root;

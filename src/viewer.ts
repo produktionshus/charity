@@ -48,31 +48,72 @@ function unlockAudio() {
 document.addEventListener('click', unlockAudio, { once: true });
 document.addEventListener('keydown', unlockAudio, { once: true });
 
+// ---- Single-viewer audio leader election ----
+// Two viewers in the same browser caused double-playback / phantom reverb
+// during testing. BroadcastChannel coordinates: every open viewer
+// heartbeats with a unique id + timestamp; the *newest* viewer is the
+// audio leader. Followers stay silent.
+const VIEWER_ID = Math.random().toString(36).slice(2);
+let isAudioLeader = true;
+let leaderHeartbeatAt = 0;
+let viewerChan: BroadcastChannel | null = null;
+try { viewerChan = new BroadcastChannel('kidsaid-viewer'); } catch { /* unsupported */ }
+function declareLeader() {
+  isAudioLeader = true;
+  leaderHeartbeatAt = Date.now();
+  viewerChan?.postMessage({ type: 'viewer-hello', id: VIEWER_ID, ts: leaderHeartbeatAt });
+}
+declareLeader();
+setInterval(declareLeader, 4000);
+function updateAudioStatusBadge() {
+  let badge = document.getElementById('viewer-audio-status');
+  if (!badge) {
+    badge = document.createElement('div');
+    badge.id = 'viewer-audio-status';
+    badge.style.cssText = 'position:fixed;left:8px;bottom:8px;z-index:99998;padding:3px 8px;font:600 10px/1.2 system-ui;letter-spacing:0.1em;text-transform:uppercase;border-radius:4px;pointer-events:none;opacity:0.55';
+    document.body.appendChild(badge);
+  }
+  if (isAudioLeader) {
+    badge.textContent = '◉ lyd-leder';
+    badge.style.background = 'rgba(63,163,77,0.85)';
+    badge.style.color = '#fff';
+  } else {
+    badge.textContent = '○ stum (anden viewer er aktiv)';
+    badge.style.background = 'rgba(180,80,80,0.85)';
+    badge.style.color = '#fff';
+  }
+}
+viewerChan?.addEventListener('message', (e) => {
+  const m = e.data;
+  if (!m || m.type !== 'viewer-hello' || m.id === VIEWER_ID) return;
+  if (m.ts > leaderHeartbeatAt) {
+    isAudioLeader = false;
+    if (currentAudio) { try { currentAudio.pause(); } catch {} currentAudio = null; }
+    updateAudioStatusBadge();
+  }
+});
+setTimeout(updateAudioStatusBadge, 100);
+
 // ---- Sound playback with fade in/out, single-track ----
-// Uses Web Audio GainNode so volume can exceed 100% (boost up to 150%).
+// Plain HTMLAudioElement.volume — avoids Web Audio MediaElementSource bugs
+// that cause double-playback / reverb on Safari + some Chrome versions.
+// Trade-off: max volume capped at 1.0 (re-encode mp3 with louder gain if
+// the source is too quiet).
 let currentAudio: HTMLAudioElement | null = null;
-let currentGain: GainNode | null = null;
-let currentTargetGain = 1;
-let audioCtx: AudioContext | null = null;
 const fadeTimers = new Set<number>();
 function clearFades() { fadeTimers.forEach(id => clearInterval(id)); fadeTimers.clear(); }
-function getAudioCtx(): AudioContext {
-  if (!audioCtx) audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
-  return audioCtx;
-}
 function stopAudio() {
   clearFades();
   if (currentAudio) { try { currentAudio.pause(); } catch {} currentAudio = null; }
-  currentGain = null;
 }
 
-function rampGain(gain: GainNode, from: number, to: number, durationSec: number, onDone?: () => void) {
-  if (durationSec <= 0) { gain.gain.value = to; onDone?.(); return; }
+function rampVolume(a: HTMLAudioElement, from: number, to: number, durationSec: number, onDone?: () => void) {
+  if (durationSec <= 0) { a.volume = Math.max(0, Math.min(1, to)); onDone?.(); return; }
   const start = performance.now();
   const id = window.setInterval(() => {
-    if (currentGain !== gain) { clearInterval(id); fadeTimers.delete(id); return; }
+    if (currentAudio !== a) { clearInterval(id); fadeTimers.delete(id); return; }
     const t = Math.min(1, (performance.now() - start) / (durationSec * 1000));
-    gain.gain.value = from + (to - from) * t;
+    a.volume = Math.max(0, Math.min(1, from + (to - from) * t));
     if (t >= 1) { clearInterval(id); fadeTimers.delete(id); onDone?.(); }
   }, 40);
   fadeTimers.add(id);
@@ -86,9 +127,15 @@ function bootRender() {
 
 const sync = new SyncClient();
 
-function swapSlide(idx: number) {
+let currentSlideId: string | null = null;
+function swapSlide(idx: number, force = false) {
   const slide = SLIDES[idx];
   if (!slide) { console.warn('no slide at idx', idx, 'of', SLIDES.length); return; }
+  // Skip remount if the same slide is already mounted — prevents wish-loop
+  // iframes from being torn down + reloaded on every lots-updated broadcast,
+  // which restarts the apple preload cycle and saturates the dev server.
+  if (!force && currentEl && currentSlideId === slide.id) return;
+  currentSlideId = slide.id;
   const next = renderSlide(slide);
   next.classList.add('entering');
   slideFrame.appendChild(next);
@@ -207,14 +254,16 @@ function fireHammer(lotNum: string, finalPrice: number) {
 // whatever's currently on the server's volume.
 refreshLotsFromServer().then(() => {
   applyChromeFromMeta();
-  if (currentSlideIdx >= 0) swapSlide(currentSlideIdx);
+  if (currentSlideIdx >= 0) swapSlide(currentSlideIdx, true);
 });
 
 sync.onLotsUpdated(async () => {
   await refreshLotsFromServer();
   applyChromeFromMeta();
-  // Re-render current slide with fresh data (no full reload, no flash).
-  if (currentSlideIdx >= 0) swapSlide(currentSlideIdx);
+  // Force re-render only on lots-updated since the underlying data may have
+  // changed. swapSlide's same-id guard still skips work if nothing relevant
+  // actually shifted.
+  if (currentSlideIdx >= 0) swapSlide(currentSlideIdx, true);
 });
 
 sync.on((state) => {
@@ -264,34 +313,29 @@ sync.on((state) => {
 // hammer on hammerslag, manual via controller). Single track at a time.
 sync.onSound(async (event) => {
   if (event.action === 'stop') { stopAudio(); return; }
+  // Only the audio-leader viewer plays sound; followers stay silent to
+  // prevent double-playback when multiple viewers are open.
+  if (!isAudioLeader) return;
   stopAudio();
-  const ctx = getAudioCtx();
-  if (ctx.state === 'suspended') { try { await ctx.resume(); } catch {} }
   const a = new Audio(`/sounds/${event.file}`);
-  a.crossOrigin = 'anonymous';
   a.currentTime = event.offset;
-  const targetVol = typeof event.volume === 'number' ? event.volume : 1;
-  const source = ctx.createMediaElementSource(a);
-  const gain = ctx.createGain();
-  gain.gain.value = event.fadeIn > 0 ? 0 : targetVol;
-  source.connect(gain).connect(ctx.destination);
+  const targetVol = Math.max(0, Math.min(1, typeof event.volume === 'number' ? event.volume : 1));
+  a.volume = event.fadeIn > 0 ? 0 : targetVol;
   currentAudio = a;
-  currentGain = gain;
-  currentTargetGain = targetVol;
   try { await a.play(); }
   catch (e) {
     console.warn('audio play blocked — klik i viewer for at aktivere', e);
     showAudioBanner();
     return;
   }
-  if (event.fadeIn > 0) rampGain(gain, 0, targetVol, event.fadeIn);
+  if (event.fadeIn > 0) rampVolume(a, 0, targetVol, event.fadeIn);
   if (event.fadeOut > 0) {
     a.addEventListener('loadedmetadata', () => {
       const remaining = a.duration - event.offset - event.fadeOut;
-      if (remaining <= 0) { rampGain(gain, gain.gain.value, 0, event.fadeOut, () => a.pause()); return; }
+      if (remaining <= 0) { rampVolume(a, a.volume, 0, event.fadeOut, () => a.pause()); return; }
       const id = window.setTimeout(() => {
         if (currentAudio !== a) return;
-        rampGain(gain, gain.gain.value, 0, event.fadeOut, () => a.pause());
+        rampVolume(a, a.volume, 0, event.fadeOut, () => a.pause());
       }, remaining * 1000);
       fadeTimers.add(id as unknown as number);
     });

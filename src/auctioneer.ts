@@ -171,7 +171,7 @@ sync.on((state) => {
     monitor.classList.remove('show-header');
     monitor.classList.remove('has-bid');
     lotnumEl.textContent = '—';
-    titleEl.textContent = slide?.kind === 'cover' ? 'Cover' : slide?.kind === 'sponsor-index' ? 'Sponsorer' : slide?.kind === 'closing' ? 'Tak for i aften' : '';
+    titleEl.textContent = slide?.kind === 'cover' ? 'Cover' : slide?.kind === 'sponsor-index' ? 'Sponsorer' : slide?.kind === 'closing' ? 'Tak for i aften' : slide?.kind === 'wish-loop' ? 'Børnenes ønsker' : slide?.kind === 'media' ? 'Media' : '';
     donorEl.textContent = '';
     bidEl.innerHTML = `—<span class="kr">kr</span>`;
     lastBid = null;

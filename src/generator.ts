@@ -2,8 +2,8 @@
 // Reads + writes through /api/lots; broadcasts ws 'lots-updated' so the
 // viewer / auctioneer / controller refresh themselves on save.
 
-import { renderSlide, renderCover, renderClosing, renderSponsorIndex, fitToViewport } from './render';
-import type { Lot, BordplanItem, CoverItem, ClosingItem, SponsorIndexItem, DeckItem } from './slides';
+import { renderSlide, renderCover, renderClosing, renderSponsorIndex, renderWishLoop, renderMedia, fitToViewport } from './render';
+import type { Lot, BordplanItem, CoverItem, ClosingItem, SponsorIndexItem, WishLoopItem, MediaItem, DeckItem } from './slides';
 import { renderBordplanSlide } from './render-bordplan';
 import type { FloorPlanConfig } from './bordplan-engine';
 
@@ -55,14 +55,16 @@ const logoPreview = document.getElementById('logo-preview') as HTMLImageElement;
 // types later). Keep lotsBank alias for the existing UI code paths.
 let itemsBank: DeckItem[] = [];
 let lotsBank: Lot[] = [];     // filtered alias = items where kind!=='bordplan'
-let selectedId: string | null = null;
+let selectedId: string | null = sessionStorage.getItem('gen.selectedId');
 let dirty = false;
 
-function itemKind(item: DeckItem | undefined): 'lot' | 'bordplan' | 'cover' | 'closing' | 'sponsor-index' {
+function itemKind(item: DeckItem | undefined): 'lot' | 'bordplan' | 'cover' | 'closing' | 'sponsor-index' | 'wish-loop' | 'media' {
   if (item && (item as any).kind === 'bordplan') return 'bordplan';
   if (item && (item as any).kind === 'cover') return 'cover';
   if (item && (item as any).kind === 'closing') return 'closing';
   if (item && (item as any).kind === 'sponsor-index') return 'sponsor-index';
+  if (item && (item as any).kind === 'wish-loop') return 'wish-loop';
+  if (item && (item as any).kind === 'media') return 'media';
   return 'lot';
 }
 function isBordplanItem(item: DeckItem | undefined): item is BordplanItem {
@@ -76,6 +78,12 @@ function isClosingItem(item: DeckItem | undefined): item is ClosingItem {
 }
 function isSponsorIndexItem(item: DeckItem | undefined): item is SponsorIndexItem {
   return !!item && (item as any).kind === 'sponsor-index';
+}
+function isWishLoopItem(item: DeckItem | undefined): item is WishLoopItem {
+  return !!item && (item as any).kind === 'wish-loop';
+}
+function isMediaItem(item: DeckItem | undefined): item is MediaItem {
+  return !!item && (item as any).kind === 'media';
 }
 
 // ---- Bordplan form DOM ----
@@ -92,6 +100,50 @@ const clLogoListEl  = document.getElementById('cl-logo-list')!;
 const clLogoUploadEl = document.getElementById('cl-logo-upload') as HTMLInputElement;
 const clSaveBtn     = document.getElementById('cl-save')!;
 let clLogos: ClosingItem['logos'] = [];
+
+const formWishLoop = document.getElementById('gen-form-wishloop')!;
+const wlActiveEl     = document.getElementById('wl-active')      as HTMLInputElement;
+const wlLabelEl      = document.getElementById('wl-label')       as HTMLInputElement;
+const wlSponsorEl    = document.getElementById('wl-sponsor')     as HTMLInputElement;
+const wlEyebrowPreEl    = document.getElementById('wl-eyebrow-pre')    as HTMLInputElement;
+const wlEyebrowTitleEl  = document.getElementById('wl-eyebrow-title')  as HTMLInputElement;
+const wlSponsorEnabledEl = document.getElementById('wl-sponsor-enabled') as HTMLInputElement;
+const wlSponsorPreEl    = document.getElementById('wl-sponsor-pre')    as HTMLInputElement;
+const wlSponsorModeEl   = document.getElementById('wl-sponsor-mode')   as HTMLSelectElement;
+const wlSponsorLogoEl   = document.getElementById('wl-sponsor-logo')   as HTMLInputElement;
+const wlSponsorLogoUploadEl = document.getElementById('wl-sponsor-logo-upload') as HTMLInputElement;
+const wlVideoSrcEl   = document.getElementById('wl-video-src')   as HTMLInputElement;
+const wlVideoUploadEl = document.getElementById('wl-video-upload') as HTMLInputElement;
+const wlDirectionEl  = document.getElementById('wl-direction')   as HTMLSelectElement;
+const wlStackDepthEl = document.getElementById('wl-stack-depth') as HTMLInputElement;
+const wlPerCardEl    = document.getElementById('wl-per-card')    as HTMLInputElement;
+const wlPerCardValEl = document.getElementById('wl-per-card-val')!;
+const wlBlurEl       = document.getElementById('wl-blur')        as HTMLInputElement;
+const wlBlurValEl    = document.getElementById('wl-blur-val')!;
+const wlDarkenEl     = document.getElementById('wl-darken')      as HTMLInputElement;
+const wlDarkenValEl  = document.getElementById('wl-darken-val')!;
+const wlChromeEl     = document.getElementById('wl-chrome')      as HTMLInputElement;
+const wlPauseHoverEl = document.getElementById('wl-pause-hover') as HTMLInputElement;
+const wlAppleListEl  = document.getElementById('wl-apple-list')!;
+const wlAppleUploadEl = document.getElementById('wl-apple-upload') as HTMLInputElement;
+const wlSaveBtn      = document.getElementById('wl-save')!;
+let wlApplePool: string[] = [];     // alle filer i /assets/apples/
+let wlSelectedCards: Array<{ id: number | string; src: string | null; alt?: string }> = [];
+
+const formMedia = document.getElementById('gen-form-media')!;
+const mdActiveEl   = document.getElementById('md-active')   as HTMLInputElement;
+const mdLabelEl    = document.getElementById('md-label')    as HTMLInputElement;
+const mdModeEl     = document.getElementById('md-mode')     as HTMLSelectElement;
+const mdSrcEl      = document.getElementById('md-src')      as HTMLInputElement;
+const mdUploadEl   = document.getElementById('md-upload')   as HTMLInputElement;
+const mdAltEl      = document.getElementById('md-alt')      as HTMLInputElement;
+const mdFitEl      = document.getElementById('md-fit')      as HTMLSelectElement;
+const mdBgEl       = document.getElementById('md-bg')       as HTMLInputElement;
+const mdAutoplayEl = document.getElementById('md-autoplay') as HTMLInputElement;
+const mdLoopEl     = document.getElementById('md-loop')     as HTMLInputElement;
+const mdMutedEl    = document.getElementById('md-muted')    as HTMLInputElement;
+const mdVideoOptsEl = document.getElementById('md-video-opts')!;
+const mdSaveBtn    = document.getElementById('md-save')!;
 
 const formSponsorIndex = document.getElementById('gen-form-sponsorindex')!;
 const siActiveEl   = document.getElementById('si-active') as HTMLInputElement;
@@ -198,8 +250,11 @@ async function loadBank() {
     lotsBank = itemsBank.filter(i => itemKind(i) === 'lot') as Lot[];
     statusEl.textContent = `${itemsBank.length} items indlæst (${lotsBank.length} lots)`;
     renderList();
-    if (!selectedId && itemsBank.length) selectLot(itemsBank[0].id);
-    else if (selectedId) selectLot(selectedId);
+    // Restore selection across reload — sessionStorage survives Vite's
+    // auto-reload triggered by lots.json writes in dev.
+    const stillExists = selectedId && itemsBank.some(i => i.id === selectedId);
+    if (stillExists) selectLot(selectedId!);
+    else if (itemsBank.length) selectLot(itemsBank[0].id);
   } catch (e: any) {
     statusEl.textContent = 'Fejl: ' + e.message;
   }
@@ -267,6 +322,14 @@ function renderList() {
       dn = 'SP';
       title = item.label || item.title || '(uden navn)';
       badge = !item.active ? 'INACTIVE' : 'SPONSOR-INDEKS';
+    } else if (isWishLoopItem(item)) {
+      dn = 'ØT';
+      title = item.label || '(uden navn)';
+      badge = !item.active ? 'INACTIVE' : `ØNSKE-LOOP · ${item.cards.length}`;
+    } else if (isMediaItem(item)) {
+      dn = 'MD';
+      title = item.label || '(uden navn)';
+      badge = !item.active ? 'INACTIVE' : `MEDIA · ${item.mode}`;
     }
     row.innerHTML = `
       <span class="drag-handle">⋮⋮</span>
@@ -355,6 +418,7 @@ function selectLot(id: string) {
     if (!confirm('Du har ugemte ændringer. Skift item og kassér?')) return;
   }
   selectedId = id;
+  sessionStorage.setItem('gen.selectedId', id);
   const item = itemsBank.find(i => i.id === id);
   if (!item) return;
   const kind = itemKind(item);
@@ -363,7 +427,12 @@ function selectLot(id: string) {
   formCover.style.display = 'none';
   formClosing.style.display = 'none';
   formSponsorIndex.style.display = 'none';
-  if (kind === 'bordplan') {
+  formWishLoop.style.display = 'none';
+  formMedia.style.display = 'none';
+  if (kind === 'media') {
+    formMedia.style.display = 'flex';
+    populateMediaForm(item as MediaItem);
+  } else if (kind === 'bordplan') {
     formBordplan.style.display = 'flex';
     populateBordplanForm(item as BordplanItem);
   } else if (kind === 'cover') {
@@ -375,6 +444,9 @@ function selectLot(id: string) {
   } else if (kind === 'sponsor-index') {
     formSponsorIndex.style.display = 'flex';
     populateSponsorIndexForm(item as SponsorIndexItem);
+  } else if (kind === 'wish-loop') {
+    formWishLoop.style.display = 'flex';
+    populateWishLoopForm(item as WishLoopItem);
   } else {
     formLot.style.display = 'flex';
     populateForm(item as Lot);
@@ -537,6 +609,28 @@ function refreshPreview() {
     wrap.appendChild(slideEl);
     requestAnimationFrame(() => fitToViewport(wrap, slideEl));
     previewMeta.textContent = 'sponsor-index';
+    return;
+  }
+  if (isMediaItem(item)) {
+    const merged: MediaItem = { ...item, ...readMediaForm() } as MediaItem;
+    const slideEl = document.createElement('div');
+    slideEl.className = 'slide-canvas slide-media';
+    slideEl.classList.add('is-visible', 'no-build');
+    slideEl.innerHTML = renderMedia(merged);
+    wrap.appendChild(slideEl);
+    requestAnimationFrame(() => fitToViewport(wrap, slideEl));
+    previewMeta.textContent = `media · ${merged.mode}`;
+    return;
+  }
+  if (isWishLoopItem(item)) {
+    const merged: WishLoopItem = { ...item, ...readWishLoopForm() };
+    const slideEl = document.createElement('div');
+    slideEl.className = 'slide-canvas slide-wish-loop';
+    slideEl.classList.add('is-visible', 'no-build');
+    slideEl.innerHTML = renderWishLoop(merged);
+    wrap.appendChild(slideEl);
+    requestAnimationFrame(() => fitToViewport(wrap, slideEl));
+    previewMeta.textContent = `wish-loop · ${merged.cards.length}/${wlApplePool.length} kort`;
     return;
   }
   const baseLot = item as Lot;
@@ -886,8 +980,8 @@ clLogoUploadEl.addEventListener('change', async () => {
   if (!files.length) return;
   for (const file of files) {
     const fd = new FormData();
-    fd.append('file', file);
     fd.append('kind', 'closing');
+    fd.append('file', file);
     try {
       const res = await fetch('/api/upload', { method: 'POST', body: fd });
       const data = await res.json();
@@ -922,6 +1016,330 @@ clSaveBtn.addEventListener('click', async () => {
     statusEl.textContent = 'Save failed: ' + e.message;
   }
 });
+
+// ---- Media form ----
+function populateMediaForm(item: MediaItem) {
+  editIdEl.textContent = item.id;
+  editDisplayNumEl.textContent = 'MD';
+  deleteBtn.style.display = 'inline-flex';
+  duplicateBtn.style.display = 'inline-flex';
+  resetFocalBtn.style.display = 'none';
+  mdActiveEl.checked = !!item.active;
+  mdLabelEl.value    = item.label ?? '';
+  mdModeEl.value     = item.mode  ?? 'image';
+  mdSrcEl.value      = item.src   ?? '';
+  mdAltEl.value      = item.alt   ?? '';
+  mdFitEl.value      = item.fit   ?? 'cover';
+  mdBgEl.value       = item.bgColor ?? '#000000';
+  mdAutoplayEl.checked = item.videoAutoplay ?? true;
+  mdLoopEl.checked     = item.videoLoop     ?? true;
+  mdMutedEl.checked    = item.videoMuted    ?? true;
+  mdVideoOptsEl.style.display = mdModeEl.value === 'video' ? '' : 'none';
+}
+function readMediaForm(): Partial<MediaItem> {
+  return {
+    active: mdActiveEl.checked,
+    label:  mdLabelEl.value,
+    mode:   mdModeEl.value as any,
+    src:    mdSrcEl.value,
+    alt:    mdAltEl.value,
+    fit:    mdFitEl.value as any,
+    bgColor: mdBgEl.value,
+    videoAutoplay: mdAutoplayEl.checked,
+    videoLoop:     mdLoopEl.checked,
+    videoMuted:    mdMutedEl.checked,
+  };
+}
+function mdOnChange() {
+  mdVideoOptsEl.style.display = mdModeEl.value === 'video' ? '' : 'none';
+  setDirty(true);
+  refreshPreview();
+}
+[mdActiveEl, mdLabelEl, mdModeEl, mdSrcEl, mdAltEl, mdFitEl, mdBgEl, mdAutoplayEl, mdLoopEl, mdMutedEl]
+  .forEach(el => el.addEventListener('input', mdOnChange));
+mdUploadEl.addEventListener('change', async () => {
+  const file = mdUploadEl.files?.[0];
+  if (!file) return;
+  const fd = new FormData();
+  fd.append('kind', 'media');
+  fd.append('file', file);
+  try {
+    const res = await fetch('/api/upload', { method: 'POST', body: fd });
+    const data = await res.json();
+    if (data && data.filename) {
+      mdSrcEl.value = `/assets/media/${data.filename}`;
+      // Auto-detect mode by extension
+      if (/\.(mp4|webm|mov|m4v|ogv)$/i.test(data.filename)) mdModeEl.value = 'video';
+      else mdModeEl.value = 'image';
+      mdOnChange();
+    }
+  } catch (e: any) { statusEl.textContent = 'Media upload failed: ' + e.message; }
+  mdUploadEl.value = '';
+});
+mdSaveBtn.addEventListener('click', async () => {
+  if (!selectedId) return;
+  const patch = readMediaForm();
+  try {
+    statusEl.textContent = 'Gemmer media…';
+    const updated = await api(`/api/lots/${encodeURIComponent(selectedId)}`, {
+      method: 'PUT', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(patch),
+    });
+    const idx = itemsBank.findIndex(i => i.id === selectedId);
+    if (idx >= 0) itemsBank[idx] = updated;
+    setDirty(false);
+    renderList();
+    refreshPreview();
+    statusEl.textContent = 'Gemt';
+  } catch (e: any) {
+    statusEl.textContent = 'Save failed: ' + e.message;
+  }
+});
+
+// ---- Wish-loop form ----
+async function loadApplePool() {
+  try {
+    const res = await fetch('/api/apples');
+    const data = await res.json();
+    wlApplePool = (data.files || []).sort();
+  } catch { wlApplePool = []; }
+}
+function renderWishLoopAppleList() {
+  wlAppleListEl.innerHTML = '';
+  // Always render the pool in its native (alphabetical) order so tiles
+  // stay put when clicked — selected state is signalled by colour + the
+  // pick-index badge, not by reordering. Files that are selected but no
+  // longer in the pool are appended at the end so they stay visible.
+  const selectedFnames = wlSelectedCards.map(c => (c.src || '').split('/').pop() || '');
+  const poolSet = new Set(wlApplePool);
+  const orphanSelected = selectedFnames.filter(f => f && !poolSet.has(f));
+  const ordered = [...wlApplePool, ...orphanSelected];
+  ordered.forEach((fname) => {
+    if (!fname) return;
+    const pickIdx = selectedFnames.indexOf(fname);
+    const selected = pickIdx >= 0;
+    const li = document.createElement('li');
+    li.dataset.fname = fname;
+    if (selected) li.classList.add('selected');
+    const m = fname.match(/^apple-(\d+)-(.+)\.png$/i);
+    const num = m ? m[1] : '';
+    const name = m ? m[2].replace(/_/g, ' ') : fname.replace(/\.png$/i, '');
+    li.innerHTML = `
+      <img src="/assets/apples/${encodeURIComponent(fname)}" alt="" />
+      <div class="wl-fname"><span class="num">${num}</span>${name}</div>
+      ${selected ? `<span class="wl-pick-idx">${pickIdx + 1}</span>` : ''}
+    `;
+    wlAppleListEl.appendChild(li);
+  });
+}
+function populateWishLoopForm(item: WishLoopItem) {
+  editIdEl.textContent = item.id;
+  editDisplayNumEl.textContent = 'ØT';
+  deleteBtn.style.display = 'inline-flex';
+  duplicateBtn.style.display = 'inline-flex';
+  resetFocalBtn.style.display = 'none';
+  wlActiveEl.checked = !!item.active;
+  wlLabelEl.value     = item.label     ?? '';
+  wlSponsorEl.value   = item.sponsorMark ?? 'Ønskeskyen';
+  wlEyebrowPreEl.value    = item.eyebrowPretitle ?? 'Stjernegolf 2026 · Auktion';
+  wlEyebrowTitleEl.value  = item.eyebrowTitle    ?? 'Børnenes ønsker';
+  wlSponsorEnabledEl.checked = item.sponsorEnabled ?? true;
+  wlSponsorPreEl.value    = item.sponsorPretitle ?? 'Præsenteret af';
+  wlSponsorModeEl.value   = item.sponsorMode     ?? 'text';
+  wlSponsorLogoEl.value   = item.sponsorLogo     ?? '';
+  wlVideoSrcEl.value  = item.videoSrc  ?? '';
+  wlDirectionEl.value = item.direction ?? 'stack';
+  wlStackDepthEl.value = String(item.stackDepth ?? 3);
+  wlPerCardEl.value    = String(item.perCardSeconds ?? 5);
+  wlPerCardValEl.textContent = `${wlPerCardEl.value}s`;
+  wlBlurEl.value       = String(item.videoBlur ?? 36);
+  wlBlurValEl.textContent = `${wlBlurEl.value}px`;
+  wlDarkenEl.value     = String(item.videoDarken ?? 0.5);
+  wlDarkenValEl.textContent = parseFloat(wlDarkenEl.value).toFixed(2);
+  wlChromeEl.checked     = item.chrome ?? true;
+  wlPauseHoverEl.checked = item.pauseOnHover ?? true;
+  wlSelectedCards = (item.cards || []).map(c => ({ ...c }));
+  renderWishLoopAppleList();
+}
+function readWishLoopForm(): Partial<WishLoopItem> {
+  return {
+    active: wlActiveEl.checked,
+    label:  wlLabelEl.value,
+    sponsorMark: wlSponsorEl.value,
+    eyebrowPretitle: wlEyebrowPreEl.value,
+    eyebrowTitle:    wlEyebrowTitleEl.value,
+    sponsorEnabled:  wlSponsorEnabledEl.checked,
+    sponsorPretitle: wlSponsorPreEl.value,
+    sponsorMode:     wlSponsorModeEl.value as any,
+    sponsorLogo:     wlSponsorLogoEl.value,
+    videoSrc: wlVideoSrcEl.value,
+    direction: wlDirectionEl.value as any,
+    stackDepth: parseInt(wlStackDepthEl.value, 10) || 3,
+    perCardSeconds: parseInt(wlPerCardEl.value, 10) || 5,
+    videoBlur: parseFloat(wlBlurEl.value) || 0,
+    videoDarken: parseFloat(wlDarkenEl.value) || 0,
+    chrome: wlChromeEl.checked,
+    pauseOnHover: wlPauseHoverEl.checked,
+    cards: wlSelectedCards,
+  };
+}
+function wlOnChange() { setDirty(true); refreshPreview(); }
+[wlActiveEl, wlLabelEl, wlSponsorEl, wlVideoSrcEl, wlDirectionEl, wlStackDepthEl, wlChromeEl, wlPauseHoverEl,
+ wlEyebrowPreEl, wlEyebrowTitleEl, wlSponsorEnabledEl, wlSponsorPreEl, wlSponsorModeEl, wlSponsorLogoEl]
+  .forEach(el => el.addEventListener('input', wlOnChange));
+wlPerCardEl.addEventListener('input', () => { wlPerCardValEl.textContent = `${wlPerCardEl.value}s`; wlOnChange(); });
+wlBlurEl.addEventListener('input', () => { wlBlurValEl.textContent = `${wlBlurEl.value}px`; wlOnChange(); });
+wlDarkenEl.addEventListener('input', () => { wlDarkenValEl.textContent = parseFloat(wlDarkenEl.value).toFixed(2); wlOnChange(); });
+
+// Apple tile click → toggle selection
+wlAppleListEl.addEventListener('click', (e) => {
+  const li = (e.target as HTMLElement).closest<HTMLLIElement>('li');
+  if (!li || !li.dataset.fname) return;
+  const fname = li.dataset.fname;
+  const fnames = wlSelectedCards.map(c => (c.src || '').split('/').pop() || '');
+  const idx = fnames.indexOf(fname);
+  if (idx >= 0) {
+    wlSelectedCards.splice(idx, 1);
+  } else {
+    const child = fname.replace(/^apple-\d+-/, '').replace(/\.png$/i, '').replace(/_/g, ' ');
+    wlSelectedCards.push({
+      id: wlSelectedCards.length + 1,
+      src: `/assets/apples/${fname}`,
+      alt: child,
+    });
+  }
+  renderWishLoopAppleList();
+  wlOnChange();
+});
+// Drag-reorder among selected tiles
+let wlDragFname: string | null = null;
+wlAppleListEl.addEventListener('dragstart', (e) => {
+  const li = (e.target as HTMLElement).closest<HTMLLIElement>('li.selected');
+  if (!li || !li.dataset.fname) return;
+  wlDragFname = li.dataset.fname;
+  li.classList.add('dragging');
+  e.dataTransfer?.setData('text/plain', wlDragFname);
+});
+wlAppleListEl.addEventListener('dragover', (e) => {
+  e.preventDefault();
+  wlAppleListEl.querySelectorAll('li.drag-over').forEach(el => el.classList.remove('drag-over'));
+  const li = (e.target as HTMLElement).closest<HTMLLIElement>('li.selected');
+  if (li) li.classList.add('drag-over');
+});
+wlAppleListEl.addEventListener('dragend', () => {
+  wlAppleListEl.querySelectorAll('li').forEach(el => el.classList.remove('dragging', 'drag-over'));
+  wlDragFname = null;
+});
+wlAppleListEl.addEventListener('drop', (e) => {
+  e.preventDefault();
+  if (!wlDragFname) return;
+  const targetLi = (e.target as HTMLElement).closest<HTMLLIElement>('li.selected');
+  if (!targetLi || !targetLi.dataset.fname) return;
+  const fnames = wlSelectedCards.map(c => (c.src || '').split('/').pop() || '');
+  const fromIdx = fnames.indexOf(wlDragFname);
+  const toIdx = fnames.indexOf(targetLi.dataset.fname);
+  if (fromIdx < 0 || toIdx < 0 || fromIdx === toIdx) return;
+  const [moved] = wlSelectedCards.splice(fromIdx, 1);
+  wlSelectedCards.splice(toIdx, 0, moved);
+  wlDragFname = null;
+  renderWishLoopAppleList();
+  wlOnChange();
+});
+// Upload æbler til pool
+wlAppleUploadEl.addEventListener('change', async () => {
+  const files = Array.from(wlAppleUploadEl.files || []);
+  if (!files.length) return;
+  for (const file of files) {
+    const fd = new FormData();
+    fd.append('kind', 'apple');
+    fd.append('file', file);
+    try { await fetch('/api/upload', { method: 'POST', body: fd }); }
+    catch (e: any) { statusEl.textContent = 'Apple upload failed: ' + e.message; }
+  }
+  wlAppleUploadEl.value = '';
+  await loadApplePool();
+  renderWishLoopAppleList();
+});
+// Upload sponsor-logo PNG / SVG (auto-saves to item)
+wlSponsorLogoUploadEl.addEventListener('change', async () => {
+  const file = wlSponsorLogoUploadEl.files?.[0];
+  if (!file) return;
+  const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '-');
+  const fd = new FormData();
+  // Multer's destination() runs as soon as the file part arrives; req.body
+  // is only populated from fields parsed *before* the file. Append kind
+  // first so multer sees req.body.kind when it picks a destination.
+  fd.append('kind', 'wish-bg');
+  fd.append('file', new File([file], safeName, { type: file.type }));
+  statusEl.textContent = `Uploader logo (${safeName})…`;
+  try {
+    const res = await fetch('/api/upload', { method: 'POST', body: fd });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    if (data && data.filename) {
+      const url = `/assets/wish-loop/${data.filename}`;
+      wlSponsorLogoEl.value = url;
+      wlSponsorModeEl.value = 'logo';
+      // Persist immediately so the item carries the new logo across reloads.
+      if (selectedId) {
+        try {
+          const updated = await api(`/api/lots/${encodeURIComponent(selectedId)}`, {
+            method: 'PUT', headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ sponsorLogo: url, sponsorMode: 'logo' }),
+          });
+          const idx = itemsBank.findIndex(i => i.id === selectedId);
+          if (idx >= 0) itemsBank[idx] = updated;
+        } catch {}
+      }
+      refreshPreview();
+      statusEl.textContent = `Logo gemt: ${data.filename}`;
+    } else {
+      statusEl.textContent = 'Logo upload: ingen filename i svar';
+    }
+  } catch (e: any) {
+    statusEl.textContent = 'Logo upload failed: ' + (e?.message || e);
+  }
+  wlSponsorLogoUploadEl.value = '';
+});
+
+// Upload baggrundsvideo
+wlVideoUploadEl.addEventListener('change', async () => {
+  const file = wlVideoUploadEl.files?.[0];
+  if (!file) return;
+  const fd = new FormData();
+  fd.append('kind', 'wish-bg');
+  fd.append('file', file);
+  try {
+    const res = await fetch('/api/upload', { method: 'POST', body: fd });
+    const data = await res.json();
+    if (data && data.filename) {
+      wlVideoSrcEl.value = `/assets/wish-loop/${data.filename}`;
+      wlOnChange();
+    }
+  } catch (e: any) { statusEl.textContent = 'Video upload failed: ' + e.message; }
+  wlVideoUploadEl.value = '';
+});
+wlSaveBtn.addEventListener('click', async () => {
+  if (!selectedId) return;
+  const patch = readWishLoopForm();
+  try {
+    statusEl.textContent = 'Gemmer wish-loop…';
+    const updated = await api(`/api/lots/${encodeURIComponent(selectedId)}`, {
+      method: 'PUT',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(patch),
+    });
+    const idx = itemsBank.findIndex(i => i.id === selectedId);
+    if (idx >= 0) itemsBank[idx] = updated;
+    setDirty(false);
+    renderList();
+    refreshPreview();
+    statusEl.textContent = 'Gemt';
+  } catch (e: any) {
+    statusEl.textContent = 'Save failed: ' + e.message;
+  }
+});
+loadApplePool();
 
 // ---- Sponsor-index form ----
 function populateSponsorIndexForm(item: SponsorIndexItem) {
@@ -1035,6 +1453,64 @@ saveBtn.addEventListener('click', async () => {
 });
 
 // ---- New / Delete ----
+const newMediaBtn = document.getElementById('new-media')!;
+newMediaBtn.addEventListener('click', async () => {
+  try {
+    const created = await api('/api/lots', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        kind: 'media',
+        active: true,
+        label: 'Media',
+        mode: 'image',
+        src: '',
+        fit: 'cover',
+        bgColor: '#000000',
+      } as any),
+    });
+    itemsBank.push(created);
+    selectedId = created.id;
+    renderList();
+    selectLot(created.id);
+    statusEl.textContent = 'Media oprettet';
+  } catch (e: any) {
+    statusEl.textContent = 'Create failed: ' + e.message;
+  }
+});
+
+const newWishLoopBtn = document.getElementById('new-wishloop')!;
+newWishLoopBtn.addEventListener('click', async () => {
+  try {
+    const created = await api('/api/lots', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        kind: 'wish-loop',
+        active: true,
+        label: `Ønske-loop ${itemsBank.filter(i => (i as any).kind === 'wish-loop').length + 1}`,
+        videoSrc: '/assets/wish-loop/bg.mp4',
+        cards: [],
+        direction: 'stack',
+        perCardSeconds: 5,
+        stackDepth: 3,
+        pauseOnHover: true,
+        videoBlur: 36,
+        videoDarken: 0.5,
+        chrome: true,
+        sponsorMark: 'Ønskeskyen',
+      } as any),
+    });
+    itemsBank.push(created);
+    selectedId = created.id;
+    renderList();
+    selectLot(created.id);
+    statusEl.textContent = 'Ønske-loop oprettet';
+  } catch (e: any) {
+    statusEl.textContent = 'Create failed: ' + e.message;
+  }
+});
+
 const newSponsorIndexBtn = document.getElementById('new-sponsorindex')!;
 newSponsorIndexBtn.addEventListener('click', async () => {
   try {

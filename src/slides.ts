@@ -6,7 +6,7 @@
 import lotsJson from './lots.json';
 import type { FloorPlanConfig } from './bordplan-engine';
 
-export type SlideKind = 'cover' | 'sponsor-index' | 'lot' | 'closing' | 'bordplan';
+export type SlideKind = 'cover' | 'sponsor-index' | 'lot' | 'closing' | 'bordplan' | 'wish-loop' | 'media';
 
 export interface Slide {
   id: string;
@@ -57,6 +57,46 @@ export interface SponsorIndexItem {
   title?: string;            // default "AUKTIONENS SPONSORER"
 }
 
+export interface MediaItem {
+  id: string;
+  kind: 'media';
+  active: boolean;
+  label?: string;
+  mode: 'image' | 'video';
+  src: string;                 // path under /assets/media/ or absolute URL
+  alt?: string;
+  videoMuted?: boolean;        // default true (needed for autoplay)
+  videoLoop?: boolean;         // default true
+  videoAutoplay?: boolean;     // default true
+  fit?: 'cover' | 'contain';   // default 'cover'
+  bgColor?: string;            // letterbox colour when fit='contain'; default black
+}
+
+export interface WishLoopItem {
+  id: string;
+  kind: 'wish-loop';
+  active: boolean;
+  label?: string;
+  videoSrc?: string;                                         // url to bg video
+  cards: Array<{ id: number | string; src: string | null; alt?: string }>;
+  direction?: 'stack' | 'cinema' | 'drift';
+  perCardSeconds?: number;
+  stackDepth?: number;
+  pauseOnHover?: boolean;
+  videoBlur?: number;
+  videoDarken?: number;
+  chrome?: boolean;
+  // Top-left eyebrow chrome (editable)
+  eyebrowPretitle?: string;        // default 'Stjernegolf 2026 · Auktion'
+  eyebrowTitle?: string;           // default 'Børnenes ønsker'
+  // Sponsor mark (top-right)
+  sponsorEnabled?: boolean;        // default true
+  sponsorPretitle?: string;        // default 'Præsenteret af' — fx 'I samarbejde med'
+  sponsorMode?: 'text' | 'logo';   // default 'text'
+  sponsorMark?: string;            // text value
+  sponsorLogo?: string;            // path to transparent PNG (relative to /assets/wish-loop/ or absolute)
+}
+
 export interface Lot {
   id: string;
   kind?: 'lot';                     // optional discriminator (default 'lot')
@@ -88,7 +128,7 @@ export interface SoundConfig {
   hammerVolume?: number;   // 0..1.5
 }
 
-export type DeckItem = Lot | BordplanItem | CoverItem | ClosingItem | SponsorIndexItem;
+export type DeckItem = Lot | BordplanItem | CoverItem | ClosingItem | SponsorIndexItem | WishLoopItem | MediaItem;
 function isLot(item: DeckItem): item is Lot {
   return (item as any).kind === undefined || (item as any).kind === 'lot';
 }
@@ -103,6 +143,12 @@ function isClosing(item: DeckItem): item is ClosingItem {
 }
 function isSponsorIndex(item: DeckItem): item is SponsorIndexItem {
   return (item as any).kind === 'sponsor-index';
+}
+function isWishLoop(item: DeckItem): item is WishLoopItem {
+  return (item as any).kind === 'wish-loop';
+}
+function isMedia(item: DeckItem): item is MediaItem {
+  return (item as any).kind === 'media';
 }
 
 // All items from the bank (active + inactive). Generator edits this list.
@@ -193,6 +239,10 @@ function buildSlides(): Slide[] {
     } else if (isSponsorIndex(item)) {
       slides.push({ id: `sponsor-index-${item.id}`, kind: 'sponsor-index', itemId: item.id });
       hasSponsorIndex = true;
+    } else if (isWishLoop(item)) {
+      slides.push({ id: `wish-loop-${item.id}`, kind: 'wish-loop', itemId: item.id });
+    } else if (isMedia(item)) {
+      slides.push({ id: `media-${item.id}`, kind: 'media', itemId: item.id });
     } else if (isLot(item)) {
       if (!lotsEmitted) {
         if (!hasSponsorIndex) flushSponsorIndex();
@@ -225,6 +275,14 @@ export function closingById(id: string): ClosingItem | undefined {
 export function sponsorIndexById(id: string): SponsorIndexItem | undefined {
   const item = ALL_ITEMS.find(i => i.id === id && isSponsorIndex(i));
   return item as SponsorIndexItem | undefined;
+}
+export function wishLoopById(id: string): WishLoopItem | undefined {
+  const item = ALL_ITEMS.find(i => i.id === id && isWishLoop(i));
+  return item as WishLoopItem | undefined;
+}
+export function mediaById(id: string): MediaItem | undefined {
+  const item = ALL_ITEMS.find(i => i.id === id && isMedia(i));
+  return item as MediaItem | undefined;
 }
 
 export const SLIDES: Slide[] = buildSlides();

@@ -1,6 +1,20 @@
 {
   "lots": [
     {
+      "id": "f517282b-08bc-4e16-9258-45283f71d051",
+      "kind": "media",
+      "active": true,
+      "label": "Kidsaid Logo",
+      "mode": "image",
+      "src": "/assets/media/logo1.png",
+      "alt": "",
+      "videoMuted": true,
+      "videoLoop": true,
+      "videoAutoplay": true,
+      "fit": "cover",
+      "bgColor": "#000000"
+    },
+    {
       "id": "bordplan-stjernegolf-2026",
       "kind": "bordplan",
       "active": true,
@@ -52,6 +66,252 @@
         }
       },
       "overrides": {}
+    },
+    {
+      "id": "db8a7722-2023-4820-bbe6-1f8f18a62455",
+      "kind": "media",
+      "active": true,
+      "label": "Kidsaid Logo",
+      "mode": "image",
+      "src": "/assets/media/logo1.png",
+      "alt": "",
+      "videoMuted": true,
+      "videoLoop": true,
+      "videoAutoplay": true,
+      "fit": "cover",
+      "bgColor": "#000000"
+    },
+    {
+      "id": "c61f5515-eb97-477d-88f7-54f8429f863f",
+      "kind": "media",
+      "active": true,
+      "label": "Drikketak",
+      "mode": "image",
+      "src": "/assets/media/drikketak.png",
+      "alt": "",
+      "videoMuted": true,
+      "videoLoop": true,
+      "videoAutoplay": true,
+      "fit": "cover",
+      "bgColor": "#000000"
+    },
+    {
+      "id": "a8754fbe-3df6-4667-aa96-529571f56cc7",
+      "kind": "media",
+      "active": true,
+      "label": "Blomstertak",
+      "mode": "image",
+      "src": "/assets/media/blomsterspons.png",
+      "alt": "",
+      "videoMuted": true,
+      "videoLoop": true,
+      "videoAutoplay": true,
+      "fit": "cover",
+      "bgColor": "#000000"
+    },
+    {
+      "id": "78c8f583-52a6-4a7c-b2f9-f59a615f0367",
+      "kind": "media",
+      "active": true,
+      "label": "HEADSTAILS",
+      "mode": "image",
+      "src": "/assets/media/headstails.png",
+      "alt": "",
+      "videoMuted": true,
+      "videoLoop": true,
+      "videoAutoplay": true,
+      "fit": "cover",
+      "bgColor": "#000000"
+    },
+    {
+      "id": "85b57672-a810-4e71-9d5f-cf4ff93a5acc",
+      "kind": "wish-loop",
+      "active": true,
+      "label": "Ønskeloop1",
+      "videoSrc": "/assets/wish-loop/bg.mp4",
+      "cards": [
+        {
+          "id": 1,
+          "src": "/assets/apples/apple-01-Agnes.png",
+          "alt": "Agnes"
+        },
+        {
+          "id": 2,
+          "src": "/assets/apples/apple-02-Aiden.png",
+          "alt": "Aiden"
+        },
+        {
+          "id": 3,
+          "src": "/assets/apples/apple-03-Alba.png",
+          "alt": "Alba"
+        },
+        {
+          "id": 4,
+          "src": "/assets/apples/apple-04-Alma.png",
+          "alt": "Alma"
+        },
+        {
+          "id": 5,
+          "src": "/assets/apples/apple-05-Anna_B.png",
+          "alt": "Anna B"
+        },
+        {
+          "id": 6,
+          "src": "/assets/apples/apple-06-Anna_C.png",
+          "alt": "Anna C"
+        },
+        {
+          "id": 7,
+          "src": "/assets/apples/apple-07-Anthon.png",
+          "alt": "Anthon"
+        },
+        {
+          "id": 8,
+          "src": "/assets/apples/apple-08-Arthur.png",
+          "alt": "Arthur"
+        },
+        {
+          "id": 9,
+          "src": "/assets/apples/apple-09-Asbjørn.png",
+          "alt": "Asbjørn"
+        },
+        {
+          "id": 10,
+          "src": "/assets/apples/apple-11-Cecilie.png",
+          "alt": "Cecilie"
+        },
+        {
+          "id": 11,
+          "src": "/assets/apples/apple-10-August.png",
+          "alt": "August"
+        },
+        {
+          "id": 12,
+          "src": "/assets/apples/apple-12-Celine.png",
+          "alt": "Celine"
+        }
+      ],
+      "direction": "drift",
+      "perCardSeconds": 8,
+      "stackDepth": 6,
+      "pauseOnHover": false,
+      "videoBlur": 18,
+      "videoDarken": 0.25,
+      "chrome": true,
+      "sponsorMark": "Ønskeskyen",
+      "eyebrowPretitle": "Stjernegolf 2026",
+      "eyebrowTitle": "Ønsketræet",
+      "sponsorEnabled": true,
+      "sponsorPretitle": "I samarbejde med",
+      "sponsorMode": "logo",
+      "sponsorLogo": "/assets/wish-loop/Menu-Logo--4-.svg"
+    },
+    {
+      "id": "300f4e74-56a7-467d-ac24-fccdb69919b0",
+      "kind": "media",
+      "active": true,
+      "label": "MP-GRØN Kidsaid Logo",
+      "mode": "image",
+      "src": "/assets/media/mpgroen.png",
+      "alt": "",
+      "videoMuted": true,
+      "videoLoop": true,
+      "videoAutoplay": true,
+      "fit": "cover",
+      "bgColor": "#000000"
+    },
+    {
+      "id": "f1bfc91f-2f24-47d9-96bc-6857009d641c",
+      "kind": "wish-loop",
+      "active": true,
+      "label": "ØnskeTræ2",
+      "videoSrc": "/assets/wish-loop/bg.mp4",
+      "cards": [
+        {
+          "id": 13,
+          "src": "/assets/apples/apple-13-Cilje.png",
+          "alt": "Cilje"
+        },
+        {
+          "id": 2,
+          "src": "/assets/apples/apple-14-Edith.png",
+          "alt": "Edith"
+        },
+        {
+          "id": 3,
+          "src": "/assets/apples/apple-15-Elias.png",
+          "alt": "Elias"
+        },
+        {
+          "id": 4,
+          "src": "/assets/apples/apple-16-Elliot.png",
+          "alt": "Elliot"
+        },
+        {
+          "id": 5,
+          "src": "/assets/apples/apple-17-Elton.png",
+          "alt": "Elton"
+        },
+        {
+          "id": 6,
+          "src": "/assets/apples/apple-18-Emil.png",
+          "alt": "Emil"
+        },
+        {
+          "id": 7,
+          "src": "/assets/apples/apple-19-Erik.png",
+          "alt": "Erik"
+        },
+        {
+          "id": 8,
+          "src": "/assets/apples/apple-20-Fie.png",
+          "alt": "Fie"
+        },
+        {
+          "id": 9,
+          "src": "/assets/apples/apple-21-Hannah.png",
+          "alt": "Hannah"
+        },
+        {
+          "id": 10,
+          "src": "/assets/apples/apple-22-Hassel.png",
+          "alt": "Hassel"
+        },
+        {
+          "id": 11,
+          "src": "/assets/apples/apple-23-Holger.png",
+          "alt": "Holger"
+        },
+        {
+          "id": 12,
+          "src": "/assets/apples/apple-24-Josefine.png",
+          "alt": "Josefine"
+        }
+      ],
+      "direction": "drift",
+      "perCardSeconds": 8,
+      "stackDepth": 6,
+      "pauseOnHover": false,
+      "videoBlur": 18,
+      "videoDarken": 0,
+      "chrome": true,
+      "eyebrowPretitle": "Stjernegolf 2026",
+      "eyebrowTitle": "Ønsketræet",
+      "sponsorEnabled": true,
+      "sponsorPretitle": "I samarbejde med",
+      "sponsorMode": "logo",
+      "sponsorMark": "Ønskeskyen",
+      "sponsorLogo": "/assets/wish-loop/Menu-Logo--4-.svg"
+    },
+    {
+      "id": "aa52fb08-2ace-4d9c-ad2d-15f710d55f50",
+      "kind": "cover",
+      "active": true,
+      "label": "Cover",
+      "title": "AUKTION",
+      "subtitle": "STJERNEGOLF 2026",
+      "attribution": "AUKTION VED KASPER NIELSEN",
+      "logoFile": "artsolo-logo.png"
     },
     {
       "title": "4 VIP-billetter til Smukfest og overnatning i bøgeskoven",
@@ -396,7 +656,7 @@
         "initStartOffset": 0,
         "fadeInSec": 0,
         "fadeOutSec": 0,
-        "initVolume": 1,
+        "initVolume": 0.94,
         "hammerVolume": 1
       }
     },
@@ -435,6 +695,103 @@
       "layout": "profile",
       "mirrored": false,
       "focal": "50% 50%"
+    },
+    {
+      "id": "09280e33-de60-4898-b02c-84b7f81f8022",
+      "kind": "media",
+      "active": true,
+      "label": "PAUSE- Kidsaid Logo",
+      "mode": "image",
+      "src": "/assets/media/logo1.png",
+      "alt": "",
+      "videoMuted": true,
+      "videoLoop": true,
+      "videoAutoplay": true,
+      "fit": "cover",
+      "bgColor": "#000000"
+    },
+    {
+      "id": "6c97a168-757b-4c9e-bb73-5bed547d33ab",
+      "kind": "wish-loop",
+      "active": true,
+      "label": "ØnskeTræ3",
+      "videoSrc": "/assets/wish-loop/bg.mp4",
+      "cards": [
+        {
+          "id": 13,
+          "src": "/assets/apples/apple-25-Konrad.png",
+          "alt": "Konrad"
+        },
+        {
+          "id": 2,
+          "src": "/assets/apples/apple-26-Lauge.png",
+          "alt": "Lauge"
+        },
+        {
+          "id": 3,
+          "src": "/assets/apples/apple-27-Lily.png",
+          "alt": "Lily"
+        },
+        {
+          "id": 4,
+          "src": "/assets/apples/apple-28-Louie.png",
+          "alt": "Louie"
+        },
+        {
+          "id": 5,
+          "src": "/assets/apples/apple-29-Maliva.png",
+          "alt": "Maliva"
+        },
+        {
+          "id": 6,
+          "src": "/assets/apples/apple-30-Malthe.png",
+          "alt": "Malthe"
+        },
+        {
+          "id": 7,
+          "src": "/assets/apples/apple-31-Marie.png",
+          "alt": "Marie"
+        },
+        {
+          "id": 8,
+          "src": "/assets/apples/apple-32-Maya.png",
+          "alt": "Maya"
+        },
+        {
+          "id": 9,
+          "src": "/assets/apples/apple-33-Miley.png",
+          "alt": "Miley"
+        },
+        {
+          "id": 10,
+          "src": "/assets/apples/apple-34-Morgan.png",
+          "alt": "Morgan"
+        },
+        {
+          "id": 11,
+          "src": "/assets/apples/apple-35-Nellie.png",
+          "alt": "Nellie"
+        },
+        {
+          "id": 12,
+          "src": "/assets/apples/apple-36-Nicki.png",
+          "alt": "Nicki"
+        }
+      ],
+      "direction": "drift",
+      "perCardSeconds": 8,
+      "stackDepth": 6,
+      "pauseOnHover": false,
+      "videoBlur": 18,
+      "videoDarken": 0,
+      "chrome": true,
+      "eyebrowPretitle": "Stjernegolf 2026",
+      "eyebrowTitle": "Ønsketræet",
+      "sponsorEnabled": true,
+      "sponsorPretitle": "I samarbejde med",
+      "sponsorMode": "logo",
+      "sponsorMark": "Ønskeskyen",
+      "sponsorLogo": "/assets/wish-loop/Menu-Logo--4-.svg"
     },
     {
       "title": "Ophold og Michelin-middag på d'Angleterre",
@@ -497,7 +854,7 @@
       "focal": "50% 50%"
     },
     {
-      "title": "OMEGA Speedmaster “Silver Snoopy Award”",
+      "title": "OMEGA Speedmaster  “Silver Snoopy Award”",
       "subtitle": "Specifikationer",
       "sponsor": "Doneret af privat person",
       "bullets": [
@@ -525,7 +882,9 @@
       "extraSuffix": null,
       "layout": "profile",
       "mirrored": false,
-      "focal": "50% 75%"
+      "focal": "53% 87%",
+      "donorNames": [],
+      "heroScale": 1.4
     },
     {
       "title": "Eksklusivt foredrag med Viktor Axelsen & Morten Ankerdal",
@@ -752,54 +1111,34 @@
     },
     {
       "id": "9d750323-c1c0-4802-8965-2270bd35d77e",
-      "title": "Luminance test",
-      "subtitle": "",
-      "sponsor": "",
-      "bullets": [],
-      "active": false,
-      "extra": true,
-      "extraSuffix": "b52",
-      "layout": "horizon",
-      "mirrored": false,
-      "focal": "100% 100%",
-      "heroExt": "jpg",
-      "donorNames": [],
-      "heroScale": 2.2
-    },
-    {
-      "id": "5ca12e17-b880-4723-9e20-a79c272621ee",
-      "title": "Lisa i baren på smukfest",
-      "subtitle": "Pakken inkluderer for 2 personer",
+      "title": "Danmarks Største vejfest - kommer fra Sara",
+      "subtitle": "Pakken inkluderer",
       "sponsor": "",
       "bullets": [
-        "1",
-        "1",
-        "2",
-        "3",
-        "32",
-        "4",
-        "4"
+        "Info incomming :",
+        "Datoer: Den 4. & 5. september 2026 (10-års jubilæum).",
+        "Sted: Cirkuspladsen, Silkeborg.",
+        "Musikprogram: Omfatter kendte danske navne som Suspekt, Medina, Aqua, Gilli, Kato og Hugorm."
       ],
+      "active": true,
+      "extra": true,
+      "extraSuffix": "WIP22",
+      "layout": "horizon",
+      "mirrored": false,
+      "focal": "50% 21%",
+      "heroExt": "jpg",
+      "donorNames": [],
+      "heroScale": 1.1,
       "titleParts": [
         {
-          "text": "Lisa i baren på ",
+          "text": "Danmarks Største vejfest - ",
           "bold": false
         },
         {
-          "text": "smukfest",
+          "text": "kommer fra Sara",
           "bold": true
         }
-      ],
-      "donorNames": [
-        "Lisa Kulldorf"
-      ],
-      "active": false,
-      "extra": false,
-      "extraSuffix": null,
-      "layout": "horizon",
-      "mirrored": false,
-      "focal": "64% 83%",
-      "heroScale": 1.1
+      ]
     },
     {
       "id": "4df17639-c437-439c-af5c-6b40815af07d",
@@ -807,6 +1146,123 @@
       "active": true,
       "label": "Sponsor-indeks",
       "title": "AUKTIONENS SPONSORER"
+    },
+    {
+      "id": "7262a625-71b1-4030-818e-a09b04516559",
+      "kind": "wish-loop",
+      "active": true,
+      "label": "ØnskeTræ4",
+      "videoSrc": "/assets/wish-loop/bg.mp4",
+      "cards": [
+        {
+          "id": 13,
+          "src": "/assets/apples/apple-37-Niklas.png",
+          "alt": "Niklas"
+        },
+        {
+          "id": 2,
+          "src": "/assets/apples/apple-38-Noah.png",
+          "alt": "Noah"
+        },
+        {
+          "id": 3,
+          "src": "/assets/apples/apple-39-Olga.png",
+          "alt": "Olga"
+        },
+        {
+          "id": 4,
+          "src": "/assets/apples/apple-40-Oliver.png",
+          "alt": "Oliver"
+        },
+        {
+          "id": 5,
+          "src": "/assets/apples/apple-41-Palma.png",
+          "alt": "Palma"
+        },
+        {
+          "id": 6,
+          "src": "/assets/apples/apple-42-Philippa.png",
+          "alt": "Philippa"
+        },
+        {
+          "id": 7,
+          "src": "/assets/apples/apple-43-Saga.png",
+          "alt": "Saga"
+        },
+        {
+          "id": 8,
+          "src": "/assets/apples/apple-44-Storm.png",
+          "alt": "Storm"
+        },
+        {
+          "id": 9,
+          "src": "/assets/apples/apple-45-Theo.png",
+          "alt": "Theo"
+        },
+        {
+          "id": 10,
+          "src": "/assets/apples/apple-46-Theodor.png",
+          "alt": "Theodor"
+        },
+        {
+          "id": 11,
+          "src": "/assets/apples/apple-47-Vigga.png",
+          "alt": "Vigga"
+        },
+        {
+          "id": 12,
+          "src": "/assets/apples/apple-48-Villads.png",
+          "alt": "Villads"
+        },
+        {
+          "id": 13,
+          "src": "/assets/apples/apple-49-Villum.png",
+          "alt": "Villum"
+        },
+        {
+          "id": 14,
+          "src": "/assets/apples/apple-50-Vilma.png",
+          "alt": "Vilma"
+        }
+      ],
+      "direction": "drift",
+      "perCardSeconds": 8,
+      "stackDepth": 6,
+      "pauseOnHover": false,
+      "videoBlur": 18,
+      "videoDarken": 0,
+      "chrome": true,
+      "eyebrowPretitle": "Stjernegolf 2026",
+      "eyebrowTitle": "Ønsketræet",
+      "sponsorEnabled": true,
+      "sponsorPretitle": "I samarbejde med",
+      "sponsorMode": "logo",
+      "sponsorMark": "Ønskeskyen",
+      "sponsorLogo": "/assets/wish-loop/Menu-Logo--4-.svg"
+    },
+    {
+      "id": "66acab39-1fd3-4d0f-ace4-f1d5c897ebfc",
+      "kind": "media",
+      "active": true,
+      "label": "PAUSE- Kidsaid Logo",
+      "mode": "image",
+      "src": "/assets/media/logo1.png",
+      "alt": "",
+      "videoMuted": true,
+      "videoLoop": true,
+      "videoAutoplay": true,
+      "fit": "cover",
+      "bgColor": "#000000"
+    },
+    {
+      "id": "e296dc74-7338-4d95-873d-a06371b8bb95",
+      "kind": "cover",
+      "active": true,
+      "label": "BELOEB",
+      "title": "12.345.678 INPUTTAL",
+      "subtitle": "STJERNEGOLF 2026",
+      "attribution": "",
+      "logoFile": "Logo-firkant-gron-med-farve.png"
     }
   ],
   "meta": {
@@ -814,6 +1270,7 @@
       "hammerSound": "default-hammer.mp3",
       "initVolume": 1,
       "hammerVolume": 1.5
-    }
+    },
+    "theme": "kidsaid"
   }
 }
