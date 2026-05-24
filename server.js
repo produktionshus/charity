@@ -65,7 +65,7 @@ function rebuildAuctionState() {
   // Refresh state.lots / sounds dictionaries to include every lot id.
   for (const l of lots()) {
     if (!state.lots[l.id]) state.lots[l.id] = { bids: [], finalPrice: null, status: 'pending' };
-    if (!state.sounds[l.id]) state.sounds[l.id] = {};
+    if (!state.sounds[l.id]) state.sounds[l.id] = { ...(l.sound || {}) };
   }
   // Drop entries for deleted lots
   for (const id of Object.keys(state.lots)) {
@@ -83,9 +83,10 @@ const initialLots = {};
 const initialSounds = {};
 for (const l of lots()) {
   initialLots[l.id] = { bids: [], finalPrice: null, status: 'pending' };
-  initialSounds[l.id] = {};
+  initialSounds[l.id] = { ...(l.sound || {}) };
 }
-const state = { slideIdx: 0, buildStep: 0, lots: initialLots, sounds: initialSounds, soundDefaults: {} };
+const initialSoundDefaults = (lotsFile.meta && lotsFile.meta.soundDefaults) ? { ...lotsFile.meta.soundDefaults } : {};
+const state = { slideIdx: 0, buildStep: 0, lots: initialLots, sounds: initialSounds, soundDefaults: initialSoundDefaults };
 
 function buildServerSlides() {
   const out = [];
@@ -317,6 +318,15 @@ app.post('/api/upload', upload.single('file'), (req, res) => {
     const target = lotId ? (state.sounds[lotId] = state.sounds[lotId] || {}) : state.soundDefaults;
     if (which === 'init')   target.initSound = req.file.filename;
     if (which === 'hammer') target.hammerSound = req.file.filename;
+    // Persist mapping to lots.json (per-lot → lot.sound, deck-wide → meta.soundDefaults)
+    if (lotId) {
+      const lot = lotsFile.lots.find(l => l.id === lotId);
+      if (lot) { lot.sound = { ...state.sounds[lotId] }; saveLots(lotsFile); }
+    } else {
+      if (!lotsFile.meta || typeof lotsFile.meta !== 'object') lotsFile.meta = {};
+      lotsFile.meta.soundDefaults = { ...state.soundDefaults };
+      saveLots(lotsFile);
+    }
     broadcast();
   }
   res.json({ filename: req.file.filename });
@@ -387,6 +397,9 @@ function emitPlay(lotNum, which, fileOverride) {
     file = cfg.hammerSound ?? def.hammerSound;
   }
   if (!file) return;
+  const volume = which === 'init'
+    ? (cfg.initVolume ?? def.initVolume ?? 1)
+    : (cfg.hammerVolume ?? def.hammerVolume ?? 1);
   soundEventId += 1;
   broadcastSoundEvent({
     action: 'play',
@@ -394,6 +407,7 @@ function emitPlay(lotNum, which, fileOverride) {
     offset,
     fadeIn: cfg.fadeInSec ?? def.fadeInSec ?? 0,
     fadeOut: cfg.fadeOutSec ?? def.fadeOutSec ?? 0,
+    volume,
     lotNum,
     which,
     eventId: soundEventId,
@@ -442,8 +456,17 @@ wss.on('connection', (ws) => {
       state.lots = freshLots();
     } else if (msg.type === 'set-sound' && state.sounds[msg.lotNum]) {
       state.sounds[msg.lotNum] = { ...state.sounds[msg.lotNum], ...msg.config };
+      // Persist to lots.json so the mapping survives server restart.
+      const lot = lotsFile.lots.find(l => l.id === msg.lotNum);
+      if (lot) {
+        lot.sound = { ...state.sounds[msg.lotNum] };
+        saveLots(lotsFile);
+      }
     } else if (msg.type === 'set-sound-defaults') {
       state.soundDefaults = { ...state.soundDefaults, ...msg.config };
+      if (!lotsFile.meta || typeof lotsFile.meta !== 'object') lotsFile.meta = {};
+      lotsFile.meta.soundDefaults = { ...state.soundDefaults };
+      saveLots(lotsFile);
     } else if (msg.type === 'play-sound' && state.sounds[msg.lotNum]) {
       emitPlay(msg.lotNum, msg.which, msg.fileOverride);
       return;

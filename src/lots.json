@@ -316,7 +316,13 @@
       "mirrored": false,
       "focal": "50% 45%",
       "donorNames": [],
-      "heroScale": 1
+      "heroScale": 1,
+      "sound": {
+        "hammerSound": "08-hammer.mp3",
+        "initStartOffset": 0,
+        "fadeInSec": 0,
+        "fadeOutSec": 0
+      }
     },
     {
       "title": "Eksklusiv VIP-oplevelse hos Selected Car Selection",
@@ -376,7 +382,15 @@
       "extraSuffix": null,
       "layout": "profile",
       "mirrored": false,
-      "focal": "50% 50%"
+      "focal": "50% 50%",
+      "sound": {
+        "initSound": "10-init.mp3",
+        "initStartOffset": 0,
+        "fadeInSec": 0,
+        "fadeOutSec": 0,
+        "initVolume": 1,
+        "hammerVolume": 1
+      }
     },
     {
       "title": "Eksklusiv private dining for 12 personer med intimkoncert af Mille",
@@ -786,5 +800,12 @@
       "label": "Sponsor-indeks",
       "title": "AUKTIONENS SPONSORER"
     }
-  ]
+  ],
+  "meta": {
+    "soundDefaults": {
+      "hammerSound": "default-hammer.mp3",
+      "initVolume": 1,
+      "hammerVolume": 1.5
+    }
+  }
 }

@@ -19,6 +19,18 @@ const slideFrame = document.getElementById('slide-frame')!;
 let currentSlideIdx = -1;
 let currentEl: HTMLElement | null = null;
 let audioUnlocked = false;
+let audioBanner: HTMLElement | null = null;
+function showAudioBanner() {
+  if (audioBanner || audioUnlocked) return;
+  audioBanner = document.createElement('div');
+  audioBanner.id = 'audio-unlock-banner';
+  audioBanner.textContent = 'Klik hvor som helst for at aktivere lyd';
+  audioBanner.style.cssText = 'position:fixed;left:50%;bottom:24px;transform:translateX(-50%);padding:14px 24px;background:rgba(0,0,0,0.78);color:#fff;font:600 14px/1.2 system-ui;border-radius:8px;z-index:99999;letter-spacing:0.05em;box-shadow:0 8px 32px rgba(0,0,0,0.4);';
+  document.body.appendChild(audioBanner);
+}
+function hideAudioBanner() {
+  if (audioBanner) { audioBanner.remove(); audioBanner = null; }
+}
 let lastBidForRibbon: number | null = null;
 const lastSoldStatus: Record<string, string> = {};
 let firstStateMsg = true;
@@ -31,26 +43,36 @@ function unlockAudio() {
   const a = new Audio();
   a.muted = true;
   a.play().catch(() => {});
+  hideAudioBanner();
 }
 document.addEventListener('click', unlockAudio, { once: true });
 document.addEventListener('keydown', unlockAudio, { once: true });
 
 // ---- Sound playback with fade in/out, single-track ----
+// Uses Web Audio GainNode so volume can exceed 100% (boost up to 150%).
 let currentAudio: HTMLAudioElement | null = null;
+let currentGain: GainNode | null = null;
+let currentTargetGain = 1;
+let audioCtx: AudioContext | null = null;
 const fadeTimers = new Set<number>();
 function clearFades() { fadeTimers.forEach(id => clearInterval(id)); fadeTimers.clear(); }
+function getAudioCtx(): AudioContext {
+  if (!audioCtx) audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+  return audioCtx;
+}
 function stopAudio() {
   clearFades();
   if (currentAudio) { try { currentAudio.pause(); } catch {} currentAudio = null; }
+  currentGain = null;
 }
 
-function rampVolume(a: HTMLAudioElement, from: number, to: number, durationSec: number, onDone?: () => void) {
-  if (durationSec <= 0) { a.volume = to; onDone?.(); return; }
+function rampGain(gain: GainNode, from: number, to: number, durationSec: number, onDone?: () => void) {
+  if (durationSec <= 0) { gain.gain.value = to; onDone?.(); return; }
   const start = performance.now();
   const id = window.setInterval(() => {
-    if (currentAudio !== a) { clearInterval(id); fadeTimers.delete(id); return; }
+    if (currentGain !== gain) { clearInterval(id); fadeTimers.delete(id); return; }
     const t = Math.min(1, (performance.now() - start) / (durationSec * 1000));
-    a.volume = from + (to - from) * t;
+    gain.gain.value = from + (to - from) * t;
     if (t >= 1) { clearInterval(id); fadeTimers.delete(id); onDone?.(); }
   }, 40);
   fadeTimers.add(id);
@@ -229,6 +251,10 @@ sync.on((state) => {
         fireHammer(slide.lotId, fp);
       }
     }
+    // Fortrudt hammerslag: ryd Solgt-overlay så viewer ikke står låst.
+    if (!firstStateMsg && prev === 'sold' && newSt !== 'sold') {
+      clearHammerOverlay();
+    }
   }
   for (const k of Object.keys(state.lots || {})) lastSoldStatus[k] = state.lots[k].status;
   firstStateMsg = false;
@@ -239,19 +265,33 @@ sync.on((state) => {
 sync.onSound(async (event) => {
   if (event.action === 'stop') { stopAudio(); return; }
   stopAudio();
+  const ctx = getAudioCtx();
+  if (ctx.state === 'suspended') { try { await ctx.resume(); } catch {} }
   const a = new Audio(`/sounds/${event.file}`);
+  a.crossOrigin = 'anonymous';
   a.currentTime = event.offset;
-  a.volume = event.fadeIn > 0 ? 0 : 1;
+  const targetVol = typeof event.volume === 'number' ? event.volume : 1;
+  const source = ctx.createMediaElementSource(a);
+  const gain = ctx.createGain();
+  gain.gain.value = event.fadeIn > 0 ? 0 : targetVol;
+  source.connect(gain).connect(ctx.destination);
   currentAudio = a;
-  try { await a.play(); } catch (e) { console.warn('audio play blocked', e); return; }
-  if (event.fadeIn > 0) rampVolume(a, 0, 1, event.fadeIn);
+  currentGain = gain;
+  currentTargetGain = targetVol;
+  try { await a.play(); }
+  catch (e) {
+    console.warn('audio play blocked — klik i viewer for at aktivere', e);
+    showAudioBanner();
+    return;
+  }
+  if (event.fadeIn > 0) rampGain(gain, 0, targetVol, event.fadeIn);
   if (event.fadeOut > 0) {
     a.addEventListener('loadedmetadata', () => {
       const remaining = a.duration - event.offset - event.fadeOut;
-      if (remaining <= 0) { rampVolume(a, a.volume, 0, event.fadeOut, () => a.pause()); return; }
+      if (remaining <= 0) { rampGain(gain, gain.gain.value, 0, event.fadeOut, () => a.pause()); return; }
       const id = window.setTimeout(() => {
         if (currentAudio !== a) return;
-        rampVolume(a, a.volume, 0, event.fadeOut, () => a.pause());
+        rampGain(gain, gain.gain.value, 0, event.fadeOut, () => a.pause());
       }, remaining * 1000);
       fadeTimers.add(id as unknown as number);
     });
@@ -262,6 +302,15 @@ window.addEventListener('resize', () => { if (currentEl) fitToViewport(slideFram
 
 bootRender();
 console.log('viewer booted, SLIDES count =', SLIDES.length);
+
+// Probe whether audio can autoplay; if not, show the unlock banner up front
+// so the operator knows to click into the viewer before the auction starts.
+(async () => {
+  const probe = new Audio();
+  probe.muted = true;
+  try { await probe.play(); audioUnlocked = true; }
+  catch { showAudioBanner(); }
+})();
 
 // Client review: arrow keys / space step through slides via the server,
 // so all connected clients stay in sync.

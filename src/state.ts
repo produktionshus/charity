@@ -17,6 +17,8 @@ export interface LotSoundConfig {
   hammerSound?: string;       // file under /sounds/ to play on hammerslag
   fadeInSec?: number;         // seconds to ramp volume 0 -> 1 on start (default 0)
   fadeOutSec?: number;        // seconds to ramp volume -> 0 before natural end (default 0)
+  initVolume?: number;        // 0..1.5 — playback gain multiplier (1.0 default)
+  hammerVolume?: number;
 }
 
 // Live sound event broadcast to viewer + auctioneer.
@@ -27,6 +29,7 @@ export type SoundEvent =
       offset: number;
       fadeIn: number;
       fadeOut: number;
+      volume: number;         // 0..1.5 — gain multiplier
       lotNum: string;
       which: 'init' | 'hammer' | 'manual';
       eventId: number;        // monotonic id so late frames can dedupe

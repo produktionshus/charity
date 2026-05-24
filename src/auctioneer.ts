@@ -163,6 +163,10 @@ sync.on((state) => {
       fireHammer(slide.lotId, ls.finalPrice);
       monitor.classList.remove('has-bid');
     }
+    // Fortrudt hammerslag — ryd overlay
+    if (!firstStateMsg && prev === 'sold' && ls?.status !== 'sold') {
+      clearHammerOverlay();
+    }
   } else {
     monitor.classList.remove('show-header');
     monitor.classList.remove('has-bid');
@@ -197,6 +201,8 @@ sync.onSound((event) => {
   countdownProbe = probe;
   soundFileEl.textContent = `${event.file} (${event.which})`;
   soundCountdownEl.classList.add('open');
+  // Init lyd: stort centralt overlay for auctioneer. Hammer lyd: kompakt bottom-right.
+  soundCountdownEl.classList.toggle('center-large', event.which === 'init');
   probe.addEventListener('loadedmetadata', () => {
     const totalPlay = Math.max(0.1, probe.duration - event.offset);
     const startTs = performance.now();

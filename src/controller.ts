@@ -64,6 +64,10 @@ const soundFadeInKnobEl  = document.getElementById('sound-fadein-knob')  as HTML
 const soundFadeInNumEl   = document.getElementById('sound-fadein-num')   as HTMLInputElement;
 const soundFadeOutKnobEl = document.getElementById('sound-fadeout-knob') as HTMLInputElement;
 const soundFadeOutNumEl  = document.getElementById('sound-fadeout-num')  as HTMLInputElement;
+const soundInitVolKnobEl   = document.getElementById('sound-init-vol-knob')   as HTMLInputElement;
+const soundInitVolNumEl    = document.getElementById('sound-init-vol-num')    as HTMLInputElement;
+const soundHammerVolKnobEl = document.getElementById('sound-hammer-vol-knob') as HTMLInputElement;
+const soundHammerVolNumEl  = document.getElementById('sound-hammer-vol-num')  as HTMLInputElement;
 const soundPlayInitBtn   = document.getElementById('sound-play-init')!;
 const soundPlayHammerBtn = document.getElementById('sound-play-hammer')!;
 const soundStopBtn       = document.getElementById('sound-stop')!;
@@ -467,6 +471,11 @@ function maybeFireHammer(state: any) {
       if (finalPrice != null && k === currentLotNum) {
         fireHammerOverlay(k, finalPrice);
       }
+    }
+    // Hammerslag fortrudt: status går fra 'sold' væk → fjern overlay
+    // så auktionen visuelt fortsætter (intet "Solgt"-banner hængende).
+    if (!firstStateMsg && lastSoldStatus[k] === 'sold' && newStatus !== 'sold' && k === currentLotNum) {
+      clearHammerOverlays();
     }
     lastSoldStatus[k] = newStatus;
   }
@@ -923,6 +932,10 @@ function applySoundConfigToUI(lotNum: string | null) {
   soundFadeInKnobEl.value = String(fadeIn); soundFadeInNumEl.value = String(fadeIn);
   const fadeOut = cfg.fadeOutSec ?? 0;
   soundFadeOutKnobEl.value = String(fadeOut); soundFadeOutNumEl.value = String(fadeOut);
+  const initVol = Math.round((cfg.initVolume ?? 1) * 100);
+  soundInitVolKnobEl.value = String(initVol); soundInitVolNumEl.value = String(initVol);
+  const hammerVol = Math.round((cfg.hammerVolume ?? 1) * 100);
+  soundHammerVolKnobEl.value = String(hammerVol); soundHammerVolNumEl.value = String(hammerVol);
 }
 function pushSoundConfig() {
   if (!currentLotNum) return;
@@ -934,6 +947,8 @@ function pushSoundConfig() {
       hammerSound: soundHammerFileEl.value || undefined,
       fadeInSec: parseFloat(soundFadeInNumEl.value) || 0,
       fadeOutSec: parseFloat(soundFadeOutNumEl.value) || 0,
+      initVolume: (parseFloat(soundInitVolNumEl.value) || 100) / 100,
+      hammerVolume: (parseFloat(soundHammerVolNumEl.value) || 100) / 100,
     },
   } as any);
 }
@@ -947,6 +962,8 @@ function bindKnobPair(knob: HTMLInputElement, num: HTMLInputElement) {
 bindKnobPair(soundInitKnobEl, soundInitNumEl);
 bindKnobPair(soundFadeInKnobEl, soundFadeInNumEl);
 bindKnobPair(soundFadeOutKnobEl, soundFadeOutNumEl);
+bindKnobPair(soundInitVolKnobEl, soundInitVolNumEl);
+bindKnobPair(soundHammerVolKnobEl, soundHammerVolNumEl);
 
 soundPlayInitBtn.addEventListener('click', () => {
   if (!currentLotNum) return;
@@ -1000,17 +1017,45 @@ const defaultInitUploadEl   = document.getElementById('default-init-upload')   a
 const defaultHammerUploadEl = document.getElementById('default-hammer-upload') as HTMLInputElement;
 const defaultInitCurrentEl  = document.getElementById('default-init-current')!;
 const defaultHammerCurrentEl = document.getElementById('default-hammer-current')!;
+const defaultInitVolKnobEl   = document.getElementById('default-init-vol-knob')   as HTMLInputElement;
+const defaultInitVolNumEl    = document.getElementById('default-init-vol-num')    as HTMLInputElement;
+const defaultHammerVolKnobEl = document.getElementById('default-hammer-vol-knob') as HTMLInputElement;
+const defaultHammerVolNumEl  = document.getElementById('default-hammer-vol-num')  as HTMLInputElement;
 defaultInitUploadEl.addEventListener('change', () => {
   if (defaultInitUploadEl.files?.[0]) uploadSound(defaultInitUploadEl.files[0], 'init', null);
 });
 defaultHammerUploadEl.addEventListener('change', () => {
   if (defaultHammerUploadEl.files?.[0]) uploadSound(defaultHammerUploadEl.files[0], 'hammer', null);
 });
+function pushDefaultSoundConfig() {
+  sync.send({
+    type: 'set-sound-defaults',
+    config: {
+      initVolume:   (parseFloat(defaultInitVolNumEl.value)   || 100) / 100,
+      hammerVolume: (parseFloat(defaultHammerVolNumEl.value) || 100) / 100,
+    },
+  } as any);
+}
+function bindDefaultKnobPair(knob: HTMLInputElement, num: HTMLInputElement) {
+  knob.addEventListener('input', () => { num.value = knob.value; });
+  knob.addEventListener('change', pushDefaultSoundConfig);
+  num.addEventListener('change', () => { knob.value = num.value; pushDefaultSoundConfig(); });
+}
+bindDefaultKnobPair(defaultInitVolKnobEl, defaultInitVolNumEl);
+bindDefaultKnobPair(defaultHammerVolKnobEl, defaultHammerVolNumEl);
 
 function refreshDefaultSoundLabels() {
   const d = lastState?.soundDefaults || {};
   defaultInitCurrentEl.textContent   = d.initSound   || '—';
   defaultHammerCurrentEl.textContent = d.hammerSound || '—';
+  if (document.activeElement !== defaultInitVolKnobEl && document.activeElement !== defaultInitVolNumEl) {
+    const iv = Math.round((d.initVolume ?? 1) * 100);
+    defaultInitVolKnobEl.value = String(iv); defaultInitVolNumEl.value = String(iv);
+  }
+  if (document.activeElement !== defaultHammerVolKnobEl && document.activeElement !== defaultHammerVolNumEl) {
+    const hv = Math.round((d.hammerVolume ?? 1) * 100);
+    defaultHammerVolKnobEl.value = String(hv); defaultHammerVolNumEl.value = String(hv);
+  }
 }
 
 // ---- Open viewers in new windows ----

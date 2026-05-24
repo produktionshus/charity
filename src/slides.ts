@@ -75,6 +75,17 @@ export interface Lot {
   titleSizePt?: number;             // horizon title size override
   heroExt?: string;                 // hero file extension (jpg|png|webp...), default 'jpg'
   heroScale?: number;               // zoom multiplier on the hero image, default 1.0
+  sound?: SoundConfig;              // per-lot sound config (persisted to lots.json)
+}
+
+export interface SoundConfig {
+  initSound?: string;
+  hammerSound?: string;
+  initStartOffset?: number;
+  fadeInSec?: number;
+  fadeOutSec?: number;
+  initVolume?: number;     // 0..1.5 — multiplier (1.0 = original)
+  hammerVolume?: number;   // 0..1.5
 }
 
 export type DeckItem = Lot | BordplanItem | CoverItem | ClosingItem | SponsorIndexItem;
@@ -108,6 +119,7 @@ export interface EventMeta {
   eventSubtitle?: string;
   eventDate?: string;        // ISO YYYY-MM-DD
   theme?: 'forest' | 'marine' | 'dark' | 'kidsaid';
+  soundDefaults?: SoundConfig;
 }
 export const EVENT_META: EventMeta = (lotsJson as any).meta || {};
 

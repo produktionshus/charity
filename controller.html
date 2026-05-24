@@ -121,9 +121,23 @@
             <span class="sound-row-current" id="default-init-current">—</span>
           </label>
           <label class="sound-row">
+            <span>Init volume (%)</span>
+            <div class="sound-knob-row">
+              <input type="range" id="default-init-vol-knob" min="0" max="150" step="1" value="100" />
+              <input type="number" id="default-init-vol-num" min="0" max="150" step="1" value="100" />
+            </div>
+          </label>
+          <label class="sound-row">
             <span>Hammerslag (default)</span>
             <input type="file" id="default-hammer-upload" accept="audio/*" class="sound-upload" />
             <span class="sound-row-current" id="default-hammer-current">—</span>
+          </label>
+          <label class="sound-row">
+            <span>Hammer volume (%)</span>
+            <div class="sound-knob-row">
+              <input type="range" id="default-hammer-vol-knob" min="0" max="150" step="1" value="100" />
+              <input type="number" id="default-hammer-vol-num" min="0" max="150" step="1" value="100" />
+            </div>
           </label>
         </div>
         <div class="setting-section">
@@ -152,9 +166,23 @@
           </div>
         </label>
         <label class="sound-row">
+          <span>Init volume (%)</span>
+          <div class="sound-knob-row">
+            <input type="range" id="sound-init-vol-knob" min="0" max="150" step="1" value="100" />
+            <input type="number" id="sound-init-vol-num" min="0" max="150" step="1" value="100" />
+          </div>
+        </label>
+        <label class="sound-row">
           <span>Hammerslag sound</span>
           <select id="sound-hammer-file"><option value="">(none)</option></select>
           <input type="file" id="sound-hammer-upload" accept="audio/*" class="sound-upload" />
+        </label>
+        <label class="sound-row">
+          <span>Hammer volume (%)</span>
+          <div class="sound-knob-row">
+            <input type="range" id="sound-hammer-vol-knob" min="0" max="150" step="1" value="100" />
+            <input type="number" id="sound-hammer-vol-num" min="0" max="150" step="1" value="100" />
+          </div>
         </label>
         <label class="sound-row">
           <span>Fade in (sec)</span>
