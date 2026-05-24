@@ -2,7 +2,7 @@
 // Each animated element carries class="build-item" and an inline
 // transition-delay derived from its build group + in-group index.
 
-import { LOTS, SLIDES, lotById, bordplanById, coverById, displayNumFor, type Slide, type Lot, type CoverItem } from './slides';
+import { LOTS, SLIDES, lotById, bordplanById, coverById, closingById, sponsorIndexById, displayNumFor, type Slide, type Lot, type CoverItem, type ClosingItem, type SponsorIndexItem } from './slides';
 import { lotLayout, isMirrored, photoFocal, HORIZON_TITLE_SIZE_OVERRIDE } from './layout';
 import { renderBordplanSlide } from './render-bordplan';
 
@@ -166,10 +166,11 @@ function chooseSponsorLayout(n: number): { cols: number; rows: number; cw: numbe
   return best;
 }
 
-function renderSponsorIndex(): string {
+export function renderSponsorIndex(item?: SponsorIndexItem): string {
   const FRAME_DELAY = 300;
   const FIRST_CELL = 750;
   const CELL_STAGGER = 130;
+  const title = item?.title ?? 'AUKTIONENS SPONSORER';
   const L = chooseSponsorLayout(LOTS.length);
   const logoCap = Math.max(0.5, L.ch - 0.50);   // leave room for the lot-num + padding
   const numSize = L.cw < 1.25 ? 11 : L.cw < 1.4 ? 12 : 14;
@@ -185,7 +186,7 @@ function renderSponsorIndex(): string {
   }).join('');
   const gridStyle = `--cell-w:${L.cw.toFixed(3)}in;--cell-h:${L.ch.toFixed(3)}in;--cell-logo-cap:${logoCap.toFixed(3)}in;--cell-num-size:${numSize}pt; transition-delay:${FRAME_DELAY}ms`;
   return `
-    <h1 class="closing-title build-item" style="transition-delay:0ms">AUKTIONENS SPONSORER</h1>
+    <h1 class="closing-title build-item" style="transition-delay:0ms">${title}</h1>
     <div class="closing-rule build-item" style="transition-delay:150ms"></div>
     <div class="sponsor-grid build-item" style="${gridStyle}">${cells}</div>
   `;
@@ -193,45 +194,42 @@ function renderSponsorIndex(): string {
 
 // ---- Closing (slide 24) — sponsor wall per handoff spec ----
 // 8 columns x 5 rows = 40 cells, 2:1 aspect each.
-function renderClosing(): string {
-  const fileList = [
-    'closing-L-01.png','closing-L-02.png','closing-L-03.png','closing-L-04.png',
-    'closing-L-05.png','closing-L-06.png','closing-L-07.png','closing-R-01.png',
-    'closing-L-09.png','closing-L-10.png','closing-L-11.png','closing-R-10.png',
-    'closing-L-13.png','closing-M-01.png','closing-M-02.png','closing-M-03.png',
-    'closing-M-04.png','closing-M-05.png','closing-M-06.png','closing-M-07.png',
-    'closing-M-08.png','closing-M-09.png','closing-M-10.png','closing-M-11.png',
-    'closing-M-12.png','closing-M-13.png','closing-M-14.png','closing-L-12.png',
-    'closing-R-02.png','closing-R-03.png','closing-R-04.png','closing-R-05.png',
-    'closing-R-06.png','closing-R-07.png','closing-R-08.png','closing-R-09.png',
-    'closing-L-08.png','closing-R-11.png','closing-R-12.png','closing-R-13.png',
-  ];
-  const WORDMARKS = new Set([
-    'closing-L-04.png','closing-L-05.png','closing-L-09.png','closing-L-10.png',
-    'closing-L-12.png','closing-L-13.png','closing-M-02.png','closing-M-07.png',
-    'closing-M-08.png','closing-M-09.png','closing-M-11.png','closing-M-12.png',
-    'closing-M-14.png','closing-R-02.png','closing-R-05.png','closing-R-06.png',
-    'closing-R-12.png',
-  ]);
-  const COLS = 8;
+const DEFAULT_CLOSING_LOGOS: ClosingItem['logos'] = [
+  { file: 'closing-L-01.png' }, { file: 'closing-L-02.png' }, { file: 'closing-L-03.png' }, { file: 'closing-L-04.png', kind: 'wordmark' },
+  { file: 'closing-L-05.png', kind: 'wordmark' }, { file: 'closing-L-06.png' }, { file: 'closing-L-07.png' }, { file: 'closing-R-01.png' },
+  { file: 'closing-L-09.png', kind: 'wordmark' }, { file: 'closing-L-10.png', kind: 'wordmark' }, { file: 'closing-L-11.png' }, { file: 'closing-R-10.png' },
+  { file: 'closing-L-13.png', kind: 'wordmark' }, { file: 'closing-M-01.png' }, { file: 'closing-M-02.png', kind: 'wordmark' }, { file: 'closing-M-03.png' },
+  { file: 'closing-M-04.png' }, { file: 'closing-M-05.png' }, { file: 'closing-M-06.png' }, { file: 'closing-M-07.png', kind: 'wordmark' },
+  { file: 'closing-M-08.png', kind: 'wordmark' }, { file: 'closing-M-09.png', kind: 'wordmark' }, { file: 'closing-M-10.png' }, { file: 'closing-M-11.png', kind: 'wordmark' },
+  { file: 'closing-M-12.png', kind: 'wordmark' }, { file: 'closing-M-13.png' }, { file: 'closing-M-14.png', kind: 'wordmark' }, { file: 'closing-L-12.png', kind: 'wordmark' },
+  { file: 'closing-R-02.png', kind: 'wordmark' }, { file: 'closing-R-03.png' }, { file: 'closing-R-04.png' }, { file: 'closing-R-05.png', kind: 'wordmark' },
+  { file: 'closing-R-06.png', kind: 'wordmark' }, { file: 'closing-R-07.png' }, { file: 'closing-R-08.png' }, { file: 'closing-R-09.png' },
+  { file: 'closing-L-08.png' }, { file: 'closing-R-11.png' }, { file: 'closing-R-12.png', kind: 'wordmark' }, { file: 'closing-R-13.png' },
+];
+
+export function renderClosing(item?: ClosingItem): string {
+  const title    = item?.title    ?? 'TAK TIL ALLE VORES SPONSORER';
+  const tagline  = item?.tagline  ?? '@KIDSAIDDK · KIDSAID DANMARK';
+  const COLS     = item?.cols     ?? 8;
+  const logos    = (item?.logos && item.logos.length) ? item.logos : DEFAULT_CLOSING_LOGOS;
   const ROW_PAUSE = 250;
   const LOGO_STAGGER = 80;
   const rowsStart = 400;
-  const cells = fileList.map((f, i) => {
+  const cells = logos.map((entry, i) => {
     const row = Math.floor(i / COLS);
     const col = i % COLS;
     const t = rowsStart + row * (ROW_PAUSE + COLS * LOGO_STAGGER) + col * LOGO_STAGGER;
-    const kind = WORDMARKS.has(f) ? 'wordmark' : 'stacked';
-    return `<div class="closing-cell closing-cell--${kind}"><img class="build-item" style="transition-delay:${t}ms" src="/assets/closing/${f}" alt="" /></div>`;
+    const kind = entry.kind === 'wordmark' ? 'wordmark' : 'stacked';
+    return `<div class="closing-cell closing-cell--${kind}"><img class="build-item" style="transition-delay:${t}ms" src="/assets/closing/${entry.file}" alt="" /></div>`;
   }).join('');
-  const rows = Math.ceil(fileList.length / COLS);
+  const rows = Math.ceil(logos.length / COLS);
   const tailDelay = rowsStart + rows * (ROW_PAUSE + COLS * LOGO_STAGGER);
   return `
-    <h1 class="closing-title build-item" style="transition-delay:0ms">TAK TIL ALLE VORES SPONSORER</h1>
+    <h1 class="closing-title build-item" style="transition-delay:0ms">${title}</h1>
     <div class="closing-rule build-item" style="transition-delay:100ms"></div>
     <div class="closing-grid">${cells}</div>
     <div class="closing-rule closing-bottom-rule build-item" style="transition-delay:${tailDelay}ms"></div>
-    <div class="closing-tagline build-item" style="transition-delay:${tailDelay + 100}ms">@KIDSAIDDK · KIDSAID DANMARK</div>
+    <div class="closing-tagline build-item" style="transition-delay:${tailDelay + 100}ms">${tagline}</div>
   `;
 }
 
@@ -261,7 +259,8 @@ export function renderSlide(slide: Slide, lotOverride?: Lot, displayNumOverride?
     const item = slide.itemId ? coverById(slide.itemId) : undefined;
     root.innerHTML = renderCover(item);
   } else if (slide.kind === 'sponsor-index') {
-    root.innerHTML = renderSponsorIndex();
+    const item = slide.itemId ? sponsorIndexById(slide.itemId) : undefined;
+    root.innerHTML = renderSponsorIndex(item);
   } else if (slide.kind === 'lot') {
     const lot = lotOverride ?? lotById(slide.lotId!);
     if (!lot) return root;
@@ -272,7 +271,8 @@ export function renderSlide(slide: Slide, lotOverride?: Lot, displayNumOverride?
     if (mirrored) root.classList.add('layout-mirrored');
     root.innerHTML = layout === 'horizon' ? renderHorizonLot(lot, displayNum) : renderProfileLot(lot, displayNum);
   } else if (slide.kind === 'closing') {
-    root.innerHTML = renderClosing();
+    const item = slide.itemId ? closingById(slide.itemId) : undefined;
+    root.innerHTML = renderClosing(item);
   } else if (slide.kind === 'bordplan') {
     const item = bordplanById(slide.itemId!);
     if (!item) return root;

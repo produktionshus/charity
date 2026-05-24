@@ -76,7 +76,20 @@
 
       <div class="drawer drawer--left" id="drawer-settings">
         <h3>Settings</h3>
-        <p class="drawer-hint">Lokale visningsindstillinger + reset.</p>
+        <p class="drawer-hint">Event-meta gemmes i lots.json (deles på tværs af clients). Reset og visning er lokale.</p>
+        <div class="setting-section">
+          <span class="setting-section-label">Event</span>
+          <label class="meta-label">Titel
+            <input type="text" id="meta-event-name" placeholder="STJERNEGOLF" />
+          </label>
+          <label class="meta-label">Undertitel
+            <input type="text" id="meta-event-subtitle" placeholder="KidsAid Auktion 2026" />
+          </label>
+          <label class="meta-label">Dato
+            <input type="date" id="meta-event-date" />
+          </label>
+          <button class="link-btn" id="meta-event-save" style="font-size:11px">Gem event-info</button>
+        </div>
         <div class="setting-section">
           <span class="setting-section-label">Tema</span>
           <div class="theme-options">
@@ -112,6 +125,12 @@
             <input type="file" id="default-hammer-upload" accept="audio/*" class="sound-upload" />
             <span class="sound-row-current" id="default-hammer-current">—</span>
           </label>
+        </div>
+        <div class="setting-section">
+          <span class="setting-section-label">Bud-præsets (+ knapper)</span>
+          <p class="drawer-hint">Kommasepareret liste. Default <code>500, 1000, 2000, 3000, 5000, 10000, 20000, 50000, 100000</code> (3×3 grid).</p>
+          <input type="text" id="bid-presets" />
+          <button class="link-btn" id="bid-presets-save" style="font-size:11px">Gem præsets</button>
         </div>
         <p class="drawer-hint" style="margin-top:0.6rem">Advanced — affects all connected clients:</p>
         <button id="reset-auctions" class="drawer-danger">Reset all auctions</button>

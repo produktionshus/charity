@@ -303,6 +303,21 @@ body.controller.show-lot-num .lot-slide-frame::after {
 
 /* Settings sections + theme picker */
 .setting-section { display: flex; flex-direction: column; gap: 6px; margin: 4px 0 6px; }
+.setting-section input[type='text'],
+.setting-section input[type='date'] {
+  background: var(--bg-input);
+  border: 1px solid var(--line-2);
+  border-radius: 6px;
+  padding: 6px 8px;
+  color: var(--text);
+  font: inherit; font-size: 12px;
+}
+.meta-label {
+  display: flex; flex-direction: column; gap: 4px;
+  font-size: 10.5px; letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--text-3);
+  font-family: var(--font-mono);
+}
 .setting-section-label {
   font-family: var(--font-mono);
   font-size: 9.5px; letter-spacing: 0.14em; text-transform: uppercase;
@@ -1217,16 +1232,24 @@ body.controller.theme-kidsaid .history-sold-list li .h-title {
    dark-green text on white inputs and white text on dark backdrops. */
 body.controller.theme-kidsaid .sound-row select,
 body.controller.theme-kidsaid .sound-row input[type='number'],
-body.controller.theme-kidsaid .sound-row input[type='text'] {
+body.controller.theme-kidsaid .sound-row input[type='text'],
+body.controller.theme-kidsaid .setting-section input[type='text'],
+body.controller.theme-kidsaid .setting-section input[type='date'] {
   color: #2F7A39 !important;
   background: #FFFFFF !important;
+}
+body.controller.theme-kidsaid .meta-label {
+  color: #FFFCF3 !important;
 }
 body.controller.theme-kidsaid .sound-row > span,
 body.controller.theme-kidsaid .setting-section-label,
 body.controller.theme-kidsaid .drawer h3,
-body.controller.theme-kidsaid .drawer-hint,
-body.controller.theme-kidsaid .drawer-hint code {
+body.controller.theme-kidsaid .drawer-hint {
   color: #FFFFFF !important;
+}
+body.controller.theme-kidsaid .drawer-hint code {
+  background: #2F7A39 !important;
+  color: #FFFCF3 !important;
 }
 body.controller.theme-kidsaid .setting-toggle,
 body.controller.theme-kidsaid .theme-opt,
@@ -1237,6 +1260,15 @@ body.controller.theme-kidsaid .setting-toggle span,
 body.controller.theme-kidsaid .theme-opt span,
 body.controller.theme-kidsaid .color-opt span {
   color: #FFFFFF !important;
+}
+body.controller.theme-kidsaid .theme-opt:has(input:checked) {
+  background: #2F7A39 !important;
+  border-color: #FFFCF3 !important;
+  color: #FFFCF3 !important;
+  box-shadow: 0 0 14px -4px rgba(255, 252, 243, 0.6) !important;
+}
+body.controller.theme-kidsaid .theme-opt:has(input:checked) span {
+  color: #FFFCF3 !important;
 }
 body.controller.theme-kidsaid .sound-preview-row button,
 body.controller.theme-kidsaid .sound-play-row .sound-play {

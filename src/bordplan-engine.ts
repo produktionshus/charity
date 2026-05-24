@@ -2,7 +2,7 @@
 // generateTables(config) → { tables, clusters }
 // Numbering, cluster decomposition, sort directions, ghost cells.
 
-export type NumberingMode = 'across' | 'cluster-continuous' | 'cluster-prefix';
+export type NumberingMode = 'across' | 'cluster-continuous' | 'cluster-prefix' | 'cluster-as-table';
 export type Origin = 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right';
 export type Direction = 'row-major' | 'col-major' | 'snake-row' | 'snake-col';
 
@@ -47,6 +47,10 @@ export interface ClusterInfo {
   rowStart: number; rowEnd: number;
   count: number;
   rangeText: string;
+  // In 'cluster-as-table' mode: the cluster's table number / label, shown
+  // once at the left of the cluster instead of on each cell.
+  clusterNumber?: number | null;
+  clusterDisplayLabel?: string;
 }
 
 function transformCoord(col: number, row: number, origin: Origin, cols: number, rows: number) {
@@ -147,7 +151,32 @@ export function generateTables(cfg: FloorPlanConfig): { tables: Table[]; cluster
   let globalN = numbering.startAt || 1;
   const result: Table[] = [];
 
-  if (numbering.mode === 'across') {
+  // Map of cluster.index → its assigned table number (only used in
+  // 'cluster-as-table' mode). Built up below; consumed by ClusterInfo.
+  const clusterNumberMap = new Map<number, number>();
+
+  if (numbering.mode === 'cluster-as-table') {
+    // Each cluster gets ONE table number. Cells in the cluster all share
+    // that number but render with empty label so the renderer can put one
+    // large number on the left side of the cluster.
+    for (const cl of orderedClusters) {
+      while (skipSet.has(globalN)) globalN++;
+      clusterNumberMap.set(cl.index, globalN);
+      const cells: Array<{ col: number; row: number }> = [];
+      for (let r = cl.rowStart; r <= cl.rowEnd; r++) {
+        for (let c = cl.colStart; c <= cl.colEnd; c++) {
+          if (isRemoved(c, r)) continue;
+          cells.push({ col: c, row: r });
+        }
+      }
+      sortCells(cells, numbering.origin, numbering.direction, cols, rows);
+      for (const cell of cells) {
+        // label intentionally empty — cluster carries the number
+        result.push(makeTable(cell, '', globalN, seatsPerTable, cl.index, cl.letter!));
+      }
+      globalN++;
+    }
+  } else if (numbering.mode === 'across') {
     const allCells: Array<{ col: number; row: number }> = [];
     for (let r = 0; r < rows; r++) {
       for (let c = 0; c < cols; c++) {
@@ -191,14 +220,19 @@ export function generateTables(cfg: FloorPlanConfig): { tables: Table[]; cluster
   // Cluster info with ranges
   const clusterInfo: ClusterInfo[] = orderedClusters.map(cl => {
     const tables = result.filter(t => t.cluster === cl.index);
-    const labels = tables.map(t => t.label);
+    const labels = tables.map(t => t.label).filter(Boolean);
     const first = labels[0] || '';
     const last = labels[labels.length - 1] || '';
+    const clusterNumber = clusterNumberMap.get(cl.index) ?? null;
     return {
       index: cl.index, letter: cl.letter!, orderIndex: cl.orderIndex!,
       colStart: cl.colStart, colEnd: cl.colEnd, rowStart: cl.rowStart, rowEnd: cl.rowEnd,
       count: tables.length,
       rangeText: tables.length ? (first === last ? first : `${first} – ${last}`) : '',
+      clusterNumber,
+      clusterDisplayLabel: clusterNumber != null
+        ? `${numbering.prefix || ''}${clusterNumber}`
+        : undefined,
     };
   });
 

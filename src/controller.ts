@@ -6,7 +6,7 @@
 import QRCode from 'qrcode';
 import { SyncClient } from './ws-client';
 import { renderSlide, fitToViewport } from './render';
-import { SLIDES, LOTS, lotById, displayNumFor, refreshLotsFromServer, type Slide } from './slides';
+import { SLIDES, LOTS, lotById, displayNumFor, refreshLotsFromServer, EVENT_META, type Slide } from './slides';
 
 const sync = new SyncClient();
 
@@ -26,7 +26,8 @@ const bidLotNum        = document.getElementById('bid-lot-num')!;
 const bidLotCat        = document.getElementById('bid-lot-cat')!;
 const bidInput         = document.getElementById('bid-input') as HTMLInputElement;
 const bidAddBtn        = document.getElementById('bid-add')!;
-const presetBtns       = document.querySelectorAll<HTMLButtonElement>('.preset-btn');
+const presetGridEl     = document.querySelector<HTMLElement>('.preset-grid')!;
+let presetBtns         = document.querySelectorAll<HTMLButtonElement>('.preset-btn');
 const undoBidBtn       = document.getElementById('undo-bid')!;
 const hammerslagBtn    = document.getElementById('hammerslag')!;
 const hammerAmountEl   = document.getElementById('hammer-amount')!;
@@ -527,10 +528,12 @@ function renderStatsAndProgress(state: any) {
 navTotal.textContent = String(SLIDES.length);
 
 // Refresh once on boot so we pick up any volume-side changes.
-refreshLotsFromServer().catch(() => {});
+refreshLotsFromServer().then(() => { renderPresetChips(); applyEventMeta(); }).catch(() => {});
 
 sync.onLotsUpdated(async () => {
   await refreshLotsFromServer();
+  renderPresetChips();
+  applyEventMeta();
   // Force a re-render: invalidate the slide-cache markers so the next state
   // update rebuilds Nuværende + Næste with fresh data.
   lastRenderedCurrentIdx = -999;
@@ -620,13 +623,58 @@ function addBid(amount: number) {
 }
 bidAddBtn.addEventListener('click', () => addBid(parseInt(bidInput.value, 10)));
 bidInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') addBid(parseInt(bidInput.value, 10)); });
-presetBtns.forEach(btn => btn.addEventListener('click', () => {
+// Event delegation so dynamically-rendered preset chips still fire.
+presetGridEl.addEventListener('click', (e) => {
+  const btn = (e.target as HTMLElement).closest<HTMLButtonElement>('.preset-btn');
+  if (!btn) return;
   const inc = parseInt(btn.dataset.inc!, 10);
   if (!currentLotNum) return;
   const ls = lastState?.lots?.[currentLotNum];
   const last = ls?.bids?.length ? ls.bids[ls.bids.length - 1] : 0;
   addBid(last + inc);
-}));
+});
+
+const DEFAULT_PRESETS = [500, 1000, 2000, 3000, 5000, 10000, 20000, 50000, 100000];
+function currentPresets(): number[] {
+  return (EVENT_META.bidPresets && EVENT_META.bidPresets.length)
+    ? EVENT_META.bidPresets
+    : DEFAULT_PRESETS;
+}
+function renderPresetChips() {
+  const presets = currentPresets();
+  presetGridEl.innerHTML = presets.map(v =>
+    `<button class="preset-btn" data-inc="${v}">${v.toLocaleString('da-DK').replace(/,/g, '.')}</button>`
+  ).join('');
+  const inp = document.getElementById('bid-presets') as HTMLInputElement | null;
+  if (inp && document.activeElement !== inp) inp.value = presets.join(', ');
+}
+renderPresetChips();
+
+const bidPresetsInput = document.getElementById('bid-presets') as HTMLInputElement | null;
+const bidPresetsSave  = document.getElementById('bid-presets-save') as HTMLButtonElement | null;
+if (bidPresetsSave && bidPresetsInput) {
+  bidPresetsSave.addEventListener('click', async () => {
+    const parsed = bidPresetsInput.value
+      .split(/[,\s]+/)
+      .map(s => parseInt(s.replace(/\./g, ''), 10))
+      .filter(n => Number.isFinite(n) && n > 0);
+    if (!parsed.length) { alert('Mindst ét tal kræves'); return; }
+    bidPresetsSave.disabled = true;
+    try {
+      const res = await fetch('/api/meta', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ bidPresets: parsed }),
+      });
+      if (!res.ok) throw new Error('save failed');
+      // ws lots-updated will trigger refreshLotsFromServer + renderPresetChips
+    } catch (e) {
+      alert('Kunne ikke gemme præsets');
+    } finally {
+      bidPresetsSave.disabled = false;
+    }
+  });
+}
 
 undoBidBtn.addEventListener('click', () => {
   if (!currentLotNum) return;
@@ -752,7 +800,88 @@ colorResetBtn.addEventListener('click', () => {
   colorPrimaryEl.value = '#3FA34D';
   colorGoldEl.value    = '#D9BF8C';
   colorInkEl.value     = '#2A2A2A';
+  putMeta({ brandColors: { primary: null, gold: null, ink: null } as any });
 });
+
+// ---- Event meta (server-persisted) ----
+// brandColors + theme + event title/subtitle/date live in lots.json.meta and
+// are broadcast via ws so viewer + auctioneer + every controller stay in sync.
+const metaEventNameEl     = document.getElementById('meta-event-name')     as HTMLInputElement;
+const metaEventSubtitleEl = document.getElementById('meta-event-subtitle') as HTMLInputElement;
+const metaEventDateEl     = document.getElementById('meta-event-date')     as HTMLInputElement;
+const metaEventSaveBtn    = document.getElementById('meta-event-save')     as HTMLButtonElement;
+const brandStrongEl       = document.querySelector('.brand-text strong')   as HTMLElement | null;
+const brandSmallEl        = document.querySelector('.brand-text small')    as HTMLElement | null;
+
+async function putMeta(partial: Partial<typeof EVENT_META>): Promise<void> {
+  try {
+    await fetch('/api/meta', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(partial),
+    });
+  } catch {}
+}
+
+function applyEventMeta() {
+  // Theme — server wins over localStorage when set.
+  if (EVENT_META.theme) {
+    applyTheme(EVENT_META.theme);
+    themeRadios.forEach(r => { r.checked = (r.value === EVENT_META.theme); });
+  }
+  // Brand colors — apply if any field set on server.
+  if (EVENT_META.brandColors) {
+    const c = EVENT_META.brandColors;
+    applyBrandColors(c);
+    if (c.primary) colorPrimaryEl.value = c.primary;
+    if (c.gold)    colorGoldEl.value    = c.gold;
+    if (c.ink)     colorInkEl.value     = c.ink;
+  }
+  // Inputs
+  if (metaEventNameEl && document.activeElement !== metaEventNameEl)
+    metaEventNameEl.value = EVENT_META.eventName || '';
+  if (metaEventSubtitleEl && document.activeElement !== metaEventSubtitleEl)
+    metaEventSubtitleEl.value = EVENT_META.eventSubtitle || '';
+  if (metaEventDateEl && document.activeElement !== metaEventDateEl)
+    metaEventDateEl.value = EVENT_META.eventDate || '';
+  // Topbar brand text
+  if (brandStrongEl && EVENT_META.eventName) brandStrongEl.textContent = EVENT_META.eventName;
+  if (brandSmallEl) {
+    const sub = EVENT_META.eventSubtitle;
+    if (sub) brandSmallEl.textContent = `CONTROLLER · ${sub.toUpperCase()}`;
+  }
+}
+
+metaEventSaveBtn?.addEventListener('click', () => {
+  putMeta({
+    eventName:     metaEventNameEl.value.trim() || null as any,
+    eventSubtitle: metaEventSubtitleEl.value.trim() || null as any,
+    eventDate:     metaEventDateEl.value || null as any,
+  });
+});
+
+// Theme picker — also persist to server so all clients sync.
+themeRadios.forEach(r => {
+  r.addEventListener('change', () => {
+    if (r.checked) putMeta({ theme: r.value as any });
+  });
+});
+
+// Brand color — debounce server PUT to avoid spamming on slider drag.
+let brandSaveTimer: any = null;
+function scheduleBrandPut() {
+  if (brandSaveTimer) clearTimeout(brandSaveTimer);
+  brandSaveTimer = setTimeout(() => {
+    putMeta({ brandColors: {
+      primary: colorPrimaryEl.value,
+      gold:    colorGoldEl.value,
+      ink:     colorInkEl.value,
+    }});
+  }, 400);
+}
+colorPrimaryEl.addEventListener('input', scheduleBrandPut);
+colorGoldEl.addEventListener('input', scheduleBrandPut);
+colorInkEl.addEventListener('input', scheduleBrandPut);
 
 // Local toggle: show/hide the big lot-num overlay on Nuværende + Næste.
 // Persisted in localStorage. Default off — slide content already shows the

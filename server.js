@@ -165,6 +165,31 @@ app.get('/api/lots', (_req, res) => {
   res.json(lotsFile);
 });
 
+app.put('/api/meta', (req, res) => {
+  if (!lotsFile.meta || typeof lotsFile.meta !== 'object') lotsFile.meta = {};
+  const m = lotsFile.meta;
+  const b = req.body || {};
+  if (Array.isArray(b.bidPresets)) {
+    m.bidPresets = b.bidPresets
+      .map(n => parseInt(n, 10))
+      .filter(n => Number.isFinite(n) && n > 0);
+  }
+  if (b.brandColors && typeof b.brandColors === 'object') {
+    m.brandColors = m.brandColors || {};
+    for (const k of ['primary', 'gold', 'ink']) {
+      if (typeof b.brandColors[k] === 'string') m.brandColors[k] = b.brandColors[k];
+      else if (b.brandColors[k] === null) delete m.brandColors[k];
+    }
+  }
+  for (const k of ['eventName', 'eventSubtitle', 'eventDate', 'theme']) {
+    if (typeof b[k] === 'string') m[k] = b[k];
+    else if (b[k] === null) delete m[k];
+  }
+  saveLots(lotsFile);
+  broadcastLotsUpdated();
+  res.json(m);
+});
+
 app.post('/api/lots', (req, res) => {
   const kind = req.body.kind || 'lot';
   let newItem;
@@ -189,6 +214,25 @@ app.post('/api/lots', (req, res) => {
       subtitle: req.body.subtitle || 'STJERNEGOLF 2026',
       attribution: req.body.attribution || '',
       logoFile: req.body.logoFile || 'artsolo-logo.png',
+    };
+  } else if (kind === 'closing') {
+    newItem = {
+      id: uuidv4(),
+      kind: 'closing',
+      active: req.body.active ?? true,
+      label: req.body.label || 'Closing',
+      title: req.body.title || 'TAK TIL ALLE VORES SPONSORER',
+      tagline: req.body.tagline || '@KIDSAIDDK · KIDSAID DANMARK',
+      cols: req.body.cols || 8,
+      logos: Array.isArray(req.body.logos) ? req.body.logos : [],
+    };
+  } else if (kind === 'sponsor-index') {
+    newItem = {
+      id: uuidv4(),
+      kind: 'sponsor-index',
+      active: req.body.active ?? true,
+      label: req.body.label || 'Sponsor-indeks',
+      title: req.body.title || 'AUKTIONENS SPONSORER',
     };
   } else {
     newItem = {

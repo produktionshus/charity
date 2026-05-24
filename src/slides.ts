@@ -38,6 +38,25 @@ export interface CoverItem {
   logoFile?: string;         // relative to /assets/, default 'artsolo-logo.png'
 }
 
+export interface ClosingItem {
+  id: string;
+  kind: 'closing';
+  active: boolean;
+  label?: string;
+  title?: string;            // default "TAK TIL ALLE VORES SPONSORER"
+  tagline?: string;          // default "@KIDSAIDDK · KIDSAID DANMARK"
+  cols?: number;             // default 8
+  logos: Array<{ file: string; kind?: 'wordmark' | 'stacked' }>;
+}
+
+export interface SponsorIndexItem {
+  id: string;
+  kind: 'sponsor-index';
+  active: boolean;
+  label?: string;
+  title?: string;            // default "AUKTIONENS SPONSORER"
+}
+
 export interface Lot {
   id: string;
   kind?: 'lot';                     // optional discriminator (default 'lot')
@@ -58,7 +77,7 @@ export interface Lot {
   heroScale?: number;               // zoom multiplier on the hero image, default 1.0
 }
 
-export type DeckItem = Lot | BordplanItem | CoverItem;
+export type DeckItem = Lot | BordplanItem | CoverItem | ClosingItem | SponsorIndexItem;
 function isLot(item: DeckItem): item is Lot {
   return (item as any).kind === undefined || (item as any).kind === 'lot';
 }
@@ -68,12 +87,29 @@ function isBordplan(item: DeckItem): item is BordplanItem {
 function isCover(item: DeckItem): item is CoverItem {
   return (item as any).kind === 'cover';
 }
+function isClosing(item: DeckItem): item is ClosingItem {
+  return (item as any).kind === 'closing';
+}
+function isSponsorIndex(item: DeckItem): item is SponsorIndexItem {
+  return (item as any).kind === 'sponsor-index';
+}
 
 // All items from the bank (active + inactive). Generator edits this list.
 // Lots have no kind field (or 'lot'); bordplan items use kind='bordplan'.
 export const ALL_ITEMS: DeckItem[] = (lotsJson.lots as DeckItem[]);
 // Back-compat alias: most existing code treats this as a Lot[] list.
 export const ALL_LOTS = ALL_ITEMS.filter(isLot) as Lot[];
+
+// Event-wide meta (bid presets etc.). Mutated by refreshLotsFromServer.
+export interface EventMeta {
+  bidPresets?: number[];
+  brandColors?: { primary?: string; gold?: string; ink?: string };
+  eventName?: string;
+  eventSubtitle?: string;
+  eventDate?: string;        // ISO YYYY-MM-DD
+  theme?: 'forest' | 'marine' | 'dark' | 'kidsaid';
+}
+export const EVENT_META: EventMeta = (lotsJson as any).meta || {};
 
 // Compute display-num: active non-extra lots get sequential 01..NN by order;
 // extras get either their manually-set suffix or auto "<prev>A","<prev>B".
@@ -122,12 +158,10 @@ export function displayNumFor(id: string): string {
 }
 
 function buildSlides(): Slide[] {
-  // Items emit in their array order, so dragging in the generator literally
-  // shapes the deck flow. The implicit slots (sponsor-index between covers
-  // and lots; closing at the end) sit at fixed positions for now —
-  // turning them into items is a future step.
   const slides: Slide[] = [];
   let hasCover = false;
+  let hasClosing = false;
+  let hasSponsorIndex = false;
   let lotsEmitted = false;
   const flushSponsorIndex = () => {
     if (!slides.some(s => s.kind === 'sponsor-index')) {
@@ -141,9 +175,17 @@ function buildSlides(): Slide[] {
     } else if (isCover(item)) {
       slides.push({ id: `cover-${item.id}`, kind: 'cover', itemId: item.id });
       hasCover = true;
+    } else if (isClosing(item)) {
+      slides.push({ id: `closing-${item.id}`, kind: 'closing', itemId: item.id });
+      hasClosing = true;
+    } else if (isSponsorIndex(item)) {
+      slides.push({ id: `sponsor-index-${item.id}`, kind: 'sponsor-index', itemId: item.id });
+      hasSponsorIndex = true;
     } else if (isLot(item)) {
-      // First lot encountered triggers sponsor-index just before it.
-      if (!lotsEmitted) { flushSponsorIndex(); lotsEmitted = true; }
+      if (!lotsEmitted) {
+        if (!hasSponsorIndex) flushSponsorIndex();
+        lotsEmitted = true;
+      }
       slides.push({
         id: `lot-${item.id}`, kind: 'lot',
         lotId: item.id, displayNum: DISPLAY_NUMS.get(item.id),
@@ -151,8 +193,8 @@ function buildSlides(): Slide[] {
     }
   }
   if (!hasCover) slides.unshift({ id: 'cover', kind: 'cover' });
-  if (!lotsEmitted) flushSponsorIndex();
-  slides.push({ id: 'closing', kind: 'closing' });
+  if (!lotsEmitted && !hasSponsorIndex) flushSponsorIndex();
+  if (!hasClosing) slides.push({ id: 'closing', kind: 'closing' });
   return slides;
 }
 
@@ -163,6 +205,14 @@ export function bordplanById(id: string): BordplanItem | undefined {
 export function coverById(id: string): CoverItem | undefined {
   const item = ALL_ITEMS.find(i => i.id === id && isCover(i));
   return item as CoverItem | undefined;
+}
+export function closingById(id: string): ClosingItem | undefined {
+  const item = ALL_ITEMS.find(i => i.id === id && isClosing(i));
+  return item as ClosingItem | undefined;
+}
+export function sponsorIndexById(id: string): SponsorIndexItem | undefined {
+  const item = ALL_ITEMS.find(i => i.id === id && isSponsorIndex(i));
+  return item as SponsorIndexItem | undefined;
 }
 
 export const SLIDES: Slide[] = buildSlides();
@@ -183,4 +233,7 @@ export async function refreshLotsFromServer(): Promise<void> {
   for (const [k, v] of computeDisplayNums(ALL_LOTS)) DISPLAY_NUMS.set(k, v);
   SLIDES.length = 0;
   for (const s of buildSlides()) SLIDES.push(s);
+  // Refresh EVENT_META in place
+  for (const k of Object.keys(EVENT_META)) delete (EVENT_META as any)[k];
+  if (data.meta) Object.assign(EVENT_META, data.meta);
 }

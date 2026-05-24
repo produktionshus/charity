@@ -11,7 +11,16 @@
         "cols": 9,
         "rows": 11,
         "seatsPerTable": 4,
-        "colAislesAfter": [],
+        "colAislesAfter": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
         "rowAislesAfter": [
           3,
           6
@@ -31,13 +40,15 @@
           }
         ],
         "numbering": {
-          "mode": "cluster-continuous",
+          "mode": "cluster-as-table",
           "origin": "top-left",
-          "direction": "col-major",
-          "clusterDirection": "col-major",
+          "direction": "row-major",
+          "clusterDirection": "row-major",
           "startAt": 1,
           "prefix": "",
-          "skip": []
+          "skip": [
+            13
+          ]
         }
       },
       "overrides": {}
@@ -767,6 +778,13 @@
       "mirrored": false,
       "focal": "64% 83%",
       "heroScale": 1.1
+    },
+    {
+      "id": "4df17639-c437-439c-af5c-6b40815af07d",
+      "kind": "sponsor-index",
+      "active": true,
+      "label": "Sponsor-indeks",
+      "title": "AUKTIONENS SPONSORER"
     }
   ]
 }

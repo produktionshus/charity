@@ -3,7 +3,7 @@
 // chair pads on the long sides of each table, anchor accents on the
 // first table of each cluster.
 
-import { generateTables, visualIndex, type FloorPlanConfig, type Table } from './bordplan-engine';
+import { generateTables, visualIndex, type FloorPlanConfig, type Table, type ClusterInfo } from './bordplan-engine';
 
 // Cells share aspect 54:66 (handoff). At a 1280×720 internal slide-canvas
 // scaling 1.5× to a 1920×1080 LED wall this resolves to exactly 54×66 on
@@ -63,6 +63,7 @@ export function renderBordplanSlide(config: FloorPlanConfig, opts: BordplanRende
 
   const colTemplate = buildFrTemplate(config.cols, colAisles);
   const rowTemplate = buildFrTemplate(config.rows, rowAisles);
+  const clusterAsTable = config.numbering.mode === 'cluster-as-table';
 
   // Cells indexed by visual position
   // Chairs: split the seat count evenly between left + right long sides.
@@ -92,8 +93,25 @@ export function renderBordplanSlide(config: FloorPlanConfig, opts: BordplanRende
     `;
   }).join('');
 
-  const totalTables = renderedTables.filter(t => t.active).length;
-  const totalPositions = config.cols * config.rows - (config.removedCells?.length ?? 0);
+  // Cluster-as-table mode: ONE small number per cluster, positioned just
+  // outside the cluster's left edge. The label spans the first col of the
+  // cluster but uses a translateX(-100%) trick + small offset to render to
+  // the LEFT of that column. Consistent placement for every cluster,
+  // whether there's an aisle in front of it or not.
+  const clusterLabelsHtml = clusterAsTable
+    ? clusters.map((cl: ClusterInfo) => {
+        if (cl.clusterDisplayLabel == null) return '';
+        const vcStart = visualIndex(cl.colStart, colAisles) + 1;
+        const vrStart = visualIndex(cl.rowStart, rowAisles) + 1;
+        const vrEnd   = visualIndex(cl.rowEnd,   rowAisles) + 1;
+        return `
+          <div class="bp-cluster-label" style="grid-column:${vcStart} / ${vcStart + 1}; grid-row:${vrStart} / ${vrEnd + 1}">
+            <span>${cl.clusterDisplayLabel}</span>
+          </div>
+        `;
+      }).join('')
+    : '';
+
   const now = new Date();
   const clock = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
 
@@ -105,15 +123,16 @@ export function renderBordplanSlide(config: FloorPlanConfig, opts: BordplanRende
           <div class="bp-title">${eventName}</div>
           <div class="bp-subtitle">BORDPLAN</div>
         </div>
-        <div class="bp-meta"><span class="bp-count">${totalTables}/${totalPositions}</span> borde <span class="bp-clock">${clock}</span></div>
+        <div class="bp-meta"><span class="bp-clock">${clock}</span></div>
       </header>
       <div class="bp-stage-strip">
         <div class="bp-stage-side"></div>
         <div class="bp-stage"><span class="bp-stage-dot"></span>SCENE</div>
         <div class="bp-stage-side"></div>
       </div>
-      <div class="bp-grid" style="grid-template-columns:${colTemplate};grid-template-rows:${rowTemplate}">
+      <div class="bp-grid${clusterAsTable ? ' bp-grid--cluster' : ''}" style="grid-template-columns:${colTemplate};grid-template-rows:${rowTemplate}">
         ${cellsHtml}
+        ${clusterLabelsHtml}
       </div>
     </div>
   `;

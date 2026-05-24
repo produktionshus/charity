@@ -4,44 +4,13 @@
 import { SyncClient } from './ws-client';
 import { renderSlide, fitToViewport } from './render';
 import { SLIDES, lotById, displayNumFor, refreshLotsFromServer } from './slides';
+import { applyChromeFromMeta } from './event-meta-apply';
 
-// Mirror controller's saved theme + custom brand colors so all three views
-// share the chrome.
-const savedTheme = localStorage.getItem('controller.theme') || 'kidsaid';
-document.body.classList.add(`theme-${savedTheme}`);
-function applySavedBrandColors() {
-  let c: any = {};
-  try { c = JSON.parse(localStorage.getItem('brand.colors') || '{}'); } catch {}
-  const root = document.documentElement.style;
-  const set = (p: string, v: string) => root.setProperty(p, v, 'important');
-  if (c.primary) {
-    set('--green', c.primary);
-    set('--green-dark', `color-mix(in srgb, ${c.primary} 75%, black)`);
-    set('--green-200', `color-mix(in srgb, ${c.primary} 55%, white)`);
-    set('--green-300', `color-mix(in srgb, ${c.primary} 70%, white)`);
-    set('--green-400', c.primary);
-    set('--green-500', `color-mix(in srgb, ${c.primary} 85%, black)`);
-    set('--green-600', `color-mix(in srgb, ${c.primary} 70%, black)`);
-    set('--green-700', `color-mix(in srgb, ${c.primary} 55%, black)`);
-    set('--accent-glow', `color-mix(in srgb, ${c.primary} 50%, transparent)`);
-  }
-  if (c.gold) {
-    set('--gold', c.gold);
-    set('--gold-soft', `color-mix(in srgb, ${c.gold} 60%, black)`);
-  }
-  if (c.ink) {
-    set('--ink', c.ink);
-    set('--text-c', c.ink);
-  }
-}
-applySavedBrandColors();
+// Apply localStorage fallback before first paint, then refresh from server
+// later when EVENT_META is populated.
+applyChromeFromMeta();
 window.addEventListener('storage', (e) => {
-  if (e.key === 'controller.theme' && e.newValue) {
-    document.body.classList.remove('theme-forest', 'theme-marine', 'theme-dark', 'theme-kidsaid');
-    document.body.classList.add(`theme-${e.newValue}`);
-  } else if (e.key === 'brand.colors') {
-    applySavedBrandColors();
-  }
+  if (e.key === 'controller.theme' || e.key === 'brand.colors') applyChromeFromMeta();
 });
 
 const stage = document.getElementById('stage')!;
@@ -214,10 +183,14 @@ function fireHammer(lotNum: string, finalPrice: number) {
 
 // Refresh on boot so the in-bundle lots.json snapshot is replaced with
 // whatever's currently on the server's volume.
-refreshLotsFromServer().then(() => { if (currentSlideIdx >= 0) swapSlide(currentSlideIdx); });
+refreshLotsFromServer().then(() => {
+  applyChromeFromMeta();
+  if (currentSlideIdx >= 0) swapSlide(currentSlideIdx);
+});
 
 sync.onLotsUpdated(async () => {
   await refreshLotsFromServer();
+  applyChromeFromMeta();
   // Re-render current slide with fresh data (no full reload, no flash).
   if (currentSlideIdx >= 0) swapSlide(currentSlideIdx);
 });

@@ -336,7 +336,10 @@
   position: absolute; inset: 0;
   display: grid;
   grid-template-rows: 0.7in 0.42in 1fr;
-  background: var(--bp-canvas);
+  background:
+    radial-gradient(ellipse at 50% -10%, rgba(255,255,255,0.10), transparent 50%),
+    radial-gradient(ellipse at 50% 110%, rgba(0,0,0,0.18), transparent 55%),
+    var(--bp-canvas);
   color: var(--bp-header-ink);
   font-family: 'Plus Jakarta Sans', var(--font-title);
   padding: 0.18in 0.4in 0.25in;
@@ -397,7 +400,7 @@
   border-radius: 0.04in;
 }
 .bp-stage {
-  background: var(--bp-canvas-hi);
+  background: linear-gradient(180deg, var(--bp-canvas-hi), color-mix(in srgb, var(--bp-canvas-hi) 70%, black));
   display: flex; align-items: center; justify-content: center; gap: 0.12in;
   font-family: 'JetBrains Mono', ui-monospace, monospace;
   font-size: 11pt; font-weight: 700;
@@ -405,6 +408,10 @@
   text-transform: uppercase;
   color: var(--bp-paper);
   border-radius: 0.06in;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.12),
+    inset 0 -1px 0 rgba(0,0,0,0.30),
+    0 2px 8px rgba(0,0,0,0.18);
 }
 .bp-stage-dot {
   width: 0.08in; height: 0.08in; border-radius: 50%;
@@ -421,10 +428,15 @@
   position: relative;
   height: 100%;
   aspect-ratio: 54 / 66;       /* cells preserve handoff proportion regardless of fr math */
-  background: var(--bp-paper);
+  background: linear-gradient(180deg, var(--bp-paper-hi), var(--bp-paper));
   color: var(--bp-ink);
-  border-radius: 4px;
+  border-radius: 5px;
   display: flex; align-items: center; justify-content: center;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.50),
+    inset 0 -1px 0 rgba(0,0,0,0.08),
+    0 1px 3px rgba(0,0,0,0.18),
+    0 4px 10px rgba(0,0,0,0.10);
 }
 /* Chair pads scale with the table — % sizing keeps the visual ratio
    stable whether cells are rendered small (controller preview) or large
@@ -444,8 +456,11 @@
 .bp-chair {
   width: 100%;
   flex: 0 0 22%;
-  background: var(--bp-paper-dim);
-  border-radius: 2px;
+  background: linear-gradient(180deg, var(--bp-paper-dim), color-mix(in srgb, var(--bp-paper-dim) 80%, black));
+  border-radius: 3px;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.30),
+    0 1px 2px rgba(0,0,0,0.20);
 }
 .bp-number {
   font-family: 'JetBrains Mono', ui-monospace, monospace;
@@ -456,10 +471,50 @@
   display: inline-flex; align-items: center; gap: 0.04in;
 }
 .bp-arrow { color: var(--bp-accent); font-size: 0.7em; }
-.bp-anchor { box-shadow: inset 0 0.035in 0 var(--bp-accent); }
+.bp-anchor {
+  box-shadow:
+    inset 0 0.045in 0 var(--bp-accent),
+    inset 0 1px 0 rgba(255,255,255,0.50),
+    inset 0 -1px 0 rgba(0,0,0,0.08),
+    0 1px 3px rgba(0,0,0,0.20),
+    0 4px 12px rgba(0,0,0,0.12);
+}
 .bp-anchor .bp-number { font-weight: 800; }
-.bp-decade { box-shadow: inset 0 0.018in 0 var(--bp-accent); }
+.bp-decade { box-shadow: inset 0 0.022in 0 var(--bp-accent), inset 0 1px 0 rgba(255,255,255,0.50), 0 1px 3px rgba(0,0,0,0.18); }
 .bp-ghost {
-  background: transparent;
+  background:
+    repeating-linear-gradient(
+      45deg,
+      rgba(255,255,255,0.04) 0 6px,
+      transparent 6px 12px
+    );
   border: 1px dashed var(--bp-line);
+  box-shadow: none;
+}
+
+/* Cluster-as-table mode:
+   - bord-cellerne ser nøjagtig ud som ellers (card + chairs)
+   - kun forskel: individuelle nummre skjules, og ét stort cluster-nummer
+     placeres til venstre for cluster (vertikalt centreret).
+*/
+.bp-grid--cluster .bp-number { display: none; }
+
+.bp-cluster-label {
+  pointer-events: none;
+  position: relative;
+  display: flex; align-items: center; justify-content: flex-end;
+  padding-right: 0.06in;
+  margin-left: -100%;
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-weight: 700;
+  font-feature-settings: 'tnum';
+  color: var(--bp-header-ink);
+  z-index: 2;
+  overflow: visible;
+}
+.bp-cluster-label span {
+  font-size: clamp(11pt, 1.6vw, 24pt);
+  letter-spacing: -0.02em;
+  line-height: 1;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.30);
 }

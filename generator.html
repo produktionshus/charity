@@ -26,6 +26,8 @@
       <button class="nav-btn primary" id="new-lot">+ Nyt lot</button>
       <button class="nav-btn" id="new-bordplan">+ Nyt bordplan</button>
       <button class="nav-btn" id="new-cover">+ Nyt cover</button>
+      <button class="nav-btn" id="new-closing">+ Nyt closing</button>
+      <button class="nav-btn" id="new-sponsorindex">+ Nyt sponsor-indeks</button>
     </header>
 
     <aside class="gen-list">
@@ -161,6 +163,7 @@
                 <option value="across">across (linear)</option>
                 <option value="cluster-continuous">cluster-continuous (default)</option>
                 <option value="cluster-prefix">cluster-prefix (A1, B1…)</option>
+                <option value="cluster-as-table">cluster-as-table (én nr pr cluster)</option>
               </select>
             </label>
             <label>Origin (hjørne for nr 1)
@@ -212,6 +215,50 @@
           <div class="row gen-save-row">
             <button class="nav-btn primary" id="bp-save">Gem bordplan</button>
             <span class="gen-save-meta" id="bp-save-meta"></span>
+          </div>
+        </div>
+
+        <!-- Sponsor-index form -->
+        <div class="gen-form" id="gen-form-sponsorindex" style="display:none">
+          <label class="setting-toggle"><input type="checkbox" id="si-active" /><span>Active (med i deck)</span></label>
+          <label>Label (intern)
+            <input type="text" id="si-label" placeholder="fx Sponsor-indeks" />
+          </label>
+          <label>Titel
+            <input type="text" id="si-title" placeholder="AUKTIONENS SPONSORER" />
+          </label>
+          <p class="drawer-hint">Cellerne genereres automatisk fra aktive lots (1 celle pr. lot).</p>
+          <div class="row gen-save-row">
+            <button class="nav-btn primary" id="si-save">Gem sponsor-indeks</button>
+          </div>
+        </div>
+
+        <!-- Closing form -->
+        <div class="gen-form" id="gen-form-closing" style="display:none">
+          <label class="setting-toggle"><input type="checkbox" id="cl-active" /><span>Active (med i deck)</span></label>
+          <label>Label (intern)
+            <input type="text" id="cl-label" placeholder="fx Closing slide" />
+          </label>
+          <label>Titel
+            <input type="text" id="cl-title" placeholder="TAK TIL ALLE VORES SPONSORER" />
+          </label>
+          <label>Tagline
+            <input type="text" id="cl-tagline" placeholder="@KIDSAIDDK · KIDSAID DANMARK" />
+          </label>
+          <label>Kolonner
+            <input type="number" id="cl-cols" min="3" max="14" value="8" />
+          </label>
+          <div class="setting-section">
+            <span class="setting-section-label">Sponsor-logos (drag for rækkefølge)</span>
+            <p class="drawer-hint">Tilføj logo-fil (upload til /assets/closing/). Klik <code>W</code> for wordmark, <code>S</code> for stacked (påvirker padding).</p>
+            <ul class="closing-logo-list" id="cl-logo-list"></ul>
+            <label class="closing-add-row">
+              <input type="file" id="cl-logo-upload" accept="image/png,image/jpeg,image/webp" multiple />
+              <span>+ Upload logo(er)</span>
+            </label>
+          </div>
+          <div class="row gen-save-row">
+            <button class="nav-btn primary" id="cl-save">Gem closing</button>
           </div>
         </div>
 

@@ -2,8 +2,8 @@
 // Reads + writes through /api/lots; broadcasts ws 'lots-updated' so the
 // viewer / auctioneer / controller refresh themselves on save.
 
-import { renderSlide, renderCover, fitToViewport } from './render';
-import type { Lot, BordplanItem, CoverItem, DeckItem } from './slides';
+import { renderSlide, renderCover, renderClosing, renderSponsorIndex, fitToViewport } from './render';
+import type { Lot, BordplanItem, CoverItem, ClosingItem, SponsorIndexItem, DeckItem } from './slides';
 import { renderBordplanSlide } from './render-bordplan';
 import type { FloorPlanConfig } from './bordplan-engine';
 
@@ -58,9 +58,11 @@ let lotsBank: Lot[] = [];     // filtered alias = items where kind!=='bordplan'
 let selectedId: string | null = null;
 let dirty = false;
 
-function itemKind(item: DeckItem | undefined): 'lot' | 'bordplan' | 'cover' {
+function itemKind(item: DeckItem | undefined): 'lot' | 'bordplan' | 'cover' | 'closing' | 'sponsor-index' {
   if (item && (item as any).kind === 'bordplan') return 'bordplan';
   if (item && (item as any).kind === 'cover') return 'cover';
+  if (item && (item as any).kind === 'closing') return 'closing';
+  if (item && (item as any).kind === 'sponsor-index') return 'sponsor-index';
   return 'lot';
 }
 function isBordplanItem(item: DeckItem | undefined): item is BordplanItem {
@@ -69,11 +71,33 @@ function isBordplanItem(item: DeckItem | undefined): item is BordplanItem {
 function isCoverItem(item: DeckItem | undefined): item is CoverItem {
   return !!item && (item as any).kind === 'cover';
 }
+function isClosingItem(item: DeckItem | undefined): item is ClosingItem {
+  return !!item && (item as any).kind === 'closing';
+}
+function isSponsorIndexItem(item: DeckItem | undefined): item is SponsorIndexItem {
+  return !!item && (item as any).kind === 'sponsor-index';
+}
 
 // ---- Bordplan form DOM ----
 const formLot = document.getElementById('gen-form')!;
 const formBordplan = document.getElementById('gen-form-bordplan')!;
 const formCover = document.getElementById('gen-form-cover')!;
+const formClosing = document.getElementById('gen-form-closing')!;
+const clActiveEl    = document.getElementById('cl-active')   as HTMLInputElement;
+const clLabelEl     = document.getElementById('cl-label')    as HTMLInputElement;
+const clTitleEl     = document.getElementById('cl-title')    as HTMLInputElement;
+const clTaglineEl   = document.getElementById('cl-tagline')  as HTMLInputElement;
+const clColsEl      = document.getElementById('cl-cols')     as HTMLInputElement;
+const clLogoListEl  = document.getElementById('cl-logo-list')!;
+const clLogoUploadEl = document.getElementById('cl-logo-upload') as HTMLInputElement;
+const clSaveBtn     = document.getElementById('cl-save')!;
+let clLogos: ClosingItem['logos'] = [];
+
+const formSponsorIndex = document.getElementById('gen-form-sponsorindex')!;
+const siActiveEl   = document.getElementById('si-active') as HTMLInputElement;
+const siLabelEl    = document.getElementById('si-label')  as HTMLInputElement;
+const siTitleEl    = document.getElementById('si-title')  as HTMLInputElement;
+const siSaveBtn    = document.getElementById('si-save')!;
 const covLabelEl       = document.getElementById('cov-label')      as HTMLInputElement;
 const covTitleEl       = document.getElementById('cov-title')      as HTMLInputElement;
 const covSubtitleEl    = document.getElementById('cov-subtitle')   as HTMLInputElement;
@@ -235,6 +259,14 @@ function renderList() {
       dn = 'CV';
       title = item.label || item.title || '(uden navn)';
       badge = !item.active ? 'INACTIVE' : 'COVER';
+    } else if (isClosingItem(item)) {
+      dn = 'CL';
+      title = item.label || item.title || '(uden navn)';
+      badge = !item.active ? 'INACTIVE' : 'CLOSING';
+    } else if (isSponsorIndexItem(item)) {
+      dn = 'SP';
+      title = item.label || item.title || '(uden navn)';
+      badge = !item.active ? 'INACTIVE' : 'SPONSOR-INDEKS';
     }
     row.innerHTML = `
       <span class="drag-handle">⋮⋮</span>
@@ -329,12 +361,20 @@ function selectLot(id: string) {
   formLot.style.display = 'none';
   formBordplan.style.display = 'none';
   formCover.style.display = 'none';
+  formClosing.style.display = 'none';
+  formSponsorIndex.style.display = 'none';
   if (kind === 'bordplan') {
     formBordplan.style.display = 'flex';
     populateBordplanForm(item as BordplanItem);
   } else if (kind === 'cover') {
     formCover.style.display = 'flex';
     populateCoverForm(item as CoverItem);
+  } else if (kind === 'closing') {
+    formClosing.style.display = 'flex';
+    populateClosingForm(item as ClosingItem);
+  } else if (kind === 'sponsor-index') {
+    formSponsorIndex.style.display = 'flex';
+    populateSponsorIndexForm(item as SponsorIndexItem);
   } else {
     formLot.style.display = 'flex';
     populateForm(item as Lot);
@@ -475,6 +515,28 @@ function refreshPreview() {
     wrap.appendChild(slideEl);
     requestAnimationFrame(() => fitToViewport(wrap, slideEl));
     previewMeta.textContent = 'cover slide';
+    return;
+  }
+  if (isClosingItem(item)) {
+    const merged: ClosingItem = { ...item, ...readClosingForm() };
+    const slideEl = document.createElement('div');
+    slideEl.className = 'slide-canvas slide-closing';
+    slideEl.classList.add('is-visible', 'no-build');
+    slideEl.innerHTML = renderClosing(merged);
+    wrap.appendChild(slideEl);
+    requestAnimationFrame(() => fitToViewport(wrap, slideEl));
+    previewMeta.textContent = `closing · ${merged.logos.length} logos`;
+    return;
+  }
+  if (isSponsorIndexItem(item)) {
+    const merged: SponsorIndexItem = { ...item, ...readSponsorIndexForm() };
+    const slideEl = document.createElement('div');
+    slideEl.className = 'slide-canvas slide-sponsor-index';
+    slideEl.classList.add('is-visible', 'no-build');
+    slideEl.innerHTML = renderSponsorIndex(merged);
+    wrap.appendChild(slideEl);
+    requestAnimationFrame(() => fitToViewport(wrap, slideEl));
+    previewMeta.textContent = 'sponsor-index';
     return;
   }
   const baseLot = item as Lot;
@@ -721,6 +783,187 @@ covSaveBtn.addEventListener('click', async () => {
   }
 });
 
+// ---- Closing form ----
+function populateClosingForm(item: ClosingItem) {
+  editIdEl.textContent = item.id;
+  editDisplayNumEl.textContent = 'CLOSING';
+  deleteBtn.style.display = 'inline-flex';
+  duplicateBtn.style.display = 'inline-flex';
+  resetFocalBtn.style.display = 'none';
+  clActiveEl.checked = !!item.active;
+  clLabelEl.value   = item.label   ?? '';
+  clTitleEl.value   = item.title   ?? '';
+  clTaglineEl.value = item.tagline ?? '';
+  clColsEl.value    = String(item.cols ?? 8);
+  clLogos = (item.logos || []).map(l => ({ file: l.file, kind: l.kind }));
+  renderClosingLogoList();
+}
+function readClosingForm(): Partial<ClosingItem> {
+  return {
+    active:  clActiveEl.checked,
+    label:   clLabelEl.value,
+    title:   clTitleEl.value,
+    tagline: clTaglineEl.value,
+    cols:    parseInt(clColsEl.value, 10) || 8,
+    logos:   clLogos,
+  };
+}
+function renderClosingLogoList() {
+  clLogoListEl.innerHTML = '';
+  clLogos.forEach((entry, idx) => {
+    const li = document.createElement('li');
+    li.draggable = true;
+    li.dataset.idx = String(idx);
+    const isWordmark = entry.kind === 'wordmark';
+    li.innerHTML = `
+      <img src="/assets/closing/${entry.file}" alt="" onerror="this.style.opacity=0.2" />
+      <div class="cl-fname">${entry.file}</div>
+      <div class="cl-row">
+        <button type="button" class="cl-kind-btn ${isWordmark ? 'active' : ''}" data-action="kind-w">W</button>
+        <button type="button" class="cl-kind-btn ${!isWordmark ? 'active' : ''}" data-action="kind-s">S</button>
+        <button type="button" class="cl-del-btn" data-action="del" title="Fjern">✕</button>
+      </div>
+    `;
+    clLogoListEl.appendChild(li);
+  });
+  if (!clLogos.length) {
+    const empty = document.createElement('li');
+    empty.className = 'ov-empty';
+    empty.style.gridColumn = '1 / -1';
+    empty.textContent = '(Ingen logos — upload nogen nedenfor)';
+    clLogoListEl.appendChild(empty);
+  }
+}
+function onClosingChange() { setDirty(true); refreshPreview(); }
+clLogoListEl.addEventListener('click', (e) => {
+  const btn = (e.target as HTMLElement).closest<HTMLButtonElement>('button[data-action]');
+  if (!btn) return;
+  const li = btn.closest('li')!;
+  const idx = parseInt(li.dataset.idx!, 10);
+  const entry = clLogos[idx];
+  if (!entry) return;
+  const a = btn.dataset.action!;
+  if (a === 'kind-w') entry.kind = 'wordmark';
+  else if (a === 'kind-s') entry.kind = 'stacked';
+  else if (a === 'del') clLogos.splice(idx, 1);
+  renderClosingLogoList();
+  onClosingChange();
+});
+// Drag-reorder
+let clDragIdx: number | null = null;
+clLogoListEl.addEventListener('dragstart', (e) => {
+  const li = (e.target as HTMLElement).closest<HTMLLIElement>('li');
+  if (!li || li.dataset.idx === undefined) return;
+  clDragIdx = parseInt(li.dataset.idx!, 10);
+  li.classList.add('dragging');
+  e.dataTransfer?.setData('text/plain', String(clDragIdx));
+});
+clLogoListEl.addEventListener('dragover', (e) => {
+  e.preventDefault();
+  const li = (e.target as HTMLElement).closest<HTMLLIElement>('li');
+  clLogoListEl.querySelectorAll('li.drag-over').forEach(el => el.classList.remove('drag-over'));
+  if (li && li.dataset.idx !== undefined) li.classList.add('drag-over');
+});
+clLogoListEl.addEventListener('dragend', () => {
+  clLogoListEl.querySelectorAll('li').forEach(el => el.classList.remove('dragging', 'drag-over'));
+  clDragIdx = null;
+});
+clLogoListEl.addEventListener('drop', (e) => {
+  e.preventDefault();
+  const targetLi = (e.target as HTMLElement).closest<HTMLLIElement>('li');
+  if (!targetLi || targetLi.dataset.idx === undefined || clDragIdx === null) return;
+  const targetIdx = parseInt(targetLi.dataset.idx!, 10);
+  if (targetIdx === clDragIdx) return;
+  const [moved] = clLogos.splice(clDragIdx, 1);
+  clLogos.splice(targetIdx, 0, moved);
+  clDragIdx = null;
+  renderClosingLogoList();
+  onClosingChange();
+});
+// Upload
+clLogoUploadEl.addEventListener('change', async () => {
+  const files = Array.from(clLogoUploadEl.files || []);
+  if (!files.length) return;
+  for (const file of files) {
+    const fd = new FormData();
+    fd.append('file', file);
+    fd.append('kind', 'closing');
+    try {
+      const res = await fetch('/api/upload', { method: 'POST', body: fd });
+      const data = await res.json();
+      if (data && data.filename) clLogos.push({ file: data.filename });
+    } catch (e: any) {
+      statusEl.textContent = 'Upload failed: ' + e.message;
+    }
+  }
+  clLogoUploadEl.value = '';
+  renderClosingLogoList();
+  onClosingChange();
+});
+[clActiveEl, clLabelEl, clTitleEl, clTaglineEl, clColsEl]
+  .forEach(el => el.addEventListener('input', onClosingChange));
+clSaveBtn.addEventListener('click', async () => {
+  if (!selectedId) return;
+  const patch = readClosingForm();
+  try {
+    statusEl.textContent = 'Gemmer closing…';
+    const updated = await api(`/api/lots/${encodeURIComponent(selectedId)}`, {
+      method: 'PUT',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(patch),
+    });
+    const idx = itemsBank.findIndex(i => i.id === selectedId);
+    if (idx >= 0) itemsBank[idx] = updated;
+    setDirty(false);
+    renderList();
+    refreshPreview();
+    statusEl.textContent = 'Gemt';
+  } catch (e: any) {
+    statusEl.textContent = 'Save failed: ' + e.message;
+  }
+});
+
+// ---- Sponsor-index form ----
+function populateSponsorIndexForm(item: SponsorIndexItem) {
+  editIdEl.textContent = item.id;
+  editDisplayNumEl.textContent = 'SI';
+  deleteBtn.style.display = 'inline-flex';
+  duplicateBtn.style.display = 'inline-flex';
+  resetFocalBtn.style.display = 'none';
+  siActiveEl.checked = !!item.active;
+  siLabelEl.value = item.label ?? '';
+  siTitleEl.value = item.title ?? '';
+}
+function readSponsorIndexForm(): Partial<SponsorIndexItem> {
+  return {
+    active: siActiveEl.checked,
+    label:  siLabelEl.value,
+    title:  siTitleEl.value,
+  };
+}
+[siActiveEl, siLabelEl, siTitleEl]
+  .forEach(el => el.addEventListener('input', () => { setDirty(true); refreshPreview(); }));
+siSaveBtn.addEventListener('click', async () => {
+  if (!selectedId) return;
+  const patch = readSponsorIndexForm();
+  try {
+    statusEl.textContent = 'Gemmer sponsor-indeks…';
+    const updated = await api(`/api/lots/${encodeURIComponent(selectedId)}`, {
+      method: 'PUT',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(patch),
+    });
+    const idx = itemsBank.findIndex(i => i.id === selectedId);
+    if (idx >= 0) itemsBank[idx] = updated;
+    setDirty(false);
+    renderList();
+    refreshPreview();
+    statusEl.textContent = 'Gemt';
+  } catch (e: any) {
+    statusEl.textContent = 'Save failed: ' + e.message;
+  }
+});
+
 bpSaveBtn.addEventListener('click', async () => {
   if (!selectedId) return;
   const patch = readBordplanForm();
@@ -792,6 +1035,55 @@ saveBtn.addEventListener('click', async () => {
 });
 
 // ---- New / Delete ----
+const newSponsorIndexBtn = document.getElementById('new-sponsorindex')!;
+newSponsorIndexBtn.addEventListener('click', async () => {
+  try {
+    const created = await api('/api/lots', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        kind: 'sponsor-index',
+        active: true,
+        label: 'Sponsor-indeks',
+        title: 'AUKTIONENS SPONSORER',
+      } as any),
+    });
+    itemsBank.push(created);
+    selectedId = created.id;
+    renderList();
+    selectLot(created.id);
+    statusEl.textContent = 'Sponsor-indeks oprettet';
+  } catch (e: any) {
+    statusEl.textContent = 'Create failed: ' + e.message;
+  }
+});
+
+const newClosingBtn = document.getElementById('new-closing')!;
+newClosingBtn.addEventListener('click', async () => {
+  try {
+    const created = await api('/api/lots', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        kind: 'closing',
+        active: true,
+        label: 'Closing',
+        title: 'TAK TIL ALLE VORES SPONSORER',
+        tagline: '@KIDSAIDDK · KIDSAID DANMARK',
+        cols: 8,
+        logos: [],
+      } as any),
+    });
+    itemsBank.push(created);
+    selectedId = created.id;
+    renderList();
+    selectLot(created.id);
+    statusEl.textContent = 'Closing oprettet';
+  } catch (e: any) {
+    statusEl.textContent = 'Create closing failed: ' + e.message;
+  }
+});
+
 const newCoverBtn = document.getElementById('new-cover')!;
 newCoverBtn.addEventListener('click', async () => {
   try {
