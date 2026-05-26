@@ -1077,7 +1077,9 @@ body.controller.show-lot-num .lot-slide-frame::after {
   gap: 0.6rem;
   backdrop-filter: blur(8px);
 }
-.drawer.open { width: calc(100% - 36px); padding: 14px; overflow-y: auto; }
+.drawer * { box-sizing: border-box; max-width: 100%; }
+.drawer input[type='range'] { max-width: 100%; box-sizing: border-box; }
+.drawer.open { width: calc(100% - 60px); padding: 14px; overflow-y: auto; }
 .drawer--left  { left: 34px; }
 .drawer--right { right: 34px; border-color: rgba(52,211,153,0.15); }
 .drawer h3 { font-size: 12px; font-family: var(--font-mono); letter-spacing: 0.16em; text-transform: uppercase; color: var(--green-300); margin-bottom: 4px; }
@@ -1110,9 +1112,17 @@ body.controller.show-lot-num .lot-slide-frame::after {
   outline: 0; border-color: var(--green-500);
   box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.12);
 }
-.sound-knob-row { display: flex; gap: 0.5rem; align-items: center; }
-.sound-knob-row input[type='range'] { flex: 1; accent-color: var(--green-500); }
-.sound-knob-row input[type='number'] { width: 5rem; }
+.sound-knob-row {
+  display: flex; gap: 0.5rem; align-items: center;
+  min-width: 0;
+  max-width: 100%;
+}
+.sound-knob-row input[type='range'] {
+  flex: 1 1 0;
+  min-width: 0;
+  accent-color: var(--green-500);
+}
+.sound-knob-row input[type='number'] { width: 5rem; flex: 0 0 auto; }
 .sound-play-row, .sound-preview-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 4px; margin-top: 4px; }
 .sound-play-row button, .sound-preview-row button {
   border: 0; padding: 8px 4px; border-radius: 5px;
