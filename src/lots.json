@@ -115,7 +115,7 @@
       "active": true,
       "label": "HEADSTAILS",
       "mode": "image",
-      "src": "/assets/media/headstails.png",
+      "src": "/assets/media/headstails3.png",
       "alt": "",
       "videoMuted": true,
       "videoLoop": true,
@@ -610,7 +610,7 @@
       "extraSuffix": null,
       "layout": "horizon",
       "mirrored": false,
-      "focal": "50% 50%",
+      "focal": "50% 0%",
       "sound": {
         "hammerSound": "09-hammer.mp3",
         "initStartOffset": 0,
@@ -618,10 +618,14 @@
         "fadeOutSec": 0,
         "initVolume": 1,
         "hammerVolume": 1
-      }
+      },
+      "donorNames": [],
+      "heroScale": 1.05,
+      "horizonCaptionIn": 2.5,
+      "profilePhotoIn": 5.8
     },
     {
-      "title": "Oplev APHACA i Parken — VIP-aften for 16 personer",
+      "title": "Oplev APHACA i Parken  — VIP-aften for 16 personer",
       "subtitle": "Pakken inkluderer for 16 personer",
       "sponsor": "Park Lane Copenhagen · Ønskeskyen",
       "bullets": [
@@ -658,7 +662,15 @@
         "fadeOutSec": 0,
         "initVolume": 0.94,
         "hammerVolume": 1
-      }
+      },
+      "donorNames": [],
+      "heroScale": 1,
+      "sponsorLogoSrc": "/assets/logo/logo-lot-10.svg",
+      "extraSponsorLogos": [
+        "/assets/logo/extra-10-ParkLane_sort.svg"
+      ],
+      "horizonCaptionIn": 2.25,
+      "profilePhotoIn": 5.8
     },
     {
       "title": "Eksklusiv private dining for 12 personer med intimkoncert af Mille",
@@ -882,9 +894,9 @@
       "extraSuffix": null,
       "layout": "profile",
       "mirrored": false,
-      "focal": "53% 87%",
+      "focal": "38% 79%",
       "donorNames": [],
-      "heroScale": 1.4
+      "heroScale": 1.9
     },
     {
       "title": "Eksklusivt foredrag med Viktor Axelsen & Morten Ankerdal",
@@ -1007,8 +1019,16 @@
       "layout": "profile",
       "mirrored": false,
       "focal": "50% 50%",
-      "donorNames": [],
-      "heroScale": 1
+      "donorNames": [
+        "DJ LEE VAN"
+      ],
+      "heroScale": 1,
+      "sponsorLogoSrc": "/assets/logo/logo-lot-18.png",
+      "extraSponsorLogos": [
+        "/assets/logo/extra-18-Logo_KÃ¸kkenPiraterneSortTrans.png"
+      ],
+      "horizonCaptionIn": 2.25,
+      "profilePhotoIn": 5.8
     },
     {
       "title": "Rolex Land-Dweller 40 i Oystersteel og hvidguld",
@@ -1138,7 +1158,12 @@
           "text": "kommer fra Sara",
           "bold": true
         }
-      ]
+      ],
+      "extraSponsorLogos": [
+        "/assets/logo/extra-9d750323-c1c0-4802-8965-2270bd35d77e-closing-L-13.png"
+      ],
+      "horizonCaptionIn": 2.25,
+      "profilePhotoIn": 5.8
     },
     {
       "id": "4df17639-c437-439c-af5c-6b40815af07d",
@@ -1263,6 +1288,355 @@
       "subtitle": "STJERNEGOLF 2026",
       "attribution": "",
       "logoFile": "Logo-firkant-gron-med-farve.png"
+    },
+    {
+      "id": "606b9414-2733-4868-a025-990c0bd96feb",
+      "kind": "auction-display",
+      "active": true,
+      "label": "Auktion-display 1",
+      "initialScreen": "intro",
+      "screen": "intro",
+      "activeLot": 0,
+      "revealCount": 0,
+      "ranking": false,
+      "namesVisible": true,
+      "showBaseLabel": true
+    },
+    {
+      "id": "29032526-cf67-48b5-8dbb-6132a082f76f",
+      "kind": "auction-display",
+      "active": true,
+      "label": "Auktion-display 1",
+      "screen": "reveal",
+      "activeLot": 0,
+      "revealCount": 1,
+      "ranking": false,
+      "namesVisible": true,
+      "showBaseLabel": true
+    },
+    {
+      "id": "ed80d4b0-4311-4309-a871-9881745d225c",
+      "kind": "auction-display",
+      "active": true,
+      "label": "Auktion-display 1",
+      "screen": "reveal",
+      "activeLot": 0,
+      "revealCount": 2,
+      "ranking": false,
+      "namesVisible": true,
+      "showBaseLabel": true
+    },
+    {
+      "id": "2dbbc6ea-f895-4dd1-a96a-732d011bcc93",
+      "kind": "auction-display",
+      "active": true,
+      "label": "Auktion-display 1",
+      "screen": "reveal",
+      "activeLot": 0,
+      "revealCount": 3,
+      "ranking": false,
+      "namesVisible": true,
+      "showBaseLabel": true
+    },
+    {
+      "id": "8c3913bc-7ad4-43ae-8556-052b362e10c7",
+      "kind": "auction-display",
+      "active": true,
+      "label": "Auktion-display 1",
+      "screen": "reveal",
+      "activeLot": 0,
+      "revealCount": 4,
+      "ranking": false,
+      "namesVisible": true,
+      "showBaseLabel": true
+    },
+    {
+      "id": "6664ec9c-348b-432d-acef-dd0fb6edb242",
+      "kind": "auction-display",
+      "active": true,
+      "label": "Auktion-display 1",
+      "screen": "reveal",
+      "activeLot": 0,
+      "revealCount": 4,
+      "ranking": true,
+      "namesVisible": true,
+      "showBaseLabel": true
+    },
+    {
+      "id": "972a48d3-4fe7-4981-a79b-21077dfa44d8",
+      "kind": "auction-display",
+      "active": true,
+      "label": "Auktion-display 1",
+      "screen": "total",
+      "activeLot": 0,
+      "revealCount": 4,
+      "ranking": true,
+      "namesVisible": true,
+      "showBaseLabel": true
+    },
+    {
+      "id": "ec64986c-1edb-4ae8-a3a7-5cf823e809db",
+      "kind": "auction-display",
+      "active": true,
+      "label": "Auktion-display 1",
+      "screen": "pause",
+      "activeLot": 0,
+      "revealCount": 4,
+      "ranking": true,
+      "namesVisible": true,
+      "showBaseLabel": true
+    },
+    {
+      "id": "ec3eeaa7-71a5-4e43-bf5d-3d5d375a8b67",
+      "title": "Care Club A",
+      "subtitle": "Pakken inkluderer",
+      "sponsor": "",
+      "bullets": [
+        "Skumbad med Tøffe & Uffe Holm",
+        "Saunagus med 130 i timen med Tom K"
+      ],
+      "donorNames": [
+        "Erhvervsklubben"
+      ],
+      "active": true,
+      "extra": true,
+      "extraSuffix": "A",
+      "layout": "horizon",
+      "mirrored": false,
+      "focal": "50% 50%",
+      "heroScale": 1
+    },
+    {
+      "id": "b563d903-8792-41b5-8519-868112caea21",
+      "kind": "auction-display",
+      "active": true,
+      "label": "Auktion-display 1",
+      "screen": "pause",
+      "activeLot": 1,
+      "revealCount": 4,
+      "ranking": true,
+      "namesVisible": true,
+      "showBaseLabel": true
+    },
+    {
+      "id": "a94458b2-0635-4572-821d-5b69808a00e2",
+      "title": "Care Club B",
+      "subtitle": "Pakken inkluderer",
+      "sponsor": "",
+      "bullets": [],
+      "donorNames": [],
+      "active": true,
+      "extra": true,
+      "extraSuffix": "B",
+      "layout": "horizon",
+      "mirrored": false,
+      "focal": "50% 50%",
+      "heroScale": 1
+    },
+    {
+      "id": "461e2198-c302-42dd-87eb-e968ae33ac7c",
+      "kind": "auction-display",
+      "active": true,
+      "label": "Auktion-display 1",
+      "screen": "pause",
+      "activeLot": 2,
+      "revealCount": 4,
+      "ranking": true,
+      "namesVisible": true,
+      "showBaseLabel": true
+    },
+    {
+      "id": "44f10ea0-5c82-4571-9cb8-62e34cf327bb",
+      "title": "Care Club C",
+      "subtitle": "Pakken inkluderer",
+      "sponsor": "",
+      "bullets": [],
+      "donorNames": [],
+      "active": true,
+      "extra": true,
+      "extraSuffix": "C",
+      "layout": "horizon",
+      "mirrored": false,
+      "focal": "50% 50%",
+      "heroScale": 1
+    },
+    {
+      "id": "4ac7fd97-7be0-4846-b733-673b3b6c27ea",
+      "kind": "auction-display",
+      "active": true,
+      "label": "Auktion-display 1",
+      "screen": "pause",
+      "activeLot": 3,
+      "revealCount": 4,
+      "ranking": true,
+      "namesVisible": true,
+      "showBaseLabel": true
+    },
+    {
+      "id": "36a64eb4-a078-4d6f-ab1a-1111dfe362e9",
+      "title": "Care Club D",
+      "subtitle": "Pakken inkluderer",
+      "sponsor": "",
+      "bullets": [],
+      "donorNames": [],
+      "active": true,
+      "extra": true,
+      "extraSuffix": "D",
+      "layout": "horizon",
+      "mirrored": false,
+      "focal": "50% 50%",
+      "heroScale": 1
+    },
+    {
+      "id": "c4f0b5c0-8b9e-4808-b9c9-88107088e63c",
+      "kind": "closing",
+      "active": true,
+      "label": "Closing",
+      "title": "TAK TIL ALLE VORES SPONSORER",
+      "tagline": "@KIDSAIDDK · KIDSAID DANMARK",
+      "cols": 9,
+      "logos": [
+        {
+          "file": "closing-L-01.png"
+        },
+        {
+          "file": "closing-L-02.png"
+        },
+        {
+          "file": "closing-L-03.png"
+        },
+        {
+          "file": "closing-L-04.png",
+          "kind": "wordmark"
+        },
+        {
+          "file": "closing-L-05.png",
+          "kind": "wordmark"
+        },
+        {
+          "file": "closing-L-06.png"
+        },
+        {
+          "file": "closing-L-07.png"
+        },
+        {
+          "file": "closing-R-01.png"
+        },
+        {
+          "file": "closing-L-09.png",
+          "kind": "wordmark"
+        },
+        {
+          "file": "closing-L-10.png",
+          "kind": "wordmark"
+        },
+        {
+          "file": "closing-L-11.png"
+        },
+        {
+          "file": "closing-R-10.png"
+        },
+        {
+          "file": "closing-L-13.png",
+          "kind": "wordmark"
+        },
+        {
+          "file": "closing-M-01.png"
+        },
+        {
+          "file": "closing-M-02.png",
+          "kind": "wordmark"
+        },
+        {
+          "file": "closing-M-03.png"
+        },
+        {
+          "file": "closing-M-04.png"
+        },
+        {
+          "file": "closing-M-05.png"
+        },
+        {
+          "file": "closing-M-06.png"
+        },
+        {
+          "file": "closing-M-07.png",
+          "kind": "wordmark"
+        },
+        {
+          "file": "closing-M-08.png",
+          "kind": "wordmark"
+        },
+        {
+          "file": "closing-M-09.png",
+          "kind": "wordmark"
+        },
+        {
+          "file": "closing-M-10.png"
+        },
+        {
+          "file": "closing-M-11.png",
+          "kind": "wordmark"
+        },
+        {
+          "file": "closing-M-12.png",
+          "kind": "wordmark"
+        },
+        {
+          "file": "closing-M-13.png"
+        },
+        {
+          "file": "closing-M-14.png"
+        },
+        {
+          "file": "closing-L-12.png",
+          "kind": "wordmark"
+        },
+        {
+          "file": "closing-R-02.png",
+          "kind": "wordmark"
+        },
+        {
+          "file": "closing-R-03.png"
+        },
+        {
+          "file": "closing-R-04.png"
+        },
+        {
+          "file": "closing-R-05.png",
+          "kind": "wordmark"
+        },
+        {
+          "file": "closing-R-06.png",
+          "kind": "wordmark"
+        },
+        {
+          "file": "closing-R-07.png"
+        },
+        {
+          "file": "closing-R-08.png"
+        },
+        {
+          "file": "closing-R-09.png"
+        },
+        {
+          "file": "closing-L-08.png"
+        },
+        {
+          "file": "closing-R-11.png"
+        },
+        {
+          "file": "closing-R-12.png",
+          "kind": "wordmark"
+        },
+        {
+          "file": "closing-R-13.png"
+        },
+        {
+          "file": "Living Flowers logo_sort.png",
+          "kind": "stacked"
+        }
+      ]
     }
   ],
   "meta": {
@@ -1271,6 +1645,60 @@
       "initVolume": 1,
       "hammerVolume": 1.5
     },
-    "theme": "kidsaid"
+    "theme": "kidsaid",
+    "teams": [
+      {
+        "id": "A",
+        "name": "Sport",
+        "palette": "A",
+        "preAmount": 10000,
+        "lotId": "ec3eeaa7-71a5-4e43-bf5d-3d5d375a8b67",
+        "lot": {
+          "title": "",
+          "description": ""
+        }
+      },
+      {
+        "id": "B",
+        "name": "Underholdning",
+        "palette": "B",
+        "preAmount": 15000,
+        "lotId": "a94458b2-0635-4572-821d-5b69808a00e2",
+        "lot": {
+          "title": "",
+          "description": ""
+        }
+      },
+      {
+        "id": "C",
+        "name": "Fodbold",
+        "palette": "C",
+        "preAmount": 12000,
+        "lotId": "44f10ea0-5c82-4571-9cb8-62e34cf327bb",
+        "lot": {
+          "title": "",
+          "description": ""
+        }
+      },
+      {
+        "id": "D",
+        "name": "Erhverv",
+        "palette": "D",
+        "preAmount": 30000,
+        "lotId": "36a64eb4-a078-4d6f-ab1a-1111dfe362e9",
+        "lot": {
+          "title": "",
+          "description": ""
+        }
+      }
+    ],
+    "auctionDisplay": {
+      "screen": "intro",
+      "activeLot": 0,
+      "revealCount": 0,
+      "ranking": false,
+      "namesVisible": true,
+      "showBaseLabel": true
+    }
   }
 }

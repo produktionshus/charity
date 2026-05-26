@@ -2,7 +2,7 @@
 // Each animated element carries class="build-item" and an inline
 // transition-delay derived from its build group + in-group index.
 
-import { LOTS, SLIDES, lotById, bordplanById, coverById, closingById, sponsorIndexById, wishLoopById, mediaById, displayNumFor, type Slide, type Lot, type CoverItem, type ClosingItem, type SponsorIndexItem, type WishLoopItem, type MediaItem } from './slides';
+import { LOTS, SLIDES, EVENT_META, lotById, bordplanById, coverById, closingById, sponsorIndexById, wishLoopById, mediaById, auctionDisplayById, displayNumFor, type Slide, type Lot, type CoverItem, type ClosingItem, type SponsorIndexItem, type WishLoopItem, type MediaItem, type AuctionDisplayItem } from './slides';
 import { lotLayout, isMirrored, photoFocal, HORIZON_TITLE_SIZE_OVERRIDE } from './layout';
 import { renderBordplanSlide } from './render-bordplan';
 
@@ -116,8 +116,11 @@ function sponsorBlockHtml(lot: Lot, donorLabelGroup: number, _profile = false): 
   if (isPrivate) {
     return `<div class="sponsor-block sponsor-private build-item" style="transition-delay:${delay(donorLabelGroup, 0)}ms">Doneret af privat person</div>`;
   }
-  if (lot.donorNames && lot.donorNames.length) {
-    const names = lot.donorNames
+  const hasLogos = !!(lot.sponsorLogoSrc || lot.extraSponsorLogos?.length) || !lot.donorNames?.length;
+  const hasNames = !!(lot.donorNames && lot.donorNames.length);
+  // Names-only fallback when no logos present (legacy behavior).
+  if (hasNames && !hasLogos) {
+    const names = lot.donorNames!
       .map((n, i) => `<div class="donor-name build-item" style="transition-delay:${delay(donorLabelGroup + i, 0)}ms">${n.toUpperCase()}</div>`)
       .join('');
     return `
@@ -126,9 +129,18 @@ function sponsorBlockHtml(lot: Lot, donorLabelGroup: number, _profile = false): 
       </div>
     `;
   }
+  const mainSrc = lot.sponsorLogoSrc || `/assets/logo/logo-lot-${lot.id}.png`;
+  const extras = (lot.extraSponsorLogos || []).map((src, i) => `<img class="sponsor-logo sponsor-logo--extra build-item" style="transition-delay:${delay(donorLabelGroup, i + 1)}ms" src="${src}" alt="" />`).join('');
+  // Optional text-name entries appended after the logos (interleave logos + text)
+  const nameTags = hasNames
+    ? lot.donorNames!.map((n, i) => `<span class="donor-name donor-name--inline build-item" style="transition-delay:${delay(donorLabelGroup, (lot.extraSponsorLogos?.length || 0) + i + 1)}ms">${n.toUpperCase()}</span>`).join('')
+    : '';
+  const multi = !!(lot.extraSponsorLogos?.length || hasNames);
   return `
-    <div class="sponsor-block">
-      <img class="sponsor-logo build-item" style="transition-delay:${delay(donorLabelGroup, 0)}ms" src="/assets/logo/logo-lot-${lot.id}.png" alt="${lot.sponsor}" />
+    <div class="sponsor-block${multi ? ' sponsor-block--multi' : ''}">
+      <img class="sponsor-logo build-item" style="transition-delay:${delay(donorLabelGroup, 0)}ms" src="${mainSrc}" alt="${lot.sponsor}" />
+      ${extras}
+      ${nameTags}
     </div>
   `;
 }
@@ -201,7 +213,7 @@ const DEFAULT_CLOSING_LOGOS: ClosingItem['logos'] = [
   { file: 'closing-L-13.png', kind: 'wordmark' }, { file: 'closing-M-01.png' }, { file: 'closing-M-02.png', kind: 'wordmark' }, { file: 'closing-M-03.png' },
   { file: 'closing-M-04.png' }, { file: 'closing-M-05.png' }, { file: 'closing-M-06.png' }, { file: 'closing-M-07.png', kind: 'wordmark' },
   { file: 'closing-M-08.png', kind: 'wordmark' }, { file: 'closing-M-09.png', kind: 'wordmark' }, { file: 'closing-M-10.png' }, { file: 'closing-M-11.png', kind: 'wordmark' },
-  { file: 'closing-M-12.png', kind: 'wordmark' }, { file: 'closing-M-13.png' }, { file: 'closing-M-14.png', kind: 'wordmark' }, { file: 'closing-L-12.png', kind: 'wordmark' },
+  { file: 'closing-M-12.png', kind: 'wordmark' }, { file: 'closing-M-13.png' }, { file: 'closing-M-14.png' }, { file: 'closing-L-12.png', kind: 'wordmark' },
   { file: 'closing-R-02.png', kind: 'wordmark' }, { file: 'closing-R-03.png' }, { file: 'closing-R-04.png' }, { file: 'closing-R-05.png', kind: 'wordmark' },
   { file: 'closing-R-06.png', kind: 'wordmark' }, { file: 'closing-R-07.png' }, { file: 'closing-R-08.png' }, { file: 'closing-R-09.png' },
   { file: 'closing-L-08.png' }, { file: 'closing-R-11.png' }, { file: 'closing-R-12.png', kind: 'wordmark' }, { file: 'closing-R-13.png' },
@@ -227,7 +239,20 @@ export function renderClosing(item?: ClosingItem): string {
   return `
     <h1 class="closing-title build-item" style="transition-delay:0ms">${title}</h1>
     <div class="closing-rule build-item" style="transition-delay:100ms"></div>
-    <div class="closing-grid">${cells}</div>
+    <div class="closing-grid" style="${(() => {
+      // Compute cell size that keeps the whole grid + tagline inside the
+      // 13.333×7.5in slide. Available area: ~12.5in wide × 5.6in tall.
+      const numRows = Math.ceil(logos.length / COLS) || 1;
+      const colGap = 0.07, rowGap = 0.10;
+      const maxW = (12.5 - (COLS - 1) * colGap) / COLS;
+      const maxH = (5.6  - (numRows - 1) * rowGap) / numRows;
+      const aspect = 1.6;
+      const baseColW = Math.min(1.5, maxW, maxH * aspect);
+      const baseRowH = baseColW / aspect;
+      // Flex layout (not grid) so the final partial row centers itself
+      // instead of left-aligning. Each cell carries the computed width.
+      return `--cell-w:${baseColW.toFixed(3)}in;--cell-h:${baseRowH.toFixed(3)}in`;
+    })()}">${cells}</div>
     <div class="closing-rule closing-bottom-rule build-item" style="transition-delay:${tailDelay}ms"></div>
     <div class="closing-tagline build-item" style="transition-delay:${tailDelay + 100}ms">${tagline}</div>
   `;
@@ -251,6 +276,65 @@ export function renderMedia(item?: MediaItem): string {
   return `<div style="width:100%;height:100%;background:${bg};position:relative;overflow:hidden">
     <img src="${item.src}" alt="${(item.alt || '').replace(/"/g, '&quot;')}" style="width:100%;height:100%;object-fit:${fit};display:block" />
   </div>`;
+}
+
+// ---- Auction Display (4-team bar competition) ----
+// Standalone iframe module mounted from /auction-display/. Initial config
+// (teams + screen state) is encoded into the URL hash; live updates flow
+// from parent → iframe via postMessage (handled by the host view).
+export function renderAuctionDisplay(item?: AuctionDisplayItem): string {
+  const teams = EVENT_META.teams || [];
+  const state = {
+    screen: item?.screen ?? 'intro',
+    revealCount: item?.revealCount ?? 0,
+    activeLot: item?.activeLot ?? 0,
+    ranking: item?.ranking ?? false,
+    namesVisible: item?.namesVisible ?? true,
+    showBaseLabel: item?.showBaseLabel ?? true,
+  };
+  const cfg = { teams, state };
+  const cfgEncoded = encodeURIComponent(JSON.stringify(cfg));
+  let h = 0;
+  for (let i = 0; i < cfgEncoded.length; i++) {
+    h = ((h << 5) - h + cfgEncoded.charCodeAt(i)) | 0;
+  }
+  return `<iframe src="/auction-display/index.html?v=${(h >>> 0).toString(36)}#cfg=${cfgEncoded}" style="border:0;width:100%;height:100%;background:#3fa34d" title="Auktion"></iframe>`;
+}
+
+// ---- Lot bar-overlay (compact 4-team strip when lot is bound to a team) ----
+// Renders inline strip over the lot photo when the current lot.id matches
+// one of the configured teams' lotId. Active team is highlighted; others
+// shown ghosted at 25% opacity.
+export function renderTeamBarOverlay(currentLotId: string): string {
+  const teams = EVENT_META.teams || [];
+  if (!teams.length) return '';
+  const activeTeam = teams.find(t => t.lotId === currentLotId);
+  if (!activeTeam) return '';
+  const FALLBACK: Record<string, { base: string; live: string }> = {
+    A: { base: '#1f6e34', live: '#3ed170' },
+    B: { base: '#a06a14', live: '#f0b048' },
+    C: { base: '#9a2b1f', live: '#e85a44' },
+    D: { base: '#2a5a9e', live: '#6aa9e8' },
+  };
+  const maxTotal = Math.max(1, ...teams.map(t => (t.preAmount || 0)));
+  const rows = teams.map(t => {
+    const fb = FALLBACK[t.palette || t.id] || FALLBACK.A;
+    const pal = { base: t.baseColor || fb.base, live: t.liveColor || fb.live };
+    const isActive = t === activeTeam;
+    const pre = t.preAmount || 0;
+    const preW = (pre / maxTotal) * 100;
+    return `
+      <div class="tb-row${isActive ? ' tb-row--active' : ''}" data-team-id="${t.id}" data-lot-id="${t.lotId || ''}" style="--tb-base:${pal.base};--tb-live:${pal.live};">
+        <span class="tb-name">${(t.name || '').toUpperCase()}</span>
+        <div class="tb-bar">
+          <div class="tb-pre" style="width:${preW}%"></div>
+          <div class="tb-live" style="left:${preW}%;width:0%"></div>
+        </div>
+        <span class="tb-amount">kr ${pre.toLocaleString('da-DK').replace(/,/g, '.')}</span>
+      </div>
+    `;
+  }).join('');
+  return `<div class="team-bar-overlay" data-max="${maxTotal}">${rows}</div>`;
 }
 
 // ---- Wish Loop ----
@@ -326,7 +410,17 @@ export function renderSlide(slide: Slide, lotOverride?: Lot, displayNumOverride?
     root.classList.add(layout === 'horizon' ? 'layout-horizon' : 'layout-profile');
     const mirrored = lot.mirrored ?? isMirrored(lot.id);
     if (mirrored) root.classList.add('layout-mirrored');
+    // Per-lot layout tweaks
+    if (layout === 'horizon' && typeof lot.horizonCaptionIn === 'number') {
+      root.style.setProperty('--horizon-caption-h', `${lot.horizonCaptionIn}in`);
+    }
+    if (layout === 'profile' && typeof lot.profilePhotoIn === 'number') {
+      root.style.setProperty('--profile-photo-w', `${lot.profilePhotoIn}in`);
+    }
     root.innerHTML = layout === 'horizon' ? renderHorizonLot(lot, displayNum) : renderProfileLot(lot, displayNum);
+    // Hybrid overlay: if this lot is bound to a team, show the bar strip.
+    const overlay = renderTeamBarOverlay(lot.id);
+    if (overlay) root.insertAdjacentHTML('beforeend', overlay);
   } else if (slide.kind === 'closing') {
     const item = slide.itemId ? closingById(slide.itemId) : undefined;
     root.innerHTML = renderClosing(item);
@@ -336,6 +430,9 @@ export function renderSlide(slide: Slide, lotOverride?: Lot, displayNumOverride?
   } else if (slide.kind === 'media') {
     const item = slide.itemId ? mediaById(slide.itemId) : undefined;
     root.innerHTML = renderMedia(item);
+  } else if (slide.kind === 'auction-display') {
+    const item = slide.itemId ? auctionDisplayById(slide.itemId) : undefined;
+    root.innerHTML = renderAuctionDisplay(item);
   } else if (slide.kind === 'bordplan') {
     const item = bordplanById(slide.itemId!);
     if (!item) return root;

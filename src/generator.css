@@ -201,13 +201,48 @@ body.generator {
   display: inline-flex; align-items: center; gap: 6px;
   margin-top: 8px;
   padding: 6px 10px;
-  background: var(--bg-card);
-  border: 1px dashed var(--line-c2);
+  background: #0D2A21;
+  color: #E4DFC8;
+  border: 1px dashed rgba(255,255,255,0.30);
   border-radius: 4px;
   cursor: pointer;
   font-size: 11px;
+  font-weight: 600;
 }
 .closing-add-row input[type='file'] { display: none; }
+
+/* Extra sponsor logos picker */
+.extra-logo-list {
+  list-style: none; margin: 6px 0; padding: 0;
+  display: flex; flex-wrap: wrap; gap: 6px;
+}
+.extra-logo-list li {
+  display: flex; align-items: center; gap: 6px;
+  background: var(--bg-card);
+  border: 1px solid var(--line-c2);
+  border-radius: 4px;
+  padding: 4px 6px;
+  font-size: 11px;
+}
+.extra-logo-list img {
+  width: 36px; height: 36px;
+  object-fit: contain;
+  background: rgba(255,255,255,0.04);
+  border-radius: 2px;
+}
+.extra-logo-list .extra-fname {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  max-width: 140px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  color: var(--text-c2);
+}
+.extra-logo-list .extra-del {
+  background: transparent; border: 0;
+  color: var(--text-c3); font-size: 13px;
+  cursor: pointer; padding: 0 4px;
+}
+.extra-logo-list .extra-del:hover { color: #F87171; }
 
 /* Wish-loop apple picker */
 .wl-apple-list {
@@ -268,6 +303,50 @@ body.generator {
   display: none;
 }
 .wl-apple-list li.selected .wl-pick-idx { display: inline-block; }
+
+/* Auction-display team editor */
+.ad-team-row {
+  display: grid;
+  grid-template-columns: 28px 1fr 90px 110px 1fr;
+  gap: 6px;
+  align-items: center;
+  padding: 6px 8px;
+  background: var(--bg-card);
+  border: 1px solid var(--line-c2);
+  border-radius: 4px;
+  margin-bottom: 4px;
+}
+.ad-team-row .ad-palette-dot {
+  width: 18px; height: 18px; border-radius: 50%;
+  justify-self: center;
+}
+.ad-team-row .ad-color-pair {
+  display: inline-flex; gap: 2px;
+}
+.ad-team-row .ad-color-pair input[type='color'] {
+  width: 38px; height: 24px;
+  padding: 0;
+  border: 1px solid var(--line-c2);
+  border-radius: 3px;
+  background: transparent;
+  cursor: pointer;
+}
+.ad-team-row input, .ad-team-row select {
+  background: var(--bg-input);
+  border: 1px solid var(--line-c2);
+  border-radius: 3px;
+  padding: 4px 6px;
+  color: var(--text-c);
+  font: inherit; font-size: 11px;
+}
+.ad-team-row .ad-lot-title {
+  grid-column: 2 / span 4;
+  margin-top: 4px;
+}
+.ad-team-row .ad-lot-desc {
+  grid-column: 2 / span 4;
+  margin-top: 2px;
+}
 .gen-preview-frame .bp-table.bp-ghost { cursor: pointer; }
 .gen-preview-frame .bp-table:hover {
   outline: 2px solid var(--green-300);
@@ -489,9 +568,9 @@ body.theme-kidsaid .gen-edit-id code {
   font-weight: 400;
 }
 .field-hint code {
-  background: var(--bg-card); padding: 1px 4px;
+  background: #0D2A21; padding: 1px 5px;
   border-radius: 3px; font-family: var(--font-mono-c);
-  font-size: 10px; color: var(--text-c2);
+  font-size: 10px; color: #E4DFC8;
 }
 .gen-form .row {
   display: grid;

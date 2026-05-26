@@ -148,6 +148,8 @@ function buildServerSlides() {
       out.push({ kind: 'wish-loop', itemId: item.id });
     } else if (item.kind === 'media') {
       out.push({ kind: 'media', itemId: item.id });
+    } else if (item.kind === 'auction-display') {
+      out.push({ kind: 'auction-display', itemId: item.id });
     } else if (!item.kind || item.kind === 'lot') {
       if (!lotsEmitted) {
         if (!hasSponsorIndex && !out.some(s => s.kind === 'sponsor-index')) {
@@ -203,6 +205,7 @@ const upload = multer({
       if (kind === 'apple')     return cb(null, applesDir);
       if (kind === 'wish-bg')   return cb(null, wishLoopDir);
       if (kind === 'media')     return cb(null, mediaDir);
+      if (kind === 'extra-logo') return cb(null, logoDir);
       if (kind === 'sound')     return cb(null, soundsDir);
       cb(new Error('Unknown upload kind: ' + kind), '');
     },
@@ -211,11 +214,12 @@ const upload = multer({
       const kind  = req.body.kind  || req.query.kind;
       const ext   = (extname(file.originalname) || '.jpg').toLowerCase();
       if (kind === 'hero') return cb(null, `lot-${lotId}_FINAL${ext}`);
-      if (kind === 'logo') return cb(null, `logo-lot-${lotId}.png`);
+      if (kind === 'logo') return cb(null, `logo-lot-${lotId}${ext}`);
       if (kind === 'closing') return cb(null, file.originalname);
-      if (kind === 'apple')   return cb(null, file.originalname);
-      if (kind === 'wish-bg') return cb(null, file.originalname);
-      if (kind === 'media')   return cb(null, file.originalname);
+      if (kind === 'apple')      return cb(null, file.originalname);
+      if (kind === 'wish-bg')    return cb(null, file.originalname);
+      if (kind === 'media')      return cb(null, file.originalname);
+      if (kind === 'extra-logo') return cb(null, `extra-${lotId || Date.now()}-${file.originalname}`);
       if (kind === 'sound') {
         const which = req.body.which || req.query.which;
         const e = (extname(file.originalname) || '.mp3').toLowerCase();
@@ -250,6 +254,22 @@ app.get('/api/lots', (_req, res) => {
   res.json(lotsFile);
 });
 
+// Quick bonus-donation endpoint — adds DKK to a specific team's bonusAmount
+// without rewriting the full meta payload. Used by controller's live panel.
+app.post('/api/meta/teams/:id/bonus', (req, res) => {
+  if (!lotsFile.meta || !Array.isArray(lotsFile.meta.teams)) {
+    return res.status(404).json({ error: 'No teams configured' });
+  }
+  const team = lotsFile.meta.teams.find(t => t.id === req.params.id);
+  if (!team) return res.status(404).json({ error: 'Team not found' });
+  const add = Number(req.body?.add) || 0;
+  if (!add) return res.status(400).json({ error: 'Missing add amount' });
+  team.bonusAmount = Math.max(0, (Number(team.bonusAmount) || 0) + add);
+  saveLots(lotsFile);
+  broadcastLotsUpdated();
+  res.json({ id: team.id, bonusAmount: team.bonusAmount });
+});
+
 app.put('/api/meta', (req, res) => {
   if (!lotsFile.meta || typeof lotsFile.meta !== 'object') lotsFile.meta = {};
   const m = lotsFile.meta;
@@ -269,6 +289,18 @@ app.put('/api/meta', (req, res) => {
   for (const k of ['eventName', 'eventSubtitle', 'eventDate', 'theme']) {
     if (typeof b[k] === 'string') m[k] = b[k];
     else if (b[k] === null) delete m[k];
+  }
+  if (Array.isArray(b.teams)) {
+    m.teams = b.teams.map(t => ({
+      id: t.id, name: t.name || '',
+      baseColor: t.baseColor,
+      liveColor: t.liveColor,
+      palette: t.palette,                              // legacy fallback
+      preAmount: Number(t.preAmount) || 0,
+      bonusAmount: Number(t.bonusAmount) || 0,
+      lotId: t.lotId || undefined,
+      lot: t.lot ? { title: t.lot.title || '', description: t.lot.description || '' } : undefined,
+    }));
   }
   saveLots(lotsFile);
   broadcastLotsUpdated();
@@ -318,6 +350,19 @@ app.post('/api/lots', (req, res) => {
       active: req.body.active ?? true,
       label: req.body.label || 'Sponsor-indeks',
       title: req.body.title || 'AUKTIONENS SPONSORER',
+    };
+  } else if (kind === 'auction-display') {
+    newItem = {
+      id: uuidv4(),
+      kind: 'auction-display',
+      active: req.body.active ?? true,
+      label: req.body.label || 'Auktion-display',
+      screen: req.body.screen || 'intro',
+      activeLot: req.body.activeLot ?? 0,
+      revealCount: req.body.revealCount ?? 0,
+      ranking: req.body.ranking ?? false,
+      namesVisible: req.body.namesVisible ?? true,
+      showBaseLabel: req.body.showBaseLabel ?? true,
     };
   } else if (kind === 'media') {
     newItem = {

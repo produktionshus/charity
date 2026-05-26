@@ -3,7 +3,7 @@
 
 import { SyncClient } from './ws-client';
 import { renderSlide, fitToViewport } from './render';
-import { SLIDES, lotById, displayNumFor, refreshLotsFromServer } from './slides';
+import { SLIDES, EVENT_META, lotById, auctionDisplayById, displayNumFor, refreshLotsFromServer } from './slides';
 import { applyChromeFromMeta } from './event-meta-apply';
 
 // Apply localStorage fallback before first paint, then refresh from server
@@ -128,24 +128,92 @@ function bootRender() {
 const sync = new SyncClient();
 
 let currentSlideId: string | null = null;
+// Persistent auction-display iframe — mounted once, kept alive across
+// every AD slide so navigating between AD slides only sends a state
+// update via postMessage instead of reloading the React app (which
+// caused a large dark flash + reset all in-flight transitions).
+let adIframe: HTMLIFrameElement | null = null;
+let adIframeReady = false;
+const adPendingMessages: any[] = [];
+
+function ensureAdIframe() {
+  if (adIframe) return adIframe;
+  const teams = EVENT_META.teams || [];
+  const cfg = { teams, state: { screen: 'intro' } };
+  const cfgEncoded = encodeURIComponent(JSON.stringify(cfg));
+  const ifr = document.createElement('iframe');
+  ifr.src = `/auction-display/index.html#cfg=${cfgEncoded}`;
+  ifr.style.cssText =
+    'position:absolute;inset:0;border:0;width:100%;height:100%;' +
+    'background:#3fa34d;z-index:2;display:none;opacity:0;' +
+    'transition:opacity 260ms ease;';
+  slideFrame.appendChild(ifr);
+  adIframe = ifr;
+  return ifr;
+}
+
+function postToAd(message: any) {
+  if (!adIframe) return;
+  if (adIframeReady && adIframe.contentWindow) {
+    adIframe.contentWindow.postMessage(message, '*');
+  } else {
+    adPendingMessages.push(message);
+  }
+}
+
+window.addEventListener('message', (e) => {
+  if (e.data?.type === 'auction-display:ready') {
+    adIframeReady = true;
+    if (adIframe?.contentWindow) {
+      for (const msg of adPendingMessages) adIframe.contentWindow.postMessage(msg, '*');
+      adPendingMessages.length = 0;
+    }
+  }
+});
+
 function swapSlide(idx: number, force = false) {
   const slide = SLIDES[idx];
   if (!slide) { console.warn('no slide at idx', idx, 'of', SLIDES.length); return; }
-  // Skip remount if the same slide is already mounted — prevents wish-loop
-  // iframes from being torn down + reloaded on every lots-updated broadcast,
-  // which restarts the apple preload cycle and saturates the dev server.
   if (!force && currentEl && currentSlideId === slide.id) return;
   currentSlideId = slide.id;
+
+  if (slide.kind === 'auction-display') {
+    const ifr = ensureAdIframe();
+    ifr.style.display = 'block';
+    requestAnimationFrame(() => { ifr.style.opacity = '1'; });
+    const item = slide.itemId ? auctionDisplayById(slide.itemId) : undefined;
+    if (item) {
+      postToAd({
+        type: 'auction-display:state',
+        state: {
+          screen: item.screen,
+          activeLot: item.activeLot ?? 0,
+          revealCount: item.revealCount ?? 0,
+          ranking: item.ranking ?? false,
+          namesVisible: item.namesVisible ?? true,
+          showBaseLabel: item.showBaseLabel ?? true,
+        },
+      });
+    }
+    const previous = currentEl;
+    if (previous) previous.classList.add('entering');
+    currentEl = null;
+    setTimeout(() => previous?.remove(), 260);
+    return;
+  }
+
+  // Non-AD slide: hide persistent iframe.
+  if (adIframe) {
+    adIframe.style.opacity = '0';
+    setTimeout(() => { if (adIframe) adIframe.style.display = 'none'; }, 260);
+  }
+
   const next = renderSlide(slide);
-  next.classList.add('entering');
-  slideFrame.appendChild(next);
+  slideFrame.insertBefore(next, slideFrame.firstChild);
   fitToViewport(slideFrame, next);
-  next.getBoundingClientRect();  // reflow
-  next.classList.remove('entering');
-  // Trigger build-in animation on this slide (per-element fades start at t=0)
   next.classList.add('is-visible');
-  currentEl?.classList.add('entering');
   const previous = currentEl;
+  if (previous) previous.classList.add('entering');
   currentEl = next;
   setTimeout(() => previous?.remove(), 260);
 }
@@ -232,7 +300,6 @@ function buildHammerOverlay(lotNum: string, finalPrice: number): HTMLElement {
       <div class="bid" style="font-size:${hammerBidFontPx(finalPrice)}px">${fmtKr(finalPrice)}<span class="kr">kr</span></div>
       <div class="foot">
         <div class="item"><span>Bud</span><b>${fmtKr(finalPrice)} kr</b></div>
-        <div class="item"><span>Doneret af</span><b>${lot.sponsor}</b></div>
       </div>
     </div>
     ${particles}
@@ -260,6 +327,10 @@ refreshLotsFromServer().then(() => {
 sync.onLotsUpdated(async () => {
   await refreshLotsFromServer();
   applyChromeFromMeta();
+  // Push fresh team config (colors, names, lot-bindings) into the
+  // persistent auction-display iframe — operator edits in generator
+  // would otherwise stick to the old config until full page reload.
+  if (adIframe) postToAd({ type: 'auction-display:teams', teams: EVENT_META.teams || [] });
   // Force re-render only on lots-updated since the underlying data may have
   // changed. swapSlide's same-id guard still skips work if nothing relevant
   // actually shifted.
@@ -274,8 +345,10 @@ sync.on((state) => {
     removeRibbon();
   }
 
-  // Ribbon mount/update based on current slide's lot + bid
+  // Ribbon mount/update based on current slide's lot + bid.
   const slide = SLIDES[currentSlideIdx];
+  const teamBoundLot = slide?.kind === 'lot' && slide.lotId
+    && (EVENT_META.teams || []).some(t => t.lotId === slide.lotId);
   if (slide?.kind === 'lot' && slide.lotId) {
     const ls = state.lots?.[slide.lotId];
     const bids: number[] = ls?.bids || [];
@@ -288,6 +361,15 @@ sync.on((state) => {
   } else {
     removeRibbon();
   }
+  // Mark slide-frame so CSS can dock the bar-overlay onto the ribbon when
+  // both are visible (team-bound lot AND first bid has landed).
+  const teamLotHasBid = !!(teamBoundLot && slide?.lotId
+    && state.lots?.[slide.lotId]?.bids?.length);
+  slideFrame.classList.toggle('has-team-overlay', teamLotHasBid);
+  // Reveal the bar-overlay only after the first live bid arrives, so the
+  // lot's caption strip stays uncovered until the auction actually starts.
+  const overlayEl = currentEl?.querySelector('.team-bar-overlay') as HTMLElement | null;
+  if (overlayEl) overlayEl.classList.toggle('is-revealed', teamLotHasBid);
 
   // Hammer overlay on status -> sold transition (current slide's lot)
   if (slide?.kind === 'lot' && slide.lotId) {
@@ -307,6 +389,59 @@ sync.on((state) => {
   }
   for (const k of Object.keys(state.lots || {})) lastSoldStatus[k] = state.lots[k].status;
   firstStateMsg = false;
+
+  // If an auction-display iframe is currently mounted, forward live team
+  // amounts to it. Each team's auctionAmount = the last bid (or finalPrice
+  // if sold) on their bound lot.
+  if (slide?.kind === 'auction-display') {
+    const iframe = currentEl?.querySelector('iframe') as HTMLIFrameElement | null;
+    if (iframe?.contentWindow) {
+      const teams = (EVENT_META.teams || []).map(t => {
+        let bid = 0;
+        if (t.lotId && state.lots?.[t.lotId]) {
+          const ls = state.lots[t.lotId];
+          if (ls.status === 'sold' && typeof ls.finalPrice === 'number') bid = ls.finalPrice;
+          else if (ls.bids?.length) bid = ls.bids[ls.bids.length - 1];
+        }
+        // Bonus donations fold into the live segment so the visual just
+        // shows fresh growth, regardless of source.
+        return { ...t, auctionAmount: bid + (t.bonusAmount || 0) };
+      });
+      iframe.contentWindow.postMessage({ type: 'auction-display:teams', teams }, '*');
+    }
+  }
+
+  // Hybrid bar-strip on lot slides bound to a team — update widths live.
+  if (slide?.kind === 'lot' && slide.lotId) {
+    const overlay = currentEl?.querySelector('.team-bar-overlay') as HTMLElement | null;
+    if (overlay) {
+      const teams = EVENT_META.teams || [];
+      const totals: Array<{ id: string; pre: number; live: number; total: number }> = teams.map(t => {
+        const pre = t.preAmount || 0;
+        let bid = 0;
+        if (t.lotId && state.lots?.[t.lotId]) {
+          const ls = state.lots[t.lotId];
+          if (ls.status === 'sold' && typeof ls.finalPrice === 'number') bid = ls.finalPrice;
+          else if (ls.bids?.length) bid = ls.bids[ls.bids.length - 1];
+        }
+        const live = bid + (t.bonusAmount || 0);
+        return { id: t.id, pre, live, total: pre + live };
+      });
+      const max = Math.max(1, ...totals.map(t => t.total));
+      for (const t of totals) {
+        const row = overlay.querySelector(`.tb-row[data-team-id="${t.id}"]`) as HTMLElement | null;
+        if (!row) continue;
+        const preEl = row.querySelector('.tb-pre') as HTMLElement | null;
+        const liveEl = row.querySelector('.tb-live') as HTMLElement | null;
+        const amtEl = row.querySelector('.tb-amount') as HTMLElement | null;
+        const preW = (t.pre / max) * 100;
+        const liveW = (t.live / max) * 100;
+        if (preEl) preEl.style.width = `${preW}%`;
+        if (liveEl) { liveEl.style.left = `${preW}%`; liveEl.style.width = `${liveW}%`; }
+        if (amtEl) amtEl.textContent = `kr ${(t.total).toLocaleString('da-DK').replace(/,/g, '.')}`;
+      }
+    }
+  }
 });
 
 // Server drives playback via sound-event messages (init on slide enter,

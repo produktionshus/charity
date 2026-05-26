@@ -2,8 +2,9 @@
 // Reads + writes through /api/lots; broadcasts ws 'lots-updated' so the
 // viewer / auctioneer / controller refresh themselves on save.
 
-import { renderSlide, renderCover, renderClosing, renderSponsorIndex, renderWishLoop, renderMedia, fitToViewport } from './render';
-import type { Lot, BordplanItem, CoverItem, ClosingItem, SponsorIndexItem, WishLoopItem, MediaItem, DeckItem } from './slides';
+import { renderSlide, renderCover, renderClosing, renderSponsorIndex, renderWishLoop, renderMedia, renderAuctionDisplay, fitToViewport } from './render';
+import { EVENT_META } from './slides';
+import type { Lot, BordplanItem, CoverItem, ClosingItem, SponsorIndexItem, WishLoopItem, MediaItem, AuctionDisplayItem, AuctionTeam, AuctionDisplayState, DeckItem } from './slides';
 import { renderBordplanSlide } from './render-bordplan';
 import type { FloorPlanConfig } from './bordplan-engine';
 
@@ -45,8 +46,16 @@ const fFocalYVal = document.getElementById('f-focal-y-val')!;
 const fScale     = document.getElementById('f-scale')      as HTMLInputElement;
 const fScaleVal  = document.getElementById('f-scale-val')!;
 const fTitleSize = document.getElementById('f-title-size') as HTMLInputElement;
+const fHorizonCap    = document.getElementById('f-horizon-caption')     as HTMLInputElement;
+const fHorizonCapVal = document.getElementById('f-horizon-caption-val')!;
+const fProfilePhoto  = document.getElementById('f-profile-photo')       as HTMLInputElement;
+const fProfilePhotoVal = document.getElementById('f-profile-photo-val')!;
+const rowHorizonCap = document.getElementById('row-horizon-caption')!;
+const rowProfilePhoto = document.getElementById('row-profile-photo')!;
 const fHero      = document.getElementById('f-hero')     as HTMLInputElement;
 const fLogo      = document.getElementById('f-logo')     as HTMLInputElement;
+const fExtraLogoUploadEl = document.getElementById('f-extra-logo-upload') as HTMLInputElement;
+const extraLogoListEl    = document.getElementById('extra-logo-list')!;
 const heroPreview = document.getElementById('hero-preview') as HTMLImageElement;
 const logoPreview = document.getElementById('logo-preview') as HTMLImageElement;
 
@@ -58,13 +67,14 @@ let lotsBank: Lot[] = [];     // filtered alias = items where kind!=='bordplan'
 let selectedId: string | null = sessionStorage.getItem('gen.selectedId');
 let dirty = false;
 
-function itemKind(item: DeckItem | undefined): 'lot' | 'bordplan' | 'cover' | 'closing' | 'sponsor-index' | 'wish-loop' | 'media' {
+function itemKind(item: DeckItem | undefined): 'lot' | 'bordplan' | 'cover' | 'closing' | 'sponsor-index' | 'wish-loop' | 'media' | 'auction-display' {
   if (item && (item as any).kind === 'bordplan') return 'bordplan';
   if (item && (item as any).kind === 'cover') return 'cover';
   if (item && (item as any).kind === 'closing') return 'closing';
   if (item && (item as any).kind === 'sponsor-index') return 'sponsor-index';
   if (item && (item as any).kind === 'wish-loop') return 'wish-loop';
   if (item && (item as any).kind === 'media') return 'media';
+  if (item && (item as any).kind === 'auction-display') return 'auction-display';
   return 'lot';
 }
 function isBordplanItem(item: DeckItem | undefined): item is BordplanItem {
@@ -84,6 +94,9 @@ function isWishLoopItem(item: DeckItem | undefined): item is WishLoopItem {
 }
 function isMediaItem(item: DeckItem | undefined): item is MediaItem {
   return !!item && (item as any).kind === 'media';
+}
+function isAuctionDisplayItem(item: DeckItem | undefined): item is AuctionDisplayItem {
+  return !!item && (item as any).kind === 'auction-display';
 }
 
 // ---- Bordplan form DOM ----
@@ -129,6 +142,18 @@ const wlAppleUploadEl = document.getElementById('wl-apple-upload') as HTMLInputE
 const wlSaveBtn      = document.getElementById('wl-save')!;
 let wlApplePool: string[] = [];     // alle filer i /assets/apples/
 let wlSelectedCards: Array<{ id: number | string; src: string | null; alt?: string }> = [];
+
+const formAuctionDisplay = document.getElementById('gen-form-auctiondisplay')!;
+const adActiveEl    = document.getElementById('ad-active')         as HTMLInputElement;
+const adLabelEl     = document.getElementById('ad-label')          as HTMLInputElement;
+const adScreenEl = document.getElementById('ad-screen') as HTMLSelectElement;
+const adTeamsListEl = document.getElementById('ad-teams-list')!;
+const adActiveLotEl = document.getElementById('ad-active-lot')     as HTMLSelectElement;
+const adRevealCountEl = document.getElementById('ad-reveal-count') as HTMLInputElement;
+const adRankingEl   = document.getElementById('ad-ranking')        as HTMLInputElement;
+const adNamesVisibleEl = document.getElementById('ad-names-visible') as HTMLInputElement;
+const adShowBaseLabelEl = document.getElementById('ad-show-base-label') as HTMLInputElement;
+const adSaveBtn     = document.getElementById('ad-save')!;
 
 const formMedia = document.getElementById('gen-form-media')!;
 const mdActiveEl   = document.getElementById('md-active')   as HTMLInputElement;
@@ -330,6 +355,10 @@ function renderList() {
       dn = 'MD';
       title = item.label || '(uden navn)';
       badge = !item.active ? 'INACTIVE' : `MEDIA · ${item.mode}`;
+    } else if (isAuctionDisplayItem(item)) {
+      dn = 'AD';
+      title = item.label || '(uden navn)';
+      badge = !item.active ? 'INACTIVE' : `AUKTION-DISPLAY · ${item.screen || 'intro'}`;
     }
     row.innerHTML = `
       <span class="drag-handle">⋮⋮</span>
@@ -429,7 +458,11 @@ function selectLot(id: string) {
   formSponsorIndex.style.display = 'none';
   formWishLoop.style.display = 'none';
   formMedia.style.display = 'none';
-  if (kind === 'media') {
+  formAuctionDisplay.style.display = 'none';
+  if (kind === 'auction-display') {
+    formAuctionDisplay.style.display = 'flex';
+    populateAuctionDisplayForm(item as AuctionDisplayItem);
+  } else if (kind === 'media') {
     formMedia.style.display = 'flex';
     populateMediaForm(item as MediaItem);
   } else if (kind === 'bordplan') {
@@ -481,9 +514,85 @@ function populateForm(lot: Lot) {
   fScale.value = String(scalePct);
   fScaleVal.textContent = `${scalePct}%`;
   fTitleSize.value = lot.titleSizePt ? String(lot.titleSizePt) : '';
+  const horizonCap = lot.horizonCaptionIn ?? 2.25;
+  fHorizonCap.value = String(horizonCap);
+  fHorizonCapVal.textContent = `${horizonCap}in`;
+  const profilePhoto = lot.profilePhotoIn ?? 5.8;
+  fProfilePhoto.value = String(profilePhoto);
+  fProfilePhotoVal.textContent = `${profilePhoto}in`;
+  const isHorizon = (lot.layout || 'horizon') === 'horizon';
+  rowHorizonCap.style.display = isHorizon ? '' : 'none';
+  rowProfilePhoto.style.display = isHorizon ? 'none' : '';
   heroPreview.src = `/assets/hero/lot-${lot.id}_FINAL.${lot.heroExt || 'jpg'}?v=${Date.now()}`;
-  logoPreview.src = `/assets/logo/logo-lot-${lot.id}.png?v=${Date.now()}`;
+  const mainLogoUrl = lot.sponsorLogoSrc || `/assets/logo/logo-lot-${lot.id}.png`;
+  logoPreview.src = `${mainLogoUrl}?v=${Date.now()}`;
+  renderExtraLogoList(lot.extraSponsorLogos || []);
 }
+
+function renderExtraLogoList(logos: string[]) {
+  extraLogoListEl.innerHTML = '';
+  if (!logos.length) {
+    const empty = document.createElement('li');
+    empty.style.cssText = 'font-style:italic;color:rgba(228,223,200,0.7);padding:4px 8px;background:transparent;border:0';
+    empty.textContent = '(ingen ekstra logos)';
+    extraLogoListEl.appendChild(empty);
+    return;
+  }
+  logos.forEach((src, idx) => {
+    const li = document.createElement('li');
+    const fname = src.split('/').pop() || src;
+    li.innerHTML = `
+      <img src="${src}" alt="" />
+      <span class="extra-fname">${fname}</span>
+      <button type="button" class="extra-del" data-idx="${idx}" title="Fjern">✕</button>
+    `;
+    extraLogoListEl.appendChild(li);
+  });
+}
+async function persistExtraLogos(logos: string[]) {
+  if (!selectedId) return;
+  try {
+    const updated = await api(`/api/lots/${encodeURIComponent(selectedId)}`, {
+      method: 'PUT', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ extraSponsorLogos: logos }),
+    });
+    const idx = itemsBank.findIndex(i => i.id === selectedId);
+    if (idx >= 0) itemsBank[idx] = updated;
+    const lotIdx = lotsBank.findIndex(l => l.id === selectedId);
+    if (lotIdx >= 0) lotsBank[lotIdx] = updated;
+    renderExtraLogoList(updated.extraSponsorLogos || []);
+    refreshPreview();
+  } catch (e: any) { statusEl.textContent = 'Extra-logo save failed: ' + e.message; }
+}
+extraLogoListEl.addEventListener('click', (e) => {
+  const btn = (e.target as HTMLElement).closest<HTMLButtonElement>('button.extra-del');
+  if (!btn || !selectedId) return;
+  const lot = lotsBank.find(l => l.id === selectedId);
+  if (!lot) return;
+  const idx = parseInt(btn.dataset.idx!, 10);
+  const current = [...(lot.extraSponsorLogos || [])];
+  current.splice(idx, 1);
+  persistExtraLogos(current);
+});
+fExtraLogoUploadEl.addEventListener('change', async () => {
+  const files = Array.from(fExtraLogoUploadEl.files || []);
+  if (!files.length || !selectedId) return;
+  const lot = lotsBank.find(l => l.id === selectedId);
+  const current = [...(lot?.extraSponsorLogos || [])];
+  for (const file of files) {
+    const fd = new FormData();
+    fd.append('kind', 'extra-logo');
+    fd.append('lotId', selectedId);
+    fd.append('file', file);
+    try {
+      const res = await fetch('/api/upload', { method: 'POST', body: fd });
+      const data = await res.json();
+      if (data?.filename) current.push(`/assets/logo/${data.filename}`);
+    } catch (e: any) { statusEl.textContent = 'Extra-logo upload failed: ' + e.message; }
+  }
+  fExtraLogoUploadEl.value = '';
+  persistExtraLogos(current);
+});
 
 function readForm(): Partial<Lot> {
   // Parse the title field as markdown — **bold** segments + newline for
@@ -505,6 +614,8 @@ function readForm(): Partial<Lot> {
     focal: `${fFocalX.value}% ${fFocalY.value}%`,
     heroScale: parseInt(fScale.value, 10) / 100,
     titleSizePt: fTitleSize.value ? parseInt(fTitleSize.value, 10) : undefined,
+    horizonCaptionIn: parseFloat(fHorizonCap.value) || undefined,
+    profilePhotoIn:   parseFloat(fProfilePhoto.value) || undefined,
   };
 }
 
@@ -609,6 +720,16 @@ function refreshPreview() {
     wrap.appendChild(slideEl);
     requestAnimationFrame(() => fitToViewport(wrap, slideEl));
     previewMeta.textContent = 'sponsor-index';
+    return;
+  }
+  if (isAuctionDisplayItem(item)) {
+    const slideEl = document.createElement('div');
+    slideEl.className = 'slide-canvas slide-auction-display';
+    slideEl.classList.add('is-visible', 'no-build');
+    slideEl.innerHTML = renderAuctionDisplay(item);
+    wrap.appendChild(slideEl);
+    requestAnimationFrame(() => fitToViewport(wrap, slideEl));
+    previewMeta.textContent = `auktion-display · ${(item as AuctionDisplayItem).screen || 'intro'}`;
     return;
   }
   if (isMediaItem(item)) {
@@ -1008,6 +1129,146 @@ clSaveBtn.addEventListener('click', async () => {
     });
     const idx = itemsBank.findIndex(i => i.id === selectedId);
     if (idx >= 0) itemsBank[idx] = updated;
+    setDirty(false);
+    renderList();
+    refreshPreview();
+    statusEl.textContent = 'Gemt';
+  } catch (e: any) {
+    statusEl.textContent = 'Save failed: ' + e.message;
+  }
+});
+
+// ---- Auction-display form (item-level + global team-config) ----
+const DEFAULT_TEAM_COLORS: Record<string, { base: string; live: string }> = {
+  A: { base: '#1f6e34', live: '#3ed170' },
+  B: { base: '#a06a14', live: '#f0b048' },
+  C: { base: '#9a2b1f', live: '#e85a44' },
+  D: { base: '#2a5a9e', live: '#6aa9e8' },
+};
+let adTeamsDraft: AuctionTeam[] = [];
+function defaultTeams(): AuctionTeam[] {
+  return ['A','B','C','D'].map(id => ({
+    id: id as any, name: `Hold ${id}`,
+    baseColor: DEFAULT_TEAM_COLORS[id].base,
+    liveColor: DEFAULT_TEAM_COLORS[id].live,
+    preAmount: 0, lotId: undefined, lot: { title: '', description: '' },
+  }));
+}
+function renderAdTeamsList() {
+  const lots = lotsBank.filter(l => l.active).map(l => ({ id: l.id, title: l.title }));
+  adTeamsListEl.innerHTML = '';
+  adTeamsDraft.forEach((tm, idx) => {
+    const fallback = DEFAULT_TEAM_COLORS[tm.palette || tm.id] || DEFAULT_TEAM_COLORS.A;
+    const base = tm.baseColor || fallback.base;
+    const live = tm.liveColor || fallback.live;
+    const row = document.createElement('div');
+    row.className = 'ad-team-row';
+    row.innerHTML = `
+      <div class="ad-palette-dot" style="background:linear-gradient(135deg,${base} 50%,${live} 50%)"></div>
+      <input type="text" data-idx="${idx}" data-field="name" value="${(tm.name || '').replace(/"/g, '&quot;')}" placeholder="Hold-navn" />
+      <span class="ad-color-pair">
+        <input type="color" data-idx="${idx}" data-field="baseColor" value="${base}" title="Pre-event farve (mørk)" />
+        <input type="color" data-idx="${idx}" data-field="liveColor" value="${live}" title="Live-auktion farve (lys)" />
+      </span>
+      <input type="number" data-idx="${idx}" data-field="preAmount" value="${tm.preAmount || 0}" min="0" step="500" placeholder="pre kr" />
+      <select data-idx="${idx}" data-field="lotId">
+        <option value="">(intet lot)</option>
+        ${lots.map(l => `<option value="${l.id}" ${tm.lotId === l.id ? 'selected' : ''}>${(l.title || l.id).slice(0, 30)}</option>`).join('')}
+      </select>
+      <input type="text" class="ad-lot-title" data-idx="${idx}" data-field="lotTitle" value="${(tm.lot?.title || '').replace(/"/g, '&quot;')}" placeholder="Lot-titel (vises i pause/auction)" />
+      <input type="text" class="ad-lot-desc" data-idx="${idx}" data-field="lotDesc" value="${(tm.lot?.description || '').replace(/"/g, '&quot;')}" placeholder="Lot-beskrivelse" />
+    `;
+    adTeamsListEl.appendChild(row);
+  });
+}
+adTeamsListEl.addEventListener('input', (e) => {
+  const t = e.target as HTMLInputElement | HTMLSelectElement;
+  const idx = parseInt(t.dataset.idx || '-1', 10);
+  if (idx < 0 || !adTeamsDraft[idx]) return;
+  const field = t.dataset.field!;
+  const tm = adTeamsDraft[idx];
+  if (field === 'name') tm.name = t.value;
+  else if (field === 'baseColor') tm.baseColor = t.value;
+  else if (field === 'liveColor') tm.liveColor = t.value;
+  else if (field === 'preAmount') tm.preAmount = parseInt(t.value, 10) || 0;
+  else if (field === 'lotId') tm.lotId = t.value || undefined;
+  else if (field === 'lotTitle') { tm.lot = { ...(tm.lot || {}), title: t.value }; }
+  else if (field === 'lotDesc') { tm.lot = { ...(tm.lot || {}), description: t.value }; }
+  setDirty(true);
+  // Don't re-render the whole list on every color tick — that would
+  // destroy the active <input type="color"> popover. Just patch the
+  // palette dot in place.
+  if (field === 'baseColor' || field === 'liveColor') {
+    const row = (t.closest('.ad-team-row') as HTMLElement | null);
+    const dot = row?.querySelector('.ad-palette-dot') as HTMLElement | null;
+    if (dot) {
+      const base = tm.baseColor || '#888';
+      const live = tm.liveColor || '#ccc';
+      dot.style.background = `linear-gradient(135deg, ${base} 50%, ${live} 50%)`;
+    }
+  }
+  refreshPreview();
+});
+function populateAuctionDisplayForm(item: AuctionDisplayItem) {
+  editIdEl.textContent = item.id;
+  editDisplayNumEl.textContent = 'AD';
+  deleteBtn.style.display = 'inline-flex';
+  duplicateBtn.style.display = 'inline-flex';
+  resetFocalBtn.style.display = 'none';
+  adActiveEl.checked = !!item.active;
+  adLabelEl.value = item.label ?? '';
+  adScreenEl.value = item.screen || 'intro';
+  // Teams live globally in EVENT_META (shared across all AD slides).
+  const teams = (EVENT_META.teams && EVENT_META.teams.length === 4) ? EVENT_META.teams : defaultTeams();
+  adTeamsDraft = teams.map(t => ({ ...t, lot: t.lot ? { ...t.lot } : { title: '', description: '' } }));
+  renderAdTeamsList();
+  // State now lives per-item.
+  adActiveLotEl.value = String(item.activeLot ?? 0);
+  adRevealCountEl.value = String(item.revealCount ?? 0);
+  adRankingEl.checked = item.ranking ?? false;
+  adNamesVisibleEl.checked = item.namesVisible ?? true;
+  adShowBaseLabelEl.checked = item.showBaseLabel ?? true;
+}
+function readAuctionDisplayItem(): Partial<AuctionDisplayItem> {
+  return {
+    active: adActiveEl.checked,
+    label: adLabelEl.value,
+    screen: adScreenEl.value as any,
+    activeLot: parseInt(adActiveLotEl.value, 10) || 0,
+    revealCount: parseInt(adRevealCountEl.value, 10) || 0,
+    ranking: adRankingEl.checked,
+    namesVisible: adNamesVisibleEl.checked,
+    showBaseLabel: adShowBaseLabelEl.checked,
+  };
+}
+function readAuctionDisplayMeta(): { teams: AuctionTeam[] } {
+  // State now lives on the item itself; meta only holds the global team
+  // roster + lot bindings shared across every AD slide.
+  return { teams: adTeamsDraft };
+}
+function adOnChange() { setDirty(true); refreshPreview(); }
+[adActiveEl, adLabelEl, adScreenEl, adActiveLotEl, adRevealCountEl, adRankingEl, adNamesVisibleEl, adShowBaseLabelEl]
+  .forEach(el => el.addEventListener('input', adOnChange));
+adSaveBtn.addEventListener('click', async () => {
+  if (!selectedId) return;
+  try {
+    statusEl.textContent = 'Gemmer auktion-display + hold-config…';
+    // PUT item
+    const updated = await api(`/api/lots/${encodeURIComponent(selectedId)}`, {
+      method: 'PUT', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(readAuctionDisplayItem()),
+    });
+    const idx = itemsBank.findIndex(i => i.id === selectedId);
+    if (idx >= 0) itemsBank[idx] = updated;
+    // PUT meta
+    const meta = readAuctionDisplayMeta();
+    console.log('[gen] PUT /api/meta teams', meta.teams.map(t => ({ id: t.id, base: t.baseColor, live: t.liveColor })));
+    await fetch('/api/meta', {
+      method: 'PUT', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(meta),
+    });
+    // Update local EVENT_META mirror so preview/render stays fresh
+    EVENT_META.teams = meta.teams;
     setDirty(false);
     renderList();
     refreshPreview();
@@ -1425,6 +1686,20 @@ fScale.addEventListener('input', () => {
   fScaleVal.textContent = fScale.value + '%';
   onFormChange();
 });
+fHorizonCap.addEventListener('input', () => {
+  fHorizonCapVal.textContent = `${fHorizonCap.value}in`;
+  onFormChange();
+});
+fProfilePhoto.addEventListener('input', () => {
+  fProfilePhotoVal.textContent = `${fProfilePhoto.value}in`;
+  onFormChange();
+});
+// Toggle slider visibility when layout switches.
+fLayout.addEventListener('change', () => {
+  const isHorizon = fLayout.value === 'horizon';
+  rowHorizonCap.style.display = isHorizon ? '' : 'none';
+  rowProfilePhoto.style.display = isHorizon ? 'none' : '';
+});
 
 // ---- Save ----
 saveBtn.addEventListener('click', async () => {
@@ -1453,6 +1728,34 @@ saveBtn.addEventListener('click', async () => {
 });
 
 // ---- New / Delete ----
+const newAuctionDisplayBtn = document.getElementById('new-auctiondisplay')!;
+newAuctionDisplayBtn.addEventListener('click', async () => {
+  try {
+    const created = await api('/api/lots', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        kind: 'auction-display',
+        active: true,
+        label: `Auktion-display ${itemsBank.filter(i => (i as any).kind === 'auction-display').length + 1}`,
+        screen: 'intro',
+        activeLot: 0,
+        revealCount: 0,
+        ranking: false,
+        namesVisible: true,
+        showBaseLabel: true,
+      } as any),
+    });
+    itemsBank.push(created);
+    selectedId = created.id;
+    renderList();
+    selectLot(created.id);
+    statusEl.textContent = 'Auktion-display oprettet';
+  } catch (e: any) {
+    statusEl.textContent = 'Create failed: ' + e.message;
+  }
+});
+
 const newMediaBtn = document.getElementById('new-media')!;
 newMediaBtn.addEventListener('click', async () => {
   try {
@@ -1535,6 +1838,18 @@ newSponsorIndexBtn.addEventListener('click', async () => {
 });
 
 const newClosingBtn = document.getElementById('new-closing')!;
+const DEFAULT_CLOSING_LOGOS_SEED = [
+  { file: 'closing-L-01.png' }, { file: 'closing-L-02.png' }, { file: 'closing-L-03.png' }, { file: 'closing-L-04.png', kind: 'wordmark' },
+  { file: 'closing-L-05.png', kind: 'wordmark' }, { file: 'closing-L-06.png' }, { file: 'closing-L-07.png' }, { file: 'closing-R-01.png' },
+  { file: 'closing-L-09.png', kind: 'wordmark' }, { file: 'closing-L-10.png', kind: 'wordmark' }, { file: 'closing-L-11.png' }, { file: 'closing-R-10.png' },
+  { file: 'closing-L-13.png', kind: 'wordmark' }, { file: 'closing-M-01.png' }, { file: 'closing-M-02.png', kind: 'wordmark' }, { file: 'closing-M-03.png' },
+  { file: 'closing-M-04.png' }, { file: 'closing-M-05.png' }, { file: 'closing-M-06.png' }, { file: 'closing-M-07.png', kind: 'wordmark' },
+  { file: 'closing-M-08.png', kind: 'wordmark' }, { file: 'closing-M-09.png', kind: 'wordmark' }, { file: 'closing-M-10.png' }, { file: 'closing-M-11.png', kind: 'wordmark' },
+  { file: 'closing-M-12.png', kind: 'wordmark' }, { file: 'closing-M-13.png' }, { file: 'closing-M-14.png' }, { file: 'closing-L-12.png', kind: 'wordmark' },
+  { file: 'closing-R-02.png', kind: 'wordmark' }, { file: 'closing-R-03.png' }, { file: 'closing-R-04.png' }, { file: 'closing-R-05.png', kind: 'wordmark' },
+  { file: 'closing-R-06.png', kind: 'wordmark' }, { file: 'closing-R-07.png' }, { file: 'closing-R-08.png' }, { file: 'closing-R-09.png' },
+  { file: 'closing-L-08.png' }, { file: 'closing-R-11.png' }, { file: 'closing-R-12.png', kind: 'wordmark' }, { file: 'closing-R-13.png' },
+];
 newClosingBtn.addEventListener('click', async () => {
   try {
     const created = await api('/api/lots', {
@@ -1547,7 +1862,7 @@ newClosingBtn.addEventListener('click', async () => {
         title: 'TAK TIL ALLE VORES SPONSORER',
         tagline: '@KIDSAIDDK · KIDSAID DANMARK',
         cols: 8,
-        logos: [],
+        logos: DEFAULT_CLOSING_LOGOS_SEED,
       } as any),
     });
     itemsBank.push(created);
@@ -1738,7 +2053,23 @@ async function uploadFile(kind: 'hero' | 'logo', file: File) {
     const v = Date.now();
     const lot = lotsBank.find(l => l.id === selectedId);
     if (kind === 'hero') heroPreview.src = `/assets/hero/lot-${selectedId}_FINAL.${lot?.heroExt || 'jpg'}?v=${v}`;
-    else logoPreview.src = `/assets/logo/logo-lot-${selectedId}.png?v=${v}`;
+    else if (kind === 'logo' && data.filename) {
+      // Server now preserves the uploaded extension (so SVG stays SVG).
+      // Persist the new URL onto the lot so the renderer uses it instead
+      // of the legacy logo-lot-<id>.png default.
+      const newUrl = `/assets/logo/${data.filename}`;
+      logoPreview.src = `${newUrl}?v=${v}`;
+      try {
+        const updated = await api(`/api/lots/${encodeURIComponent(selectedId)}`, {
+          method: 'PUT', headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ sponsorLogoSrc: newUrl }),
+        });
+        const idx = itemsBank.findIndex(i => i.id === selectedId);
+        if (idx >= 0) itemsBank[idx] = updated;
+        const lotIdx = lotsBank.findIndex(l => l.id === selectedId);
+        if (lotIdx >= 0) lotsBank[lotIdx] = updated;
+      } catch {}
+    }
     refreshPreview();
   } catch (e: any) {
     statusEl.textContent = 'Upload failed: ' + e.message;

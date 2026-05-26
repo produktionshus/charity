@@ -87,7 +87,6 @@ function buildHammerOverlay(lotNum: string, finalPrice: number): HTMLElement {
       <div class="bid" style="font-size:${hammerBidFontPx(finalPrice)}px">${fmtKr(finalPrice)}<span class="kr">kr</span></div>
       <div class="foot">
         <div class="item"><span>Bud</span><b>${fmtKr(finalPrice)} kr</b></div>
-        <div class="item"><span>Doneret af</span><b>${lot.sponsor}</b></div>
       </div>
     </div>
     ${particles}
@@ -171,7 +170,7 @@ sync.on((state) => {
     monitor.classList.remove('show-header');
     monitor.classList.remove('has-bid');
     lotnumEl.textContent = '—';
-    titleEl.textContent = slide?.kind === 'cover' ? 'Cover' : slide?.kind === 'sponsor-index' ? 'Sponsorer' : slide?.kind === 'closing' ? 'Tak for i aften' : slide?.kind === 'wish-loop' ? 'Børnenes ønsker' : slide?.kind === 'media' ? 'Media' : '';
+    titleEl.textContent = slide?.kind === 'cover' ? 'Cover' : slide?.kind === 'sponsor-index' ? 'Sponsorer' : slide?.kind === 'closing' ? 'Tak for i aften' : slide?.kind === 'wish-loop' ? 'Børnenes ønsker' : slide?.kind === 'media' ? 'Media' : slide?.kind === 'auction-display' ? '4-hold konkurrence' : '';
     donorEl.textContent = '';
     bidEl.innerHTML = `—<span class="kr">kr</span>`;
     lastBid = null;

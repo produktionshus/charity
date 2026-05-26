@@ -30,6 +30,7 @@
       <button class="nav-btn" id="new-sponsorindex">+ Nyt sponsor-indeks</button>
       <button class="nav-btn" id="new-wishloop">+ Nyt ønske-loop</button>
       <button class="nav-btn" id="new-media">+ Nyt media</button>
+      <button class="nav-btn" id="new-auctiondisplay">+ Nyt auktion-display</button>
     </header>
 
     <aside class="gen-list">
@@ -100,8 +101,17 @@
           </div>
 
           <label>Scale % (zoom på hero)
-            <input type="range" id="f-scale" min="100" max="220" step="5" value="100" />
+            <input type="range" id="f-scale" min="40" max="220" step="5" value="100" />
             <span class="range-val" id="f-scale-val">100%</span>
+          </label>
+
+          <label id="row-horizon-caption">Horizon — caption-stribe højde (inches)
+            <input type="range" id="f-horizon-caption" min="1.2" max="4" step="0.05" value="2.25" />
+            <span class="range-val" id="f-horizon-caption-val">2.25in</span>
+          </label>
+          <label id="row-profile-photo">Profile — foto-felt bredde (inches)
+            <input type="range" id="f-profile-photo" min="3.5" max="9" step="0.1" value="5.8" />
+            <span class="range-val" id="f-profile-photo-val">5.8in</span>
           </label>
 
           <label>Titel-størrelse override (pt, valgfrit)
@@ -119,6 +129,14 @@
               <img id="logo-preview" class="upload-preview logo" />
               <input type="file" id="f-logo" accept="image/png,image/jpeg,image/webp,image/svg+xml" />
             </div>
+          </div>
+          <div class="setting-section">
+            <span class="setting-section-label">Ekstra sponsor-logos (vises horisontalt ved siden af main)</span>
+            <ul class="extra-logo-list" id="extra-logo-list"></ul>
+            <label class="closing-add-row">
+              <input type="file" id="f-extra-logo-upload" accept="image/png,image/jpeg,image/webp,image/svg+xml" multiple />
+              <span>+ Upload ekstra logo(er)</span>
+            </label>
           </div>
 
           <div class="gen-validation" id="gen-validation"></div>
@@ -217,6 +235,50 @@
           <div class="row gen-save-row">
             <button class="nav-btn primary" id="bp-save">Gem bordplan</button>
             <span class="gen-save-meta" id="bp-save-meta"></span>
+          </div>
+        </div>
+
+        <!-- Auction-display form (4-hold team-board) -->
+        <div class="gen-form" id="gen-form-auctiondisplay" style="display:none">
+          <label class="setting-toggle"><input type="checkbox" id="ad-active" /><span>Active (med i deck)</span></label>
+          <label>Label (intern)
+            <input type="text" id="ad-label" placeholder="fx Auktion intro / pause efter lot 2" />
+          </label>
+          <label>Initial screen (når slide vises første gang)
+            <select id="ad-screen">
+              <option value="intro">intro · holdkort</option>
+              <option value="reveal">reveal · bars vokser ind</option>
+              <option value="total">total · status før auktion</option>
+              <option value="pause">pause · næste lot</option>
+              <option value="auction">auction · live</option>
+              <option value="final">final · vinder</option>
+            </select>
+          </label>
+          <div class="setting-section">
+            <span class="setting-section-label">Hold-konfiguration (globalt — påvirker alle auction-display slides)</span>
+            <p class="drawer-hint">Definér 4 hold med id, navn, palette, pre-amount + bind til et lot (live bud opdaterer team's bar).</p>
+            <div id="ad-teams-list"></div>
+          </div>
+          <label>Aktivt lot (kun pause/auction/final modes)
+            <select id="ad-active-lot">
+              <option value="0">Hold 1 (A)</option>
+              <option value="1">Hold 2 (B)</option>
+              <option value="2">Hold 3 (C)</option>
+              <option value="3">Hold 4 (D)</option>
+            </select>
+          </label>
+          <div class="row">
+            <label>Reveal count (0-4)
+              <input type="number" id="ad-reveal-count" min="0" max="4" value="0" />
+            </label>
+            <label class="setting-toggle"><input type="checkbox" id="ad-ranking" /><span>Rang-omrøkkering</span></label>
+          </div>
+          <div class="row">
+            <label class="setting-toggle"><input type="checkbox" id="ad-names-visible" checked /><span>Hold-navne synlige (intro)</span></label>
+            <label class="setting-toggle"><input type="checkbox" id="ad-show-base-label" checked /><span>"base · kr X" label ved seam</span></label>
+          </div>
+          <div class="row gen-save-row">
+            <button class="nav-btn primary" id="ad-save">Gem auktion-display + hold-config</button>
           </div>
         </div>
 

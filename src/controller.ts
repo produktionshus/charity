@@ -276,7 +276,7 @@ function renderAuctioneerPanel(slide: Slide | null) {
     auctStage.classList.remove('has-bid');
     auctStage.classList.remove('show-header');
     auctLotnum.textContent = '—';
-    auctTitle.textContent = slide.kind === 'cover' ? 'Cover' : slide.kind === 'sponsor-index' ? 'Sponsorer' : slide.kind === 'closing' ? 'Tak for i aften' : slide.kind === 'wish-loop' ? 'Børnenes ønsker' : slide.kind === 'media' ? 'Media' : '';
+    auctTitle.textContent = slide.kind === 'cover' ? 'Cover' : slide.kind === 'sponsor-index' ? 'Sponsorer' : slide.kind === 'closing' ? 'Tak for i aften' : slide.kind === 'wish-loop' ? 'Børnenes ønsker' : slide.kind === 'media' ? 'Media' : slide.kind === 'auction-display' ? '4-hold konkurrence' : '';
     auctDonor.textContent = '';
     auctBid.classList.add('idle');
     auctBid.innerHTML = `—<span class="kr">kr</span>`;
@@ -341,6 +341,7 @@ function renderSidebar(state: any) {
         : k === 'lot' ? 'Lots'
         : k === 'wish-loop' ? 'Ønske-loop'
         : k === 'media' ? 'Media'
+        : k === 'auction-display' ? 'Auktion-display'
         : k === 'closing' ? 'Afslutning'
         : k;
     for (let i = 0; i < SLIDES.length; i++) {
@@ -365,6 +366,7 @@ function renderSidebar(state: any) {
             : slide.kind === 'bordplan' ? 'Bordplan'
             : slide.kind === 'wish-loop' ? 'Ønske-loop'
             : slide.kind === 'media' ? 'Media'
+            : slide.kind === 'auction-display' ? 'Auktion-display'
             : 'Afslutning');
         const name = lot
           ? lot.title
@@ -373,6 +375,7 @@ function renderSidebar(state: any) {
             : slide.kind === 'bordplan' ? 'Bordplan'
             : slide.kind === 'wish-loop' ? 'Børnenes ønsker'
             : slide.kind === 'media' ? 'Media'
+            : slide.kind === 'auction-display' ? '4-hold konkurrence'
             : 'Tak for i aften');
         row.innerHTML = `
           <div class="lot-num-side">${lot ? displayNumFor(lot.id) : ''}</div>
@@ -442,7 +445,6 @@ function buildHammerOverlay(lotNum: string, finalPrice: number): HTMLElement {
       <div class="hammer-bid">${fmtKr(finalPrice)}<span class="kr">kr</span></div>
       <div class="hammer-foot">
         <div class="item"><span>Bud</span><b>${fmtKr(finalPrice)} kr</b></div>
-        <div class="item"><span>Doneret af</span><b>${lot.sponsor}</b></div>
       </div>
     </div>
     ${particlesHtml}
@@ -549,6 +551,7 @@ sync.onLotsUpdated(async () => {
   await refreshLotsFromServer();
   renderPresetChips();
   applyEventMeta();
+  renderBonusPanel();
   // Force a re-render: invalidate the slide-cache markers so the next state
   // update rebuilds Nuværende + Næste with fresh data.
   lastRenderedCurrentIdx = -999;
@@ -664,6 +667,45 @@ function renderPresetChips() {
   if (inp && document.activeElement !== inp) inp.value = presets.join(', ');
 }
 renderPresetChips();
+
+// ---- Bonus donation panel (for the 4-team competition) ----
+const bonusTeamListEl = document.getElementById('bonus-team-list');
+function renderBonusPanel() {
+  if (!bonusTeamListEl) return;
+  const teams = EVENT_META.teams || [];
+  if (!teams.length) { bonusTeamListEl.innerHTML = '<p class="drawer-hint">Ingen hold konfigureret endnu.</p>'; return; }
+  bonusTeamListEl.innerHTML = teams.map(t => {
+    const live = t.liveColor || '#3ed170';
+    const bonus = t.bonusAmount || 0;
+    return `
+      <div class="bonus-row" data-id="${t.id}" style="--bonus-live:${live}">
+        <span class="bonus-name">${(t.name || t.id)}</span>
+        <input type="number" class="bonus-amount" min="0" step="500" placeholder="kr" />
+        <button class="bonus-add">+ Tilføj</button>
+        <span class="bonus-total">${bonus ? `bonus: ${bonus.toLocaleString('da-DK').replace(/,/g, '.')} kr` : ''}</span>
+      </div>
+    `;
+  }).join('');
+  bonusTeamListEl.querySelectorAll<HTMLElement>('.bonus-row').forEach(row => {
+    const id = row.dataset.id!;
+    const inp = row.querySelector<HTMLInputElement>('.bonus-amount')!;
+    const btn = row.querySelector<HTMLButtonElement>('.bonus-add')!;
+    btn.addEventListener('click', async () => {
+      const add = parseInt(inp.value, 10) || 0;
+      if (!add) return;
+      btn.disabled = true;
+      try {
+        await fetch(`/api/meta/teams/${encodeURIComponent(id)}/bonus`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ add }),
+        });
+        inp.value = '';
+      } catch {}
+      btn.disabled = false;
+    });
+  });
+}
+renderBonusPanel();
 
 // ---- Sound countdown mirror (matches auctioneer overlay) ----
 const ctrlSoundCountdownEl = document.getElementById('ctrl-sound-countdown')! as HTMLDivElement;

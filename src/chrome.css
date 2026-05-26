@@ -261,6 +261,11 @@ body.viewer #slide-frame {
   font-family: var(--font-display-c);
   color: var(--text-c);
 }
+/* When the team-bar overlay sits docked on top of the ribbon, drop the
+   ribbon's top border + ramp the overlay's bottom border so the two read
+   as a single panel. */
+.has-team-overlay .stage-ribbon { border-top: 0; box-shadow: none; }
+.has-team-overlay .team-bar-overlay { border-bottom: 0; }
 .stage-ribbon.fading { animation: stage-ribbon-out 320ms ease forwards; }
 @keyframes stage-ribbon-in {
   0% { transform: translateY(100%); opacity: 0; }

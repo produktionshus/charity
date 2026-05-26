@@ -6,7 +6,7 @@
 import lotsJson from './lots.json';
 import type { FloorPlanConfig } from './bordplan-engine';
 
-export type SlideKind = 'cover' | 'sponsor-index' | 'lot' | 'closing' | 'bordplan' | 'wish-loop' | 'media';
+export type SlideKind = 'cover' | 'sponsor-index' | 'lot' | 'closing' | 'bordplan' | 'wish-loop' | 'media' | 'auction-display';
 
 export interface Slide {
   id: string;
@@ -55,6 +55,21 @@ export interface SponsorIndexItem {
   active: boolean;
   label?: string;
   title?: string;            // default "AUKTIONENS SPONSORER"
+}
+
+export interface AuctionDisplayItem {
+  id: string;
+  kind: 'auction-display';
+  active: boolean;
+  label?: string;
+  // Each AD slide carries its own full screen-state. Deck navigation
+  // walks through pre-configured AD items in order — no central state.
+  screen: AuctionScreen;
+  revealCount?: number;
+  activeLot?: number;          // index into meta.teams (0..3)
+  ranking?: boolean;
+  namesVisible?: boolean;
+  showBaseLabel?: boolean;
 }
 
 export interface MediaItem {
@@ -116,6 +131,16 @@ export interface Lot {
   heroExt?: string;                 // hero file extension (jpg|png|webp...), default 'jpg'
   heroScale?: number;               // zoom multiplier on the hero image, default 1.0
   sound?: SoundConfig;              // per-lot sound config (persisted to lots.json)
+  // Optional override path for the main sponsor logo (e.g. when using an
+  // .svg instead of the default logo-lot-<id>.png).
+  sponsorLogoSrc?: string;
+  // Additional sponsor logos rendered horizontally next to the main one.
+  // Stored as relative paths under /assets/logo/.
+  extraSponsorLogos?: string[];
+  // Optional per-lot layout tweaks. Horizon caption height + profile photo
+  // width are in inches; defaults are 2.25in and 5.8in respectively.
+  horizonCaptionIn?: number;
+  profilePhotoIn?: number;
 }
 
 export interface SoundConfig {
@@ -128,7 +153,7 @@ export interface SoundConfig {
   hammerVolume?: number;   // 0..1.5
 }
 
-export type DeckItem = Lot | BordplanItem | CoverItem | ClosingItem | SponsorIndexItem | WishLoopItem | MediaItem;
+export type DeckItem = Lot | BordplanItem | CoverItem | ClosingItem | SponsorIndexItem | WishLoopItem | MediaItem | AuctionDisplayItem;
 function isLot(item: DeckItem): item is Lot {
   return (item as any).kind === undefined || (item as any).kind === 'lot';
 }
@@ -150,12 +175,45 @@ function isWishLoop(item: DeckItem): item is WishLoopItem {
 function isMedia(item: DeckItem): item is MediaItem {
   return (item as any).kind === 'media';
 }
+function isAuctionDisplay(item: DeckItem): item is AuctionDisplayItem {
+  return (item as any).kind === 'auction-display';
+}
 
 // All items from the bank (active + inactive). Generator edits this list.
 // Lots have no kind field (or 'lot'); bordplan items use kind='bordplan'.
 export const ALL_ITEMS: DeckItem[] = (lotsJson.lots as DeckItem[]);
 // Back-compat alias: most existing code treats this as a Lot[] list.
 export const ALL_LOTS = ALL_ITEMS.filter(isLot) as Lot[];
+
+export type AuctionScreen = 'intro' | 'reveal' | 'total' | 'pause' | 'auction' | 'final';
+
+export interface AuctionTeam {
+  id: 'A' | 'B' | 'C' | 'D';
+  name: string;
+  // Custom 2-tone palette per team. baseColor = darker (pre-event segment),
+  // liveColor = brighter (live auction segment). Falls back to defaults if
+  // not set.
+  baseColor?: string;
+  liveColor?: string;
+  // Legacy field — preserved for migration but no longer required.
+  palette?: 'A' | 'B' | 'C' | 'D';
+  preAmount: number;
+  // Extra donations announced during the event but outside the lot auction
+  // (e.g. someone pledges a check from the floor). Folded into the live
+  // segment of the bar so the visual just shows a fresh burst of growth.
+  bonusAmount?: number;
+  lotId?: string;
+  lot?: { title?: string; description?: string };
+}
+
+export interface AuctionDisplayState {
+  screen: AuctionScreen;
+  revealCount: number;             // 0..4
+  activeLot: number;               // 0..3 (index i teams array)
+  ranking: boolean;
+  namesVisible: boolean;
+  showBaseLabel: boolean;
+}
 
 // Event-wide meta (bid presets etc.). Mutated by refreshLotsFromServer.
 export interface EventMeta {
@@ -166,6 +224,7 @@ export interface EventMeta {
   eventDate?: string;        // ISO YYYY-MM-DD
   theme?: 'forest' | 'marine' | 'dark' | 'kidsaid';
   soundDefaults?: SoundConfig;
+  teams?: AuctionTeam[];
 }
 export const EVENT_META: EventMeta = (lotsJson as any).meta || {};
 
@@ -243,6 +302,8 @@ function buildSlides(): Slide[] {
       slides.push({ id: `wish-loop-${item.id}`, kind: 'wish-loop', itemId: item.id });
     } else if (isMedia(item)) {
       slides.push({ id: `media-${item.id}`, kind: 'media', itemId: item.id });
+    } else if (isAuctionDisplay(item)) {
+      slides.push({ id: `auction-display-${item.id}`, kind: 'auction-display', itemId: item.id });
     } else if (isLot(item)) {
       if (!lotsEmitted) {
         if (!hasSponsorIndex) flushSponsorIndex();
@@ -283,6 +344,10 @@ export function wishLoopById(id: string): WishLoopItem | undefined {
 export function mediaById(id: string): MediaItem | undefined {
   const item = ALL_ITEMS.find(i => i.id === id && isMedia(i));
   return item as MediaItem | undefined;
+}
+export function auctionDisplayById(id: string): AuctionDisplayItem | undefined {
+  const item = ALL_ITEMS.find(i => i.id === id && isAuctionDisplay(i));
+  return item as AuctionDisplayItem | undefined;
 }
 
 export const SLIDES: Slide[] = buildSlides();
