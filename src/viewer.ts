@@ -2,7 +2,7 @@
 // Slide swaps cross-fade (220ms) to keep the audience visually anchored.
 
 import { SyncClient } from './ws-client';
-import { renderSlide, fitToViewport } from './render';
+import { renderSlide, teamLotIds, fitToViewport } from './render';
 import { SLIDES, EVENT_META, lotById, auctionDisplayById, wishLoopById, mediaById, displayNumFor, refreshLotsFromServer } from './slides';
 import { applyChromeFromMeta } from './event-meta-apply';
 
@@ -409,7 +409,7 @@ sync.on((state) => {
   // Ribbon mount/update based on current slide's lot + bid.
   const slide = SLIDES[currentSlideIdx];
   const teamBoundLot = slide?.kind === 'lot' && slide.lotId
-    && (EVENT_META.teams || []).some(t => t.lotId === slide.lotId);
+    && (EVENT_META.teams || []).some(t => teamLotIds(t).includes(slide.lotId!));
   if (slide?.kind === 'lot' && slide.lotId) {
     const ls = state.lots?.[slide.lotId];
     const bids: number[] = ls?.bids || [];
@@ -458,14 +458,15 @@ sync.on((state) => {
     const iframe = currentEl?.querySelector('iframe') as HTMLIFrameElement | null;
     if (iframe?.contentWindow) {
       const teams = (EVENT_META.teams || []).map(t => {
+        // Sum bids/finalPrice across every lot bound to this team
+        // (supports both legacy lotId and the new lotIds[] array).
         let bid = 0;
-        if (t.lotId && state.lots?.[t.lotId]) {
-          const ls = state.lots[t.lotId];
-          if (ls.status === 'sold' && typeof ls.finalPrice === 'number') bid = ls.finalPrice;
-          else if (ls.bids?.length) bid = ls.bids[ls.bids.length - 1];
+        for (const id of teamLotIds(t)) {
+          const ls = state.lots?.[id];
+          if (!ls) continue;
+          if (ls.status === 'sold' && typeof ls.finalPrice === 'number') bid += ls.finalPrice;
+          else if (ls.bids?.length) bid += ls.bids[ls.bids.length - 1];
         }
-        // Bonus donations fold into the live segment so the visual just
-        // shows fresh growth, regardless of source.
         return { ...t, auctionAmount: bid + (t.bonusAmount || 0) };
       });
       iframe.contentWindow.postMessage({ type: 'auction-display:teams', teams }, '*');
@@ -480,10 +481,11 @@ sync.on((state) => {
       const totals: Array<{ id: string; pre: number; live: number; total: number }> = teams.map(t => {
         const pre = t.preAmount || 0;
         let bid = 0;
-        if (t.lotId && state.lots?.[t.lotId]) {
-          const ls = state.lots[t.lotId];
-          if (ls.status === 'sold' && typeof ls.finalPrice === 'number') bid = ls.finalPrice;
-          else if (ls.bids?.length) bid = ls.bids[ls.bids.length - 1];
+        for (const id of teamLotIds(t)) {
+          const ls = state.lots?.[id];
+          if (!ls) continue;
+          if (ls.status === 'sold' && typeof ls.finalPrice === 'number') bid += ls.finalPrice;
+          else if (ls.bids?.length) bid += ls.bids[ls.bids.length - 1];
         }
         const live = bid + (t.bonusAmount || 0);
         return { id: t.id, pre, live, total: pre + live };

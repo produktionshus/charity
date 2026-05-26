@@ -301,14 +301,22 @@ export function renderAuctionDisplay(item?: AuctionDisplayItem): string {
   return `<iframe src="/auction-display/index.html?v=${(h >>> 0).toString(36)}#cfg=${cfgEncoded}" style="border:0;width:100%;height:100%;background:#3fa34d" title="Auktion"></iframe>`;
 }
 
+// Effective lot bindings for a team — supports both legacy single lotId
+// and the new lotIds[] array.
+export function teamLotIds(t: { lotId?: string; lotIds?: string[] }): string[] {
+  const list: string[] = [];
+  if (t.lotIds && t.lotIds.length) list.push(...t.lotIds);
+  if (t.lotId && !list.includes(t.lotId)) list.push(t.lotId);
+  return list.filter(Boolean);
+}
+
 // ---- Lot bar-overlay (compact 4-team strip when lot is bound to a team) ----
 // Renders inline strip over the lot photo when the current lot.id matches
-// one of the configured teams' lotId. Active team is highlighted; others
-// shown ghosted at 25% opacity.
+// one of the configured teams' lots. Active team is highlighted.
 export function renderTeamBarOverlay(currentLotId: string): string {
   const teams = EVENT_META.teams || [];
   if (!teams.length) return '';
-  const activeTeam = teams.find(t => t.lotId === currentLotId);
+  const activeTeam = teams.find(t => teamLotIds(t).includes(currentLotId));
   if (!activeTeam) return '';
   const FALLBACK: Record<string, { base: string; live: string }> = {
     A: { base: '#1f6e34', live: '#3ed170' },

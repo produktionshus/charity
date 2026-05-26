@@ -204,7 +204,8 @@ export interface AuctionTeam {
   // (e.g. someone pledges a check from the floor). Folded into the live
   // segment of the bar so the visual just shows a fresh burst of growth.
   bonusAmount?: number;
-  lotId?: string;
+  lotId?: string;            // legacy single-lot binding (kept for migration)
+  lotIds?: string[];         // current — a team can have multiple lots; their bids are summed
   lot?: { title?: string; description?: string };
 }
 

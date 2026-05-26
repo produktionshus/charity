@@ -1173,10 +1173,16 @@ function renderAdTeamsList() {
         <input type="color" data-idx="${idx}" data-field="liveColor" value="${live}" title="Live-auktion farve (lys)" />
       </span>
       <input type="number" data-idx="${idx}" data-field="preAmount" value="${tm.preAmount || 0}" min="0" step="500" placeholder="pre kr" />
-      <select data-idx="${idx}" data-field="lotId">
-        <option value="">(intet lot)</option>
-        ${lots.map(l => `<option value="${l.id}" ${tm.lotId === l.id ? 'selected' : ''}>${(l.title || l.id).slice(0, 30)}</option>`).join('')}
-      </select>
+      <span class="ad-lot-pair">
+        <select data-idx="${idx}" data-field="lot1Id">
+          <option value="">(lot 1)</option>
+          ${lots.map(l => `<option value="${l.id}" ${(tm.lotIds?.[0] || tm.lotId) === l.id ? 'selected' : ''}>${(l.title || l.id).slice(0, 22)}</option>`).join('')}
+        </select>
+        <select data-idx="${idx}" data-field="lot2Id">
+          <option value="">(lot 2)</option>
+          ${lots.map(l => `<option value="${l.id}" ${tm.lotIds?.[1] === l.id ? 'selected' : ''}>${(l.title || l.id).slice(0, 22)}</option>`).join('')}
+        </select>
+      </span>
       <input type="text" class="ad-lot-title" data-idx="${idx}" data-field="lotTitle" value="${(tm.lot?.title || '').replace(/"/g, '&quot;')}" placeholder="Lot-titel (vises i pause/auction)" />
       <input type="text" class="ad-lot-desc" data-idx="${idx}" data-field="lotDesc" value="${(tm.lot?.description || '').replace(/"/g, '&quot;')}" placeholder="Lot-beskrivelse" />
     `;
@@ -1193,6 +1199,14 @@ adTeamsListEl.addEventListener('input', (e) => {
   else if (field === 'baseColor') tm.baseColor = t.value;
   else if (field === 'liveColor') tm.liveColor = t.value;
   else if (field === 'preAmount') tm.preAmount = parseInt(t.value, 10) || 0;
+  else if (field === 'lot1Id' || field === 'lot2Id') {
+    const slot = field === 'lot1Id' ? 0 : 1;
+    const current = tm.lotIds ? [...tm.lotIds] : (tm.lotId ? [tm.lotId] : []);
+    while (current.length < 2) current.push('');
+    current[slot] = t.value;
+    tm.lotIds = current.filter(Boolean);
+    tm.lotId = undefined;     // migrate legacy field
+  }
   else if (field === 'lotId') tm.lotId = t.value || undefined;
   else if (field === 'lotTitle') { tm.lot = { ...(tm.lot || {}), title: t.value }; }
   else if (field === 'lotDesc') { tm.lot = { ...(tm.lot || {}), description: t.value }; }

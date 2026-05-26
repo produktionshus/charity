@@ -305,7 +305,8 @@ app.put('/api/meta', (req, res) => {
       palette: t.palette,                              // legacy fallback
       preAmount: Number(t.preAmount) || 0,
       bonusAmount: Number(t.bonusAmount) || 0,
-      lotId: t.lotId || undefined,
+      lotId: t.lotId || undefined,                     // legacy single-lot field
+      lotIds: Array.isArray(t.lotIds) ? t.lotIds.filter(x => typeof x === 'string' && x) : undefined,
       lot: t.lot ? { title: t.lot.title || '', description: t.lot.description || '' } : undefined,
     }));
   }

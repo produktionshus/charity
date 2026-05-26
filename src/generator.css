@@ -320,8 +320,13 @@ body.generator {
   width: 18px; height: 18px; border-radius: 50%;
   justify-self: center;
 }
-.ad-team-row .ad-color-pair {
+.ad-team-row .ad-color-pair,
+.ad-team-row .ad-lot-pair {
   display: inline-flex; gap: 2px;
+}
+.ad-team-row .ad-lot-pair select {
+  flex: 1 1 0;
+  min-width: 0;
 }
 .ad-team-row .ad-color-pair input[type='color'] {
   width: 38px; height: 24px;
