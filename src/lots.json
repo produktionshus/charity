@@ -12,7 +12,8 @@
       "videoLoop": true,
       "videoAutoplay": true,
       "fit": "cover",
-      "bgColor": "#000000"
+      "bgColor": "#000000",
+      "showTicker": true
     },
     {
       "id": "bordplan-stjernegolf-2026",
@@ -212,13 +213,14 @@
       "active": true,
       "label": "MP-GRØN Kidsaid Logo",
       "mode": "image",
-      "src": "/assets/media/mpgroen.png",
+      "src": "/assets/media/mpny.png",
       "alt": "",
       "videoMuted": true,
       "videoLoop": true,
       "videoAutoplay": true,
       "fit": "cover",
-      "bgColor": "#000000"
+      "bgColor": "#000000",
+      "showTicker": true
     },
     {
       "id": "f1bfc91f-2f24-47d9-96bc-6857009d641c",
@@ -1699,6 +1701,53 @@
       "ranking": false,
       "namesVisible": true,
       "showBaseLabel": true
+    },
+    "sponsorTicker": {
+      "enabled": true,
+      "prefix": "Vi takker vores dejlige sponsorer:",
+      "sponsors": [
+        "GreenMind",
+        "Smukfest",
+        "Royal Unibrew",
+        "Sanders København",
+        "Artsolo",
+        "Eilersen",
+        "Helenekilde Badehotel",
+        "D'Angleterre",
+        "Køkken Piraterne",
+        "Private Car Care",
+        "Cocktail Company",
+        "helkrops(MR).dk",
+        "Zinck Henningsen Art Consulting",
+        "Kin",
+        "Kim Due",
+        "By Lamm Bespoke Jewellery",
+        "Rudolph Care",
+        "Great Northern",
+        "Frame by Frame",
+        "Cartier",
+        "Møntergade",
+        "Ree Park Safari",
+        "Vipp",
+        "Ønskeskyen",
+        "Cue",
+        "Viaplay",
+        "Nohrlund Organic Cocktails",
+        "DM Greenkeeping",
+        "Pakhus77",
+        "Weber",
+        "Selected Car Collection",
+        "Otto Suenson",
+        "HimmerLand",
+        "Hotel Villa Lejet",
+        "Lyfa",
+        "Park Lane Copenhagen",
+        "Unico",
+        "Bravo Tours",
+        "Music Me",
+        "Living Flowers"
+      ],
+      "speedSec": 60
     }
   }
 }

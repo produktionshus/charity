@@ -3,7 +3,7 @@
 
 import { SyncClient } from './ws-client';
 import { renderSlide, fitToViewport } from './render';
-import { SLIDES, EVENT_META, lotById, auctionDisplayById, displayNumFor, refreshLotsFromServer } from './slides';
+import { SLIDES, EVENT_META, lotById, auctionDisplayById, wishLoopById, mediaById, displayNumFor, refreshLotsFromServer } from './slides';
 import { applyChromeFromMeta } from './event-meta-apply';
 
 // Apply localStorage fallback before first paint, then refresh from server
@@ -48,48 +48,54 @@ function unlockAudio() {
 document.addEventListener('click', unlockAudio, { once: true });
 document.addEventListener('keydown', unlockAudio, { once: true });
 
-// ---- Single-viewer audio leader election ----
-// Two viewers in the same browser caused double-playback / phantom reverb
-// during testing. BroadcastChannel coordinates: every open viewer
-// heartbeats with a unique id + timestamp; the *newest* viewer is the
-// audio leader. Followers stay silent.
+// ---- Manual audio leader toggle ----
+// Each viewer instance defaults to silent. The operator clicks the
+// status badge to claim audio-leader; the click broadcasts a claim
+// message that other viewers in the same browser honour by stepping
+// down. This lets a backstage screen run alongside the main viewer
+// without double-playback.
 const VIEWER_ID = Math.random().toString(36).slice(2);
-let isAudioLeader = true;
-let leaderHeartbeatAt = 0;
+let isAudioLeader = false;
 let viewerChan: BroadcastChannel | null = null;
 try { viewerChan = new BroadcastChannel('kidsaid-viewer'); } catch { /* unsupported */ }
-function declareLeader() {
+function claimAudioLead() {
   isAudioLeader = true;
-  leaderHeartbeatAt = Date.now();
-  viewerChan?.postMessage({ type: 'viewer-hello', id: VIEWER_ID, ts: leaderHeartbeatAt });
+  viewerChan?.postMessage({ type: 'viewer-claim', id: VIEWER_ID, ts: Date.now() });
+  updateAudioStatusBadge();
 }
-declareLeader();
-setInterval(declareLeader, 4000);
+function releaseAudioLead() {
+  isAudioLeader = false;
+  if (currentAudio) { try { currentAudio.pause(); } catch {} currentAudio = null; }
+  updateAudioStatusBadge();
+}
 function updateAudioStatusBadge() {
   let badge = document.getElementById('viewer-audio-status');
   if (!badge) {
-    badge = document.createElement('div');
+    badge = document.createElement('button');
     badge.id = 'viewer-audio-status';
-    badge.style.cssText = 'position:fixed;left:8px;bottom:8px;z-index:99998;padding:3px 8px;font:600 10px/1.2 system-ui;letter-spacing:0.1em;text-transform:uppercase;border-radius:4px;pointer-events:none;opacity:0.55';
+    badge.style.cssText = 'position:fixed;left:8px;bottom:8px;z-index:99998;padding:5px 10px;font:600 11px/1.2 system-ui;letter-spacing:0.1em;text-transform:uppercase;border-radius:5px;border:0;cursor:pointer;opacity:0.85;box-shadow:0 2px 8px rgba(0,0,0,0.35)';
+    badge.addEventListener('click', () => {
+      if (isAudioLeader) releaseAudioLead();
+      else claimAudioLead();
+    });
     document.body.appendChild(badge);
   }
   if (isAudioLeader) {
-    badge.textContent = '◉ lyd-leder';
-    badge.style.background = 'rgba(63,163,77,0.85)';
+    badge.textContent = '◉ lyd-leder · klik for stum';
+    badge.style.background = 'rgba(63,163,77,0.92)';
     badge.style.color = '#fff';
   } else {
-    badge.textContent = '○ stum (anden viewer er aktiv)';
-    badge.style.background = 'rgba(180,80,80,0.85)';
-    badge.style.color = '#fff';
+    badge.textContent = '○ stum · klik for at aktivere lyd';
+    badge.style.background = 'rgba(60,60,68,0.92)';
+    badge.style.color = '#F4ECD8';
   }
 }
 viewerChan?.addEventListener('message', (e) => {
   const m = e.data;
-  if (!m || m.type !== 'viewer-hello' || m.id === VIEWER_ID) return;
-  if (m.ts > leaderHeartbeatAt) {
-    isAudioLeader = false;
-    if (currentAudio) { try { currentAudio.pause(); } catch {} currentAudio = null; }
-    updateAudioStatusBadge();
+  if (!m || m.id === VIEWER_ID) return;
+  if (m.type === 'viewer-claim') {
+    // Another viewer just claimed the lead — step down.
+    if (isAudioLeader) releaseAudioLead();
   }
 });
 setTimeout(updateAudioStatusBadge, 100);
@@ -135,6 +141,58 @@ let currentSlideId: string | null = null;
 let adIframe: HTMLIFrameElement | null = null;
 let adIframeReady = false;
 const adPendingMessages: any[] = [];
+
+// ---- Sponsor ticker (rolling marquee shown on wish-loop + media slides) ----
+let tickerEl: HTMLElement | null = null;
+function ensureTicker(): HTMLElement {
+  if (tickerEl) return tickerEl;
+  tickerEl = document.createElement('div');
+  tickerEl.id = 'sponsor-ticker';
+  tickerEl.innerHTML = '<div class="ticker-track"><div class="ticker-row"></div></div>';
+  slideFrame.appendChild(tickerEl);
+  return tickerEl;
+}
+function renderTicker() {
+  const t = EVENT_META.sponsorTicker;
+  console.log('[ticker]', { meta: t, slideKind: SLIDES[currentSlideIdx]?.kind });
+  const slide = SLIDES[currentSlideIdx];
+  // Allowed only on wish-loop + media slides — lots, sponsor-index,
+  // closing, bordplan, auction-display, cover are all excluded.
+  let eligible = false;
+  let itemAllows = true;
+  if (slide?.kind === 'wish-loop' && slide.itemId) {
+    eligible = true;
+    const item = (window as any).__wishLookup?.(slide.itemId) ?? null;
+    // Use sync lookup via slides module
+    const wl = wishLoopById(slide.itemId);
+    itemAllows = wl?.showTicker !== false;
+  } else if (slide?.kind === 'media' && slide.itemId) {
+    eligible = true;
+    const md = mediaById(slide.itemId);
+    itemAllows = md?.showTicker !== false;
+  }
+  const enabled = !!(t?.enabled && eligible && itemAllows && (t.prefix || (t.sponsors && t.sponsors.length)));
+  if (!enabled) {
+    if (tickerEl) tickerEl.style.display = 'none';
+    return;
+  }
+  const el = ensureTicker();
+  el.style.display = 'block';
+  const row = el.querySelector('.ticker-row') as HTMLElement;
+  const prefix = (t.prefix || '').trim();
+  const sponsors = t.sponsors || [];
+  // Build each sponsor as its own <span> with explicit <span class="ticker-sep">
+  // dividers between every entry so margin styling actually spaces them.
+  const sponsorTags = sponsors
+    .map(s => `<span class="ticker-name">${s}</span>`)
+    .join('<span class="ticker-sep">·</span>');
+  const segment = `<span class="ticker-prefix">${prefix}</span><span class="ticker-sep">·</span>${sponsorTags}`;
+  // Duplicate the segment so the marquee can loop seamlessly. Use a
+  // blank spacer (not a "·") between segments so each loop starts cleanly
+  // with the prefix instead of a dangling divider.
+  row.innerHTML = `${segment}<span class="ticker-gap"></span>${segment}<span class="ticker-gap"></span>`;
+  el.style.setProperty('--ticker-speed', `${t.speedSec ?? 60}s`);
+}
 
 function ensureAdIframe() {
   if (adIframe) return adIframe;
@@ -322,11 +380,13 @@ function fireHammer(lotNum: string, finalPrice: number) {
 refreshLotsFromServer().then(() => {
   applyChromeFromMeta();
   if (currentSlideIdx >= 0) swapSlide(currentSlideIdx, true);
+  renderTicker();
 });
 
 sync.onLotsUpdated(async () => {
   await refreshLotsFromServer();
   applyChromeFromMeta();
+  renderTicker();
   // Push fresh team config (colors, names, lot-bindings) into the
   // persistent auction-display iframe — operator edits in generator
   // would otherwise stick to the old config until full page reload.
@@ -343,6 +403,7 @@ sync.on((state) => {
     swapSlide(currentSlideIdx);
     clearHammerOverlay();
     removeRibbon();
+    renderTicker();
   }
 
   // Ribbon mount/update based on current slide's lot + bid.

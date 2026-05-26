@@ -1278,6 +1278,7 @@ body.controller.theme-kidsaid .sound-row input[type='text'],
 body.controller.theme-kidsaid .setting-section input[type='text'],
 body.controller.theme-kidsaid .setting-section input[type='date'],
 body.controller.theme-kidsaid .setting-section input[type='number'],
+body.controller.theme-kidsaid .setting-section textarea,
 body.controller.theme-kidsaid .bonus-row input[type='number'] {
   color: #2F7A39 !important;
   background: #FFFFFF !important;

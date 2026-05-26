@@ -85,6 +85,7 @@ export interface MediaItem {
   videoAutoplay?: boolean;     // default true
   fit?: 'cover' | 'contain';   // default 'cover'
   bgColor?: string;            // letterbox colour when fit='contain'; default black
+  showTicker?: boolean;        // per-instance ticker visibility (default true)
 }
 
 export interface WishLoopItem {
@@ -110,6 +111,7 @@ export interface WishLoopItem {
   sponsorMode?: 'text' | 'logo';   // default 'text'
   sponsorMark?: string;            // text value
   sponsorLogo?: string;            // path to transparent PNG (relative to /assets/wish-loop/ or absolute)
+  showTicker?: boolean;            // per-instance ticker visibility (default true)
 }
 
 export interface Lot {
@@ -225,6 +227,12 @@ export interface EventMeta {
   theme?: 'forest' | 'marine' | 'dark' | 'kidsaid';
   soundDefaults?: SoundConfig;
   teams?: AuctionTeam[];
+  sponsorTicker?: {
+    enabled?: boolean;
+    prefix?: string;       // intro text e.g. "Vi takker vores dejlige sponsorer:"
+    sponsors?: string[];   // list of company names, no logos
+    speedSec?: number;     // seconds per full marquee loop (default 60)
+  };
 }
 export const EVENT_META: EventMeta = (lotsJson as any).meta || {};
 

@@ -147,6 +147,21 @@
           <button class="link-btn" id="bid-presets-save" style="font-size:11px">Gem præsets</button>
         </div>
         <div class="setting-section">
+          <span class="setting-section-label">Sponsor-ticker (på ønske-loop + media)</span>
+          <p class="drawer-hint">Rullende tekst-bånd nederst på wish-loop og media-slides. Global toggle.</p>
+          <label class="setting-toggle"><input type="checkbox" id="ticker-enabled" /><span>Aktiv</span></label>
+          <label class="meta-label">Prefix-tekst
+            <input type="text" id="ticker-prefix" placeholder="Vi takker vores dejlige sponsorer:" />
+          </label>
+          <label class="meta-label">Sponsor-navne (én pr linje — eller paste CSV/komma-sepa)
+            <textarea id="ticker-sponsors" rows="6" style="background:var(--bg-input);border:1px solid var(--line-2);border-radius:6px;padding:6px 8px;color:var(--text);font:inherit;font-size:12px;resize:vertical"></textarea>
+          </label>
+          <label class="meta-label">Hastighed (sek pr loop)
+            <input type="number" id="ticker-speed" min="20" max="240" step="5" value="60" />
+          </label>
+          <button class="link-btn" id="ticker-save" style="font-size:11px">Gem sponsor-ticker</button>
+        </div>
+        <div class="setting-section">
           <span class="setting-section-label">Ekstra-donation til hold</span>
           <p class="drawer-hint">Lægges på holdets live-segment (folder med bud-vokst).</p>
           <div id="bonus-team-list"></div>

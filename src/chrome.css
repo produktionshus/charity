@@ -241,6 +241,55 @@ body.viewer #slide-frame {
   background: var(--cream);
 }
 
+/* ---------- Sponsor ticker (rolling marquee) ---------- */
+#sponsor-ticker {
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  height: 84px;
+  background: rgba(3, 16, 11, 0.78);
+  backdrop-filter: blur(8px);
+  border-top: 1px solid rgba(52, 211, 153, 0.30);
+  color: var(--cream, #FFFCF3);
+  overflow: hidden;
+  z-index: 60;
+  font-family: var(--font-display-c, 'Inter', system-ui, sans-serif);
+  font-size: 31px;
+  letter-spacing: 0.08em;
+  display: none;
+}
+#sponsor-ticker .ticker-track {
+  display: flex;
+  align-items: center;
+  height: 100%;
+  white-space: nowrap;
+  animation: ticker-scroll var(--ticker-speed, 60s) linear infinite;
+  will-change: transform;
+}
+#sponsor-ticker .ticker-row {
+  display: inline-flex;
+  align-items: center;
+  height: 100%;
+}
+#sponsor-ticker .ticker-prefix {
+  font-weight: 700;
+  color: #F2DDB1;
+  margin-right: 0.4em;
+  padding-left: 24px;
+}
+#sponsor-ticker .ticker-list { font-weight: 500; }
+#sponsor-ticker .ticker-sep {
+  margin: 0 1.8em;
+  opacity: 0.55;
+}
+#sponsor-ticker .ticker-gap {
+  display: inline-block;
+  width: 4em;
+}
+@keyframes ticker-scroll {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
 /* ---------- B-style ribbon (viewer overlay) ---------- */
 .stage-ribbon {
   position: absolute;

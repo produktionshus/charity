@@ -290,6 +290,13 @@ app.put('/api/meta', (req, res) => {
     if (typeof b[k] === 'string') m[k] = b[k];
     else if (b[k] === null) delete m[k];
   }
+  if (b.sponsorTicker && typeof b.sponsorTicker === 'object') {
+    m.sponsorTicker = m.sponsorTicker || {};
+    if (typeof b.sponsorTicker.enabled === 'boolean') m.sponsorTicker.enabled = b.sponsorTicker.enabled;
+    if (typeof b.sponsorTicker.prefix === 'string')  m.sponsorTicker.prefix  = b.sponsorTicker.prefix;
+    if (Array.isArray(b.sponsorTicker.sponsors))     m.sponsorTicker.sponsors = b.sponsorTicker.sponsors.filter(s => typeof s === 'string');
+    if (typeof b.sponsorTicker.speedSec === 'number') m.sponsorTicker.speedSec = b.sponsorTicker.speedSec;
+  }
   if (Array.isArray(b.teams)) {
     m.teams = b.teams.map(t => ({
       id: t.id, name: t.name || '',
@@ -427,11 +434,31 @@ app.post('/api/lots', (req, res) => {
   res.json(newItem);
 });
 
+// Fields that should stay in sync across every wish-loop item so all
+// Ønsketræ slides share the same look — only cards + label + active vary
+// per instance.
+const WISH_LOOP_SHARED_FIELDS = [
+  'videoSrc', 'direction', 'perCardSeconds', 'stackDepth', 'pauseOnHover',
+  'videoBlur', 'videoDarken', 'chrome',
+  'eyebrowPretitle', 'eyebrowTitle',
+  'sponsorEnabled', 'sponsorPretitle', 'sponsorMode', 'sponsorMark', 'sponsorLogo',
+];
+
 app.put('/api/lots/:id', (req, res) => {
   const lot = lotsFile.lots.find(l => l.id === req.params.id);
   if (!lot) return res.status(404).json({ error: 'Not found' });
   Object.assign(lot, req.body);   // shallow merge of provided fields
   lot.id = req.params.id;          // never let the id be overwritten by body
+  // Propagate shared wish-loop config to every other wish-loop item so the
+  // operator only has to tweak look-and-feel once.
+  if (lot.kind === 'wish-loop') {
+    for (const other of lotsFile.lots) {
+      if (other.kind !== 'wish-loop' || other.id === lot.id) continue;
+      for (const k of WISH_LOOP_SHARED_FIELDS) {
+        if (k in lot) other[k] = lot[k];
+      }
+    }
+  }
   saveLots(lotsFile);
   rebuildAuctionState();
   broadcastLotsUpdated();

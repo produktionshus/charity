@@ -137,6 +137,7 @@ const wlDarkenEl     = document.getElementById('wl-darken')      as HTMLInputEle
 const wlDarkenValEl  = document.getElementById('wl-darken-val')!;
 const wlChromeEl     = document.getElementById('wl-chrome')      as HTMLInputElement;
 const wlPauseHoverEl = document.getElementById('wl-pause-hover') as HTMLInputElement;
+const wlShowTickerEl = document.getElementById('wl-show-ticker') as HTMLInputElement;
 const wlAppleListEl  = document.getElementById('wl-apple-list')!;
 const wlAppleUploadEl = document.getElementById('wl-apple-upload') as HTMLInputElement;
 const wlSaveBtn      = document.getElementById('wl-save')!;
@@ -167,6 +168,7 @@ const mdBgEl       = document.getElementById('md-bg')       as HTMLInputElement;
 const mdAutoplayEl = document.getElementById('md-autoplay') as HTMLInputElement;
 const mdLoopEl     = document.getElementById('md-loop')     as HTMLInputElement;
 const mdMutedEl    = document.getElementById('md-muted')    as HTMLInputElement;
+const mdShowTickerEl = document.getElementById('md-show-ticker') as HTMLInputElement;
 const mdVideoOptsEl = document.getElementById('md-video-opts')!;
 const mdSaveBtn    = document.getElementById('md-save')!;
 
@@ -1295,6 +1297,7 @@ function populateMediaForm(item: MediaItem) {
   mdAutoplayEl.checked = item.videoAutoplay ?? true;
   mdLoopEl.checked     = item.videoLoop     ?? true;
   mdMutedEl.checked    = item.videoMuted    ?? true;
+  mdShowTickerEl.checked = item.showTicker !== false;
   mdVideoOptsEl.style.display = mdModeEl.value === 'video' ? '' : 'none';
 }
 function readMediaForm(): Partial<MediaItem> {
@@ -1309,6 +1312,7 @@ function readMediaForm(): Partial<MediaItem> {
     videoAutoplay: mdAutoplayEl.checked,
     videoLoop:     mdLoopEl.checked,
     videoMuted:    mdMutedEl.checked,
+    showTicker:    mdShowTickerEl.checked,
   };
 }
 function mdOnChange() {
@@ -1316,7 +1320,7 @@ function mdOnChange() {
   setDirty(true);
   refreshPreview();
 }
-[mdActiveEl, mdLabelEl, mdModeEl, mdSrcEl, mdAltEl, mdFitEl, mdBgEl, mdAutoplayEl, mdLoopEl, mdMutedEl]
+[mdActiveEl, mdLabelEl, mdModeEl, mdSrcEl, mdAltEl, mdFitEl, mdBgEl, mdAutoplayEl, mdLoopEl, mdMutedEl, mdShowTickerEl]
   .forEach(el => el.addEventListener('input', mdOnChange));
 mdUploadEl.addEventListener('change', async () => {
   const file = mdUploadEl.files?.[0];
@@ -1419,6 +1423,7 @@ function populateWishLoopForm(item: WishLoopItem) {
   wlDarkenValEl.textContent = parseFloat(wlDarkenEl.value).toFixed(2);
   wlChromeEl.checked     = item.chrome ?? true;
   wlPauseHoverEl.checked = item.pauseOnHover ?? true;
+  wlShowTickerEl.checked = item.showTicker !== false;
   wlSelectedCards = (item.cards || []).map(c => ({ ...c }));
   renderWishLoopAppleList();
 }
@@ -1441,11 +1446,12 @@ function readWishLoopForm(): Partial<WishLoopItem> {
     videoDarken: parseFloat(wlDarkenEl.value) || 0,
     chrome: wlChromeEl.checked,
     pauseOnHover: wlPauseHoverEl.checked,
+    showTicker: wlShowTickerEl.checked,
     cards: wlSelectedCards,
   };
 }
 function wlOnChange() { setDirty(true); refreshPreview(); }
-[wlActiveEl, wlLabelEl, wlSponsorEl, wlVideoSrcEl, wlDirectionEl, wlStackDepthEl, wlChromeEl, wlPauseHoverEl,
+[wlActiveEl, wlLabelEl, wlSponsorEl, wlVideoSrcEl, wlDirectionEl, wlStackDepthEl, wlChromeEl, wlPauseHoverEl, wlShowTickerEl,
  wlEyebrowPreEl, wlEyebrowTitleEl, wlSponsorEnabledEl, wlSponsorPreEl, wlSponsorModeEl, wlSponsorLogoEl]
   .forEach(el => el.addEventListener('input', wlOnChange));
 wlPerCardEl.addEventListener('input', () => { wlPerCardValEl.textContent = `${wlPerCardEl.value}s`; wlOnChange(); });

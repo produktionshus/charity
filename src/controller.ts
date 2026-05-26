@@ -552,6 +552,7 @@ sync.onLotsUpdated(async () => {
   renderPresetChips();
   applyEventMeta();
   renderBonusPanel();
+  loadTickerForm();
   // Force a re-render: invalidate the slide-cache markers so the next state
   // update rebuilds Nuværende + Næste with fresh data.
   lastRenderedCurrentIdx = -999;
@@ -706,6 +707,41 @@ function renderBonusPanel() {
   });
 }
 renderBonusPanel();
+
+// ---- Sponsor ticker editor ----
+const tickerEnabledEl = document.getElementById('ticker-enabled') as HTMLInputElement | null;
+const tickerPrefixEl  = document.getElementById('ticker-prefix')  as HTMLInputElement | null;
+const tickerSponsorsEl = document.getElementById('ticker-sponsors') as HTMLTextAreaElement | null;
+const tickerSpeedEl   = document.getElementById('ticker-speed')   as HTMLInputElement | null;
+const tickerSaveBtn   = document.getElementById('ticker-save')    as HTMLButtonElement | null;
+function loadTickerForm() {
+  if (!tickerEnabledEl) return;
+  const t = EVENT_META.sponsorTicker || {};
+  tickerEnabledEl.checked = !!t.enabled;
+  tickerPrefixEl!.value   = t.prefix ?? 'Vi takker vores dejlige sponsorer:';
+  tickerSponsorsEl!.value = (t.sponsors || []).join('\n');
+  tickerSpeedEl!.value    = String(t.speedSec ?? 60);
+}
+loadTickerForm();
+tickerSaveBtn?.addEventListener('click', async () => {
+  if (!tickerEnabledEl) return;
+  tickerSaveBtn.disabled = true;
+  try {
+    await fetch('/api/meta', {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        sponsorTicker: {
+          enabled:  tickerEnabledEl.checked,
+          prefix:   tickerPrefixEl!.value,
+          // Accept paste from CSV (comma-separated) or newline-separated lists.
+          sponsors: tickerSponsorsEl!.value.split(/[\n,;]+/).map(s => s.trim()).filter(Boolean),
+          speedSec: parseFloat(tickerSpeedEl!.value) || 60,
+        },
+      }),
+    });
+  } catch {}
+  tickerSaveBtn.disabled = false;
+});
 
 // ---- Sound countdown mirror (matches auctioneer overlay) ----
 const ctrlSoundCountdownEl = document.getElementById('ctrl-sound-countdown')! as HTMLDivElement;
