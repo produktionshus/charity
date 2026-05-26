@@ -287,7 +287,10 @@ function buildSlides(): Slide[] {
   const slides: Slide[] = [];
   let hasCover = false;
   let hasClosing = false;
-  let hasSponsorIndex = false;
+  // Pre-scan so an explicit sponsor-index item placed AFTER the first lot
+  // still suppresses the auto-emit fallback (otherwise we'd inject one
+  // before the first lot AND emit the user's item later).
+  let hasSponsorIndex = ALL_ITEMS.some(i => i.active && isSponsorIndex(i));
   let lotsEmitted = false;
   const flushSponsorIndex = () => {
     if (!slides.some(s => s.kind === 'sponsor-index')) {

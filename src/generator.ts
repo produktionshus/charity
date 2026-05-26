@@ -275,6 +275,13 @@ async function loadBank() {
     const data = await api('/api/lots');
     itemsBank = data.lots;
     lotsBank = itemsBank.filter(i => itemKind(i) === 'lot') as Lot[];
+    // Refresh EVENT_META mirror so meta-driven editors (auction-display
+    // team config, sponsor ticker, ...) reflect server state instead of
+    // the stale lots.json snapshot imported at boot.
+    if (data.meta) {
+      for (const k of Object.keys(EVENT_META)) delete (EVENT_META as any)[k];
+      Object.assign(EVENT_META, data.meta);
+    }
     statusEl.textContent = `${itemsBank.length} items indlæst (${lotsBank.length} lots)`;
     renderList();
     // Restore selection across reload — sessionStorage survives Vite's
@@ -1235,7 +1242,7 @@ function populateAuctionDisplayForm(item: AuctionDisplayItem) {
   adLabelEl.value = item.label ?? '';
   adScreenEl.value = item.screen || 'intro';
   // Teams live globally in EVENT_META (shared across all AD slides).
-  const teams = (EVENT_META.teams && EVENT_META.teams.length === 4) ? EVENT_META.teams : defaultTeams();
+  const teams = (EVENT_META.teams && EVENT_META.teams.length) ? EVENT_META.teams : defaultTeams();
   adTeamsDraft = teams.map(t => ({ ...t, lot: t.lot ? { ...t.lot } : { title: '', description: '' } }));
   renderAdTeamsList();
   // State now lives per-item.

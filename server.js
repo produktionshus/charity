@@ -129,7 +129,7 @@ function buildServerSlides() {
   const out = [];
   let hasCover = false;
   let hasClosing = false;
-  let hasSponsorIndex = false;
+  let hasSponsorIndex = lots().some(i => i.active && i.kind === 'sponsor-index');
   let lotsEmitted = false;
   for (const item of lots()) {
     if (!item.active) continue;
