@@ -382,7 +382,7 @@ app.post('/api/lots', (req, res) => {
       src: req.body.src || '',
       alt: req.body.alt || '',
       videoMuted:    req.body.videoMuted    ?? true,
-      videoLoop:     req.body.videoLoop     ?? true,
+      videoLoop:     req.body.videoLoop     ?? false,
       videoAutoplay: req.body.videoAutoplay ?? true,
       fit:           req.body.fit           || 'cover',
       bgColor:       req.body.bgColor       || '#000',

@@ -44,6 +44,18 @@ function unlockAudio() {
   a.muted = true;
   a.play().catch(() => {});
   hideAudioBanner();
+  // Also unmute any media-slide videos that wanted sound but had to start
+  // muted to satisfy the browser autoplay policy.
+  document.querySelectorAll<HTMLVideoElement>('video[data-wants-unmuted="1"]').forEach(v => {
+    try { v.muted = false; } catch {}
+  });
+}
+// Future videos mounted after the initial unlock should also un-mute.
+function unmuteWantedVideos(root: ParentNode) {
+  if (!audioUnlocked) return;
+  root.querySelectorAll<HTMLVideoElement>('video[data-wants-unmuted="1"]').forEach(v => {
+    try { v.muted = false; } catch {}
+  });
 }
 document.addEventListener('click', unlockAudio, { once: true });
 document.addEventListener('keydown', unlockAudio, { once: true });
@@ -62,6 +74,12 @@ function claimAudioLead() {
   isAudioLeader = true;
   viewerChan?.postMessage({ type: 'viewer-claim', id: VIEWER_ID, ts: Date.now() });
   updateAudioStatusBadge();
+  // The click itself counts as a user gesture — unlock audio AND retry
+  // any media-slide videos that may have failed to autoplay at mount.
+  unlockAudio();
+  document.querySelectorAll<HTMLVideoElement>('video').forEach(v => {
+    v.play().catch(() => {});
+  });
 }
 function releaseAudioLead() {
   isAudioLeader = false;
@@ -81,13 +99,22 @@ function updateAudioStatusBadge() {
     document.body.appendChild(badge);
   }
   if (isAudioLeader) {
-    badge.textContent = '◉ lyd-leder · klik for stum';
+    // Compact dot once audio is live — operator doesn't need a label.
+    badge.textContent = '●';
+    badge.title = 'Lyd til — klik for at mute';
     badge.style.background = 'rgba(63,163,77,0.92)';
     badge.style.color = '#fff';
+    badge.style.padding = '4px 8px';
+    badge.style.fontSize = '13px';
+    badge.style.letterSpacing = '0';
   } else {
     badge.textContent = '○ stum · klik for at aktivere lyd';
+    badge.title = '';
     badge.style.background = 'rgba(60,60,68,0.92)';
     badge.style.color = '#F4ECD8';
+    badge.style.padding = '5px 10px';
+    badge.style.fontSize = '11px';
+    badge.style.letterSpacing = '0.1em';
   }
 }
 viewerChan?.addEventListener('message', (e) => {
@@ -270,6 +297,12 @@ function swapSlide(idx: number, force = false) {
   slideFrame.insertBefore(next, slideFrame.firstChild);
   fitToViewport(slideFrame, next);
   next.classList.add('is-visible');
+  unmuteWantedVideos(next);
+  // Some browsers don't honour the inline autoplay attribute when the
+  // video is mounted via innerHTML — kick playback off manually.
+  next.querySelectorAll<HTMLVideoElement>('video').forEach(v => {
+    v.play().catch(() => { /* will resume on first user gesture */ });
+  });
   const previous = currentEl;
   if (previous) previous.classList.add('entering');
   currentEl = next;
@@ -458,16 +491,23 @@ sync.on((state) => {
     const iframe = currentEl?.querySelector('iframe') as HTMLIFrameElement | null;
     if (iframe?.contentWindow) {
       const teams = (EVENT_META.teams || []).map(t => {
-        // Sum bids/finalPrice across every lot bound to this team
-        // (supports both legacy lotId and the new lotIds[] array).
-        let bid = 0;
-        for (const id of teamLotIds(t)) {
+        // Per-lot breakdown so the bar can render vertical dividers
+        // between each lot's contribution to the live segment.
+        const ids = teamLotIds(t);
+        const lotAmounts: number[] = ids.map(id => {
           const ls = state.lots?.[id];
-          if (!ls) continue;
-          if (ls.status === 'sold' && typeof ls.finalPrice === 'number') bid += ls.finalPrice;
-          else if (ls.bids?.length) bid += ls.bids[ls.bids.length - 1];
-        }
-        return { ...t, auctionAmount: bid + (t.bonusAmount || 0) };
+          if (!ls) return 0;
+          if (ls.status === 'sold' && typeof ls.finalPrice === 'number') return ls.finalPrice;
+          if (ls.bids?.length) return ls.bids[ls.bids.length - 1];
+          return 0;
+        });
+        const bidTotal = lotAmounts.reduce((s, v) => s + v, 0);
+        return {
+          ...t,
+          auctionAmount: bidTotal + (t.bonusAmount || 0),
+          lotAmounts,                     // [amt for lot1, amt for lot2, ...]
+          bonusAmount: t.bonusAmount || 0,
+        };
       });
       iframe.contentWindow.postMessage({ type: 'auction-display:teams', teams }, '*');
     }

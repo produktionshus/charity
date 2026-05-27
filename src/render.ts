@@ -189,10 +189,13 @@ export function renderSponsorIndex(item?: SponsorIndexItem): string {
   const cells = LOTS.map((l, i) => {
     const t = FIRST_CELL + i * CELL_STAGGER;
     const dn = displayNumFor(l.id);
+    const mainSrc = l.sponsorLogoSrc || `/assets/logo/logo-lot-${l.id}.png`;
+    const logos = [mainSrc, ...(l.extraSponsorLogos || [])];
+    const logoImgs = logos.map(src => `<img class="sponsor-cell-logo" src="${src}" alt="" />`).join('');
     return `
-      <div class="sponsor-cell build-item" data-lot="${l.id}" style="transition-delay:${t}ms">
+      <div class="sponsor-cell build-item${logos.length > 1 ? ' sponsor-cell--multi' : ''}" data-lot="${l.id}" style="transition-delay:${t}ms">
         <div class="sponsor-cell-num">${dn}</div>
-        <img class="sponsor-cell-logo" src="/assets/logo/logo-lot-${l.id}.png" alt="" />
+        <div class="sponsor-cell-logos">${logoImgs}</div>
       </div>
     `;
   }).join('');
@@ -266,11 +269,15 @@ export function renderMedia(item?: MediaItem): string {
   const bg = item.bgColor || '#000';
   const fit = item.fit === 'contain' ? 'contain' : 'cover';
   if (item.mode === 'video') {
-    const muted = item.videoMuted !== false;     // default true
-    const loop = item.videoLoop !== false;        // default true
+    const wantsUnmuted = item.videoMuted === false;
+    const loop = item.videoLoop === true;          // default 1-shot
     const autoplay = item.videoAutoplay !== false; // default true
+    // Always start muted so the browser allows autoplay on screens without
+    // user interaction (the viewer/projector screen). If the operator
+    // wants sound, a click-to-unmute hint is shown until the page gets a
+    // user gesture, then the video un-mutes automatically.
     return `<div style="width:100%;height:100%;background:${bg};position:relative;overflow:hidden">
-      <video src="${item.src}" ${autoplay ? 'autoplay' : ''} ${muted ? 'muted' : ''} ${loop ? 'loop' : ''} playsinline style="width:100%;height:100%;object-fit:${fit};display:block"></video>
+      <video src="${item.src}" ${autoplay ? 'autoplay' : ''} muted ${loop ? 'loop' : ''} playsinline data-wants-unmuted="${wantsUnmuted ? '1' : '0'}" style="width:100%;height:100%;object-fit:${fit};display:block"></video>
     </div>`;
   }
   return `<div style="width:100%;height:100%;background:${bg};position:relative;overflow:hidden">

@@ -189,6 +189,27 @@ function TeamBar({
             boxShadow: live > 0 && focused ? `inset 0 0 12px ${palette.base}` : "none",
           }}
         />
+        {/* Vertical dividers between each lot's contribution within the
+            live segment, when a team has multiple lots. */}
+        {revealed && showAuctionPart && Array.isArray(team.lotAmounts) && team.lotAmounts.length > 1 && (() => {
+          let running = pre;
+          return team.lotAmounts.slice(0, -1).map((amt, i) => {
+            running += amt;
+            const x = (running / maxValue) * 100;
+            return (
+              <div key={`div-${i}`} style={{
+                position: 'absolute',
+                left: `${x}%`,
+                top: 2, bottom: 2,
+                width: 2,
+                background: 'rgba(0,0,0,0.32)',
+                transform: 'translateX(-1px)',
+                transition: 'left 1.0s cubic-bezier(.4,.0,.2,1)',
+                pointerEvents: 'none',
+              }} />
+            );
+          });
+        })()}
 
         {/* Split label at the seam between base + live (only when live exists) */}
         {revealed && showBaseLabel && liveW > 0 && preW > 12 && (

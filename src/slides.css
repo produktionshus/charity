@@ -288,10 +288,29 @@
   color: var(--green);
   line-height: 1;
 }
+.sponsor-cell-logos {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 4px 8px;
+  width: 100%;
+  height: 100%;
+}
 .sponsor-cell-logo {
   max-width: 90%;
   max-height: var(--cell-logo-cap, 0.85in);
   object-fit: contain;
+}
+.sponsor-cell--multi .sponsor-cell-logo {
+  max-width: calc(50% - 4px);
+  max-height: calc(var(--cell-logo-cap, 0.85in) * 0.85);
+}
+.sponsor-cell--multi .sponsor-cell-logos { gap: 2px 6px; }
+/* 3+ logos shrink further so they fit a single cell. */
+.sponsor-cell--multi .sponsor-cell-logos:has(> .sponsor-cell-logo:nth-child(3)) .sponsor-cell-logo {
+  max-width: calc(50% - 4px);
+  max-height: calc(var(--cell-logo-cap, 0.85in) * 0.55);
 }
 /* Per-lot trim for visually-heavy (square / tall) logos so they sit at the
    same visual weight as the wordmarks. Scale via wrapper since max-height

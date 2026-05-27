@@ -899,9 +899,11 @@ function openOverridePopover(anchor: HTMLElement, tableId: string) {
   const pop = document.createElement('div');
   pop.className = 'bp-override-pop';
   const rect = anchor.getBoundingClientRect();
-  const parentRect = previewFrame.getBoundingClientRect();
-  pop.style.left = `${rect.right - parentRect.left + 8}px`;
-  pop.style.top  = `${rect.top - parentRect.top}px`;
+  // Mount on document.body so the preview-frame's overflow:hidden
+  // doesn't clip the popover (and so high z-index is meaningful).
+  pop.style.position = 'fixed';
+  pop.style.left = `${rect.right + 8}px`;
+  pop.style.top  = `${rect.top}px`;
   pop.innerHTML = `
     <span class="pop-id">${tableId}</span>
     ${isGhost
@@ -913,7 +915,7 @@ function openOverridePopover(anchor: HTMLElement, tableId: string) {
            <button class="pop-del">${current.active === false ? 'Aktiver' : 'Deaktiver'}</button>
          </div>`}
   `;
-  previewFrame.appendChild(pop);
+  document.body.appendChild(pop);
   popoverEl = pop;
 
   if (isGhost) {
@@ -1181,14 +1183,22 @@ function renderAdTeamsList() {
       </span>
       <input type="number" data-idx="${idx}" data-field="preAmount" value="${tm.preAmount || 0}" min="0" step="500" placeholder="pre kr" />
       <span class="ad-lot-pair">
-        <select data-idx="${idx}" data-field="lot1Id">
-          <option value="">(lot 1)</option>
-          ${lots.map(l => `<option value="${l.id}" ${(tm.lotIds?.[0] || tm.lotId) === l.id ? 'selected' : ''}>${(l.title || l.id).slice(0, 22)}</option>`).join('')}
-        </select>
-        <select data-idx="${idx}" data-field="lot2Id">
-          <option value="">(lot 2)</option>
-          ${lots.map(l => `<option value="${l.id}" ${tm.lotIds?.[1] === l.id ? 'selected' : ''}>${(l.title || l.id).slice(0, 22)}</option>`).join('')}
-        </select>
+        ${(() => {
+          const existing = tm.lotIds && tm.lotIds.length ? [...tm.lotIds] : (tm.lotId ? [tm.lotId] : []);
+          // Render every existing lot + one trailing blank slot so the
+          // operator can always add another. Cap to 12 to keep the row
+          // tractable.
+          const slotCount = Math.min(12, existing.length + 1);
+          let out = '';
+          for (let i = 0; i < slotCount; i++) {
+            const current = existing[i] || '';
+            out += `<select data-idx="${idx}" data-field="lotSlot" data-slot="${i}">
+              <option value="">(lot ${i + 1})</option>
+              ${lots.map(l => `<option value="${l.id}" ${current === l.id ? 'selected' : ''}>${(l.title || l.id).slice(0, 22)}</option>`).join('')}
+            </select>`;
+          }
+          return out;
+        })()}
       </span>
       <input type="text" class="ad-lot-title" data-idx="${idx}" data-field="lotTitle" value="${(tm.lot?.title || '').replace(/"/g, '&quot;')}" placeholder="Lot-titel (vises i pause/auction)" />
       <input type="text" class="ad-lot-desc" data-idx="${idx}" data-field="lotDesc" value="${(tm.lot?.description || '').replace(/"/g, '&quot;')}" placeholder="Lot-beskrivelse" />
@@ -1206,13 +1216,16 @@ adTeamsListEl.addEventListener('input', (e) => {
   else if (field === 'baseColor') tm.baseColor = t.value;
   else if (field === 'liveColor') tm.liveColor = t.value;
   else if (field === 'preAmount') tm.preAmount = parseInt(t.value, 10) || 0;
-  else if (field === 'lot1Id' || field === 'lot2Id') {
-    const slot = field === 'lot1Id' ? 0 : 1;
+  else if (field === 'lotSlot') {
+    const slot = parseInt((t as HTMLSelectElement).dataset.slot || '0', 10);
     const current = tm.lotIds ? [...tm.lotIds] : (tm.lotId ? [tm.lotId] : []);
-    while (current.length < 2) current.push('');
+    while (current.length <= slot) current.push('');
     current[slot] = t.value;
     tm.lotIds = current.filter(Boolean);
     tm.lotId = undefined;     // migrate legacy field
+    // Re-render so a fresh trailing empty slot appears once the operator
+    // just picked the previously-blank one.
+    renderAdTeamsList();
   }
   else if (field === 'lotId') tm.lotId = t.value || undefined;
   else if (field === 'lotTitle') { tm.lot = { ...(tm.lot || {}), title: t.value }; }
@@ -1316,7 +1329,7 @@ function populateMediaForm(item: MediaItem) {
   mdFitEl.value      = item.fit   ?? 'cover';
   mdBgEl.value       = item.bgColor ?? '#000000';
   mdAutoplayEl.checked = item.videoAutoplay ?? true;
-  mdLoopEl.checked     = item.videoLoop     ?? true;
+  mdLoopEl.checked     = item.videoLoop     ?? false;
   mdMutedEl.checked    = item.videoMuted    ?? true;
   mdShowTickerEl.checked = item.showTicker !== false;
   mdVideoOptsEl.style.display = mdModeEl.value === 'video' ? '' : 'none';
