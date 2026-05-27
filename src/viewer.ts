@@ -298,10 +298,19 @@ function swapSlide(idx: number, force = false) {
   fitToViewport(slideFrame, next);
   next.classList.add('is-visible');
   unmuteWantedVideos(next);
-  // Some browsers don't honour the inline autoplay attribute when the
-  // video is mounted via innerHTML — kick playback off manually.
+  // Some browsers (notably iPad Safari) don't honour autoplay set as an
+  // HTML attribute when the video is mounted via innerHTML. Set the
+  // properties explicitly + force playsInline + kick playback off.
   next.querySelectorAll<HTMLVideoElement>('video').forEach(v => {
-    v.play().catch(() => { /* will resume on first user gesture */ });
+    v.muted = true;                     // required for autoplay on iOS
+    v.playsInline = true;
+    v.setAttribute('webkit-playsinline', 'true');
+    v.autoplay = true;
+    const tryPlay = () => v.play().catch(() => {});
+    tryPlay();
+    // Some iOS versions need the play call after `canplay` fires.
+    v.addEventListener('canplay', tryPlay, { once: true });
+    v.addEventListener('loadedmetadata', tryPlay, { once: true });
   });
   const previous = currentEl;
   if (previous) previous.classList.add('entering');
