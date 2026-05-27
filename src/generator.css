@@ -637,6 +637,33 @@ body.theme-kidsaid .gen-edit-id code {
   font-size: 11px;
 }
 
+/* Multi-image hero editor blocks */
+.hero-img-editor {
+  display: flex; flex-direction: column; gap: 10px;
+  padding: 12px;
+  margin-bottom: 10px;
+  /* Transparent (not bg-card) so the form's light labels stay readable —
+     bg-card is white in the KidsAid theme and washed out the text. */
+  background: transparent;
+  border: 1px solid var(--line-c2);
+  border-radius: 8px;
+}
+.hero-img-editor-head {
+  font-family: var(--font-mono-c);
+  font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--text-c3);
+}
+/* Labels inside the editor are not direct children of .gen-form, so the
+   global .gen-form > label color rule misses them — restate it here. */
+.hero-img-editor > label {
+  display: flex; flex-direction: column; gap: 6px;
+  font-family: var(--font-mono-c);
+  font-size: 10.5px; letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--text-c3);
+}
+.hero-img-editor .upload-cell { padding: 0; background: none; border: 0; }
+/* .hero-split-row visibility toggled inline in JS (only shown for multi-image) */
+
 .gen-save-row { align-items: center; }
 .gen-save-meta {
   font-family: var(--font-mono-c);

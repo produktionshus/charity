@@ -89,21 +89,95 @@
             <label class="setting-toggle"><input type="checkbox" id="f-mirrored" /><span>Mirrored (profile only)</span></label>
           </div>
 
-          <div class="row">
-            <label>Fokus X %
-              <input type="range" id="f-focal-x" min="0" max="100" step="1" value="50" />
-              <span class="range-val" id="f-focal-x-val">50%</span>
+          <label>Antal hero-billeder
+            <select id="f-img-count">
+              <option value="1">1 billede</option>
+              <option value="2">2 billeder</option>
+              <option value="3">3 billeder</option>
+            </select>
+            <span class="range-val" id="f-img-count-hint"></span>
+          </label>
+
+          <!-- Image 1 (primary) -->
+          <div class="hero-img-editor" id="hero-img-1">
+            <div class="hero-img-editor-head">Billede 1 (primær)</div>
+            <div class="upload-cell">
+              <img id="hero-preview" class="upload-preview" />
+              <input type="file" id="f-hero" accept="image/*" />
+            </div>
+            <div class="row">
+              <label>Fokus X %
+                <input type="range" id="f-focal-x" min="0" max="100" step="1" value="50" />
+                <span class="range-val" id="f-focal-x-val">50%</span>
+              </label>
+              <label>Fokus Y %
+                <input type="range" id="f-focal-y" min="0" max="100" step="1" value="50" />
+                <span class="range-val" id="f-focal-y-val">50%</span>
+              </label>
+            </div>
+            <label>Scale % (zoom)
+              <input type="range" id="f-scale" min="40" max="220" step="5" value="100" />
+              <span class="range-val" id="f-scale-val">100%</span>
             </label>
-            <label>Fokus Y %
-              <input type="range" id="f-focal-y" min="0" max="100" step="1" value="50" />
-              <span class="range-val" id="f-focal-y-val">50%</span>
+            <label class="hero-split-row">Andel / vægt
+              <input type="range" id="f-split-1" min="1" max="100" step="1" value="50" />
+              <span class="range-val" id="f-split-1-val">50</span>
             </label>
           </div>
 
-          <label>Scale % (zoom på hero)
-            <input type="range" id="f-scale" min="40" max="220" step="5" value="100" />
-            <span class="range-val" id="f-scale-val">100%</span>
-          </label>
+          <!-- Image 2 -->
+          <div class="hero-img-editor" id="hero-img-2" style="display:none">
+            <div class="hero-img-editor-head">Billede 2</div>
+            <div class="upload-cell">
+              <img id="hero-preview-2" class="upload-preview" />
+              <input type="file" id="f-hero-2" accept="image/*" />
+            </div>
+            <div class="row">
+              <label>Fokus X %
+                <input type="range" id="f-focal-x-2" min="0" max="100" step="1" value="50" />
+                <span class="range-val" id="f-focal-x-2-val">50%</span>
+              </label>
+              <label>Fokus Y %
+                <input type="range" id="f-focal-y-2" min="0" max="100" step="1" value="50" />
+                <span class="range-val" id="f-focal-y-2-val">50%</span>
+              </label>
+            </div>
+            <label>Scale % (zoom)
+              <input type="range" id="f-scale-2" min="40" max="220" step="5" value="100" />
+              <span class="range-val" id="f-scale-2-val">100%</span>
+            </label>
+            <label class="hero-split-row">Andel / vægt
+              <input type="range" id="f-split-2" min="1" max="100" step="1" value="50" />
+              <span class="range-val" id="f-split-2-val">50</span>
+            </label>
+          </div>
+
+          <!-- Image 3 -->
+          <div class="hero-img-editor" id="hero-img-3" style="display:none">
+            <div class="hero-img-editor-head">Billede 3</div>
+            <div class="upload-cell">
+              <img id="hero-preview-3" class="upload-preview" />
+              <input type="file" id="f-hero-3" accept="image/*" />
+            </div>
+            <div class="row">
+              <label>Fokus X %
+                <input type="range" id="f-focal-x-3" min="0" max="100" step="1" value="50" />
+                <span class="range-val" id="f-focal-x-3-val">50%</span>
+              </label>
+              <label>Fokus Y %
+                <input type="range" id="f-focal-y-3" min="0" max="100" step="1" value="50" />
+                <span class="range-val" id="f-focal-y-3-val">50%</span>
+              </label>
+            </div>
+            <label>Scale % (zoom)
+              <input type="range" id="f-scale-3" min="40" max="220" step="5" value="100" />
+              <span class="range-val" id="f-scale-3-val">100%</span>
+            </label>
+            <label class="hero-split-row">Andel / vægt
+              <input type="range" id="f-split-3" min="1" max="100" step="1" value="50" />
+              <span class="range-val" id="f-split-3-val">50</span>
+            </label>
+          </div>
 
           <label id="row-horizon-caption">Horizon — caption-stribe højde (inches)
             <input type="range" id="f-horizon-caption" min="1.2" max="4" step="0.05" value="2.25" />
@@ -119,11 +193,6 @@
           </label>
 
           <div class="upload-grid">
-            <div class="upload-cell">
-              <label>Hero-billede</label>
-              <img id="hero-preview" class="upload-preview" />
-              <input type="file" id="f-hero" accept="image/*" />
-            </div>
             <div class="upload-cell">
               <label>Sponsor-logo (PNG transparent)</label>
               <img id="logo-preview" class="upload-preview logo" />

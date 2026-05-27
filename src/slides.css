@@ -123,6 +123,30 @@
   color: var(--green-dark);
 }
 
+/* ---- Multi-image hero split ----
+   row = horizon (side-by-side), column = profile (stacked).
+   Each .hero-panel clips its own .hero-img (which keeps the bg + scale
+   zoom), and adjacent panels are divided by a thin green line. */
+.hero-split {
+  position: absolute;
+  inset: 0;
+  display: flex;
+}
+.hero-split--row { flex-direction: row; }
+.hero-split--column { flex-direction: column; }
+.hero-split .hero-panel {
+  position: relative;
+  overflow: hidden;
+  min-width: 0;
+  min-height: 0;
+}
+.hero-split .hero-panel .hero-img {
+  width: 100%;
+  height: 100%;
+}
+.hero-split--row .hero-panel + .hero-panel { border-left: 2px solid var(--green); }
+.hero-split--column .hero-panel + .hero-panel { border-top: 2px solid var(--green); }
+
 /* ---- Bullets (shared) ---- */
 .bullets {
   list-style: none;

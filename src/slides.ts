@@ -132,6 +132,14 @@ export interface Lot {
   titleSizePt?: number;             // horizon title size override
   heroExt?: string;                 // hero file extension (jpg|png|webp...), default 'jpg'
   heroScale?: number;               // zoom multiplier on the hero image, default 1.0
+  // Additional hero images beyond the primary one (max 2 extra -> 3 total).
+  // Index 0 -> image 2 (file lot-<id>_FINAL2.<ext>), index 1 -> image 3.
+  // When empty/absent the lot renders as a single-image hero (unchanged).
+  // Horizon stacks them side-by-side (row), profile stacks them vertically.
+  heroImages?: HeroImage[];
+  // Flex weights per panel, including the primary image at index 0.
+  // length === 1 + heroImages.length. Absent -> equal split.
+  heroSplit?: number[];
   sound?: SoundConfig;              // per-lot sound config (persisted to lots.json)
   // Optional override path for the main sponsor logo (e.g. when using an
   // .svg instead of the default logo-lot-<id>.png).
@@ -143,6 +151,12 @@ export interface Lot {
   // width are in inches; defaults are 2.25in and 5.8in respectively.
   horizonCaptionIn?: number;
   profilePhotoIn?: number;
+}
+
+export interface HeroImage {
+  ext?: string;      // file extension, default 'jpg'
+  focal?: string;    // CSS object-position, e.g. '50% 70%'
+  scale?: number;    // zoom multiplier, default 1.0
 }
 
 export interface SoundConfig {

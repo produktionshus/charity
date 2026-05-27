@@ -59,6 +59,59 @@ const extraLogoListEl    = document.getElementById('extra-logo-list')!;
 const heroPreview = document.getElementById('hero-preview') as HTMLImageElement;
 const logoPreview = document.getElementById('logo-preview') as HTMLImageElement;
 
+// ---- Multi-image hero controls (up to 3) ----
+// Index 0 reuses the primary-image element refs above; 2 & 3 are looked up
+// fresh. Driving them through one array lets populate/read/wire loop uniformly.
+const fImgCount = document.getElementById('f-img-count') as HTMLSelectElement;
+const fImgCountHint = document.getElementById('f-img-count-hint')!;
+interface HeroCtl {
+  block: HTMLElement;
+  upload: HTMLInputElement; preview: HTMLImageElement;
+  fx: HTMLInputElement; fxVal: HTMLElement;
+  fy: HTMLInputElement; fyVal: HTMLElement;
+  scale: HTMLInputElement; scaleVal: HTMLElement;
+  split: HTMLInputElement; splitVal: HTMLElement; splitRow: HTMLElement;
+}
+function heroCtlN(n: number): HeroCtl {
+  const s = `-${n}`;
+  const split = document.getElementById(`f-split-${n}`) as HTMLInputElement;
+  return {
+    block: document.getElementById(`hero-img-${n}`)!,
+    upload: document.getElementById(`f-hero${s}`) as HTMLInputElement,
+    preview: document.getElementById(`hero-preview${s}`) as HTMLImageElement,
+    fx: document.getElementById(`f-focal-x${s}`) as HTMLInputElement,
+    fxVal: document.getElementById(`f-focal-x${s}-val`)!,
+    fy: document.getElementById(`f-focal-y${s}`) as HTMLInputElement,
+    fyVal: document.getElementById(`f-focal-y${s}-val`)!,
+    scale: document.getElementById(`f-scale${s}`) as HTMLInputElement,
+    scaleVal: document.getElementById(`f-scale${s}-val`)!,
+    split, splitVal: document.getElementById(`f-split-${n}-val`)!,
+    splitRow: split.closest('.hero-split-row') as HTMLElement,
+  };
+}
+const split1 = document.getElementById('f-split-1') as HTMLInputElement;
+const heroCtls: HeroCtl[] = [
+  {
+    block: document.getElementById('hero-img-1')!,
+    upload: fHero, preview: heroPreview,
+    fx: fFocalX, fxVal: fFocalXVal, fy: fFocalY, fyVal: fFocalYVal,
+    scale: fScale, scaleVal: fScaleVal,
+    split: split1, splitVal: document.getElementById('f-split-1-val')!,
+    splitRow: split1.closest('.hero-split-row') as HTMLElement,
+  },
+  heroCtlN(2), heroCtlN(3),
+];
+function applyImgCount(n: number) {
+  heroCtls.forEach((c, i) => {
+    const visible = i < n;
+    c.block.style.display = visible ? '' : 'none';
+    c.splitRow.style.display = (visible && n > 1) ? '' : 'none';
+  });
+  fImgCountHint.textContent = n > 1
+    ? (fLayout.value === 'horizon' ? 'side-om-side' : 'stablet')
+    : '';
+}
+
 // ---- State ----
 // itemsBank holds the full deck: lots + bordplan items (potentially other
 // types later). Keep lotsBank alias for the existing UI code paths.
@@ -536,6 +589,27 @@ function populateForm(lot: Lot) {
   const mainLogoUrl = lot.sponsorLogoSrc || `/assets/logo/logo-lot-${lot.id}.png`;
   logoPreview.src = `${mainLogoUrl}?v=${Date.now()}`;
   renderExtraLogoList(lot.extraSponsorLogos || []);
+  // Multi-image: image 1 focal/scale/preview set above. Populate extras 2 & 3,
+  // split weights, count selector, then show/hide blocks.
+  const heroImages = lot.heroImages || [];
+  const count = Math.min(3, 1 + heroImages.length);
+  fImgCount.value = String(count);
+  const splits = lot.heroSplit && lot.heroSplit.length === count ? lot.heroSplit : null;
+  const v = Date.now();
+  heroCtls.forEach((c, i) => {
+    if (i > 0) {
+      const im = heroImages[i - 1];
+      const f = ((im?.focal) || '50% 50%').replace(/%/g, '').split(/\s+/).map(s => parseInt(s, 10));
+      c.fx.value = String(f[0] || 50); c.fxVal.textContent = `${f[0] || 50}%`;
+      c.fy.value = String(f[1] || 50); c.fyVal.textContent = `${f[1] || 50}%`;
+      const sp = Math.round(((im?.scale) ?? 1) * 100);
+      c.scale.value = String(sp); c.scaleVal.textContent = `${sp}%`;
+      c.preview.src = `/assets/hero/lot-${lot.id}_FINAL${i + 1}.${im?.ext || 'jpg'}?v=${v}`;
+    }
+    const w = splits ? splits[i] : 50;
+    c.split.value = String(w); c.splitVal.textContent = String(w);
+  });
+  applyImgCount(count);
 }
 
 function renderExtraLogoList(logos: string[]) {
@@ -608,7 +682,21 @@ function readForm(): Partial<Lot> {
   // forced line break. Plain title becomes the concatenated text.
   const titleParts = markdownToParts(fTitle.value);
   const plainTitle = titleParts ? partsToPlainText(titleParts).replace(/\n/g, ' ').trim() : fTitle.value.trim();
+  // Multi-image: collect extras (images 2..N) + split weights. ext is set on
+  // upload and preserved from the in-memory lot here so it survives a save.
+  const imgCount = Math.min(3, Math.max(1, parseInt(fImgCount.value, 10) || 1));
+  const curImgs = (lotsBank.find(l => l.id === selectedId)?.heroImages) || [];
+  const heroImages = heroCtls.slice(1, imgCount).map((c, idx) => ({
+    ext: curImgs[idx]?.ext,
+    focal: `${c.fx.value}% ${c.fy.value}%`,
+    scale: parseInt(c.scale.value, 10) / 100,
+  }));
+  const heroSplit = imgCount > 1
+    ? heroCtls.slice(0, imgCount).map(c => parseInt(c.split.value, 10) || 1)
+    : undefined;
   return {
+    heroImages,
+    heroSplit,
     active: fActive.checked,
     extra:  fExtra.checked,
     extraSuffix: fExtraSuffix.value.trim() || null,
@@ -1736,6 +1824,23 @@ fScale.addEventListener('input', () => {
   fScaleVal.textContent = fScale.value + '%';
   onFormChange();
 });
+// Multi-image: focal/scale/split for every image (image 1 also wired here for
+// its split slider; its focal/scale are wired just above).
+heroCtls.forEach((c, i) => {
+  if (i > 0) {
+    [c.fx, c.fy].forEach(el => el.addEventListener('input', () => {
+      c.fxVal.textContent = c.fx.value + '%';
+      c.fyVal.textContent = c.fy.value + '%';
+      onFormChange();
+    }));
+    c.scale.addEventListener('input', () => { c.scaleVal.textContent = c.scale.value + '%'; onFormChange(); });
+  }
+  c.split.addEventListener('input', () => { c.splitVal.textContent = c.split.value; onFormChange(); });
+});
+fImgCount.addEventListener('change', () => {
+  applyImgCount(parseInt(fImgCount.value, 10) || 1);
+  onFormChange();
+});
 fHorizonCap.addEventListener('input', () => {
   fHorizonCapVal.textContent = `${fHorizonCap.value}in`;
   onFormChange();
@@ -1749,6 +1854,7 @@ fLayout.addEventListener('change', () => {
   const isHorizon = fLayout.value === 'horizon';
   rowHorizonCap.style.display = isHorizon ? '' : 'none';
   rowProfilePhoto.style.display = isHorizon ? 'none' : '';
+  applyImgCount(parseInt(fImgCount.value, 10) || 1);  // refresh side-om-side/stablet hint
 });
 
 // ---- Save ----
@@ -2080,30 +2186,40 @@ deleteBtn.addEventListener('click', async () => {
 });
 
 // ---- Uploads ----
-async function uploadFile(kind: 'hero' | 'logo', file: File) {
+async function uploadFile(kind: 'hero' | 'logo', file: File, imgIndex = 1) {
   if (!selectedId) return;
   // Order matters — multer parses fields top-down, and the destination
   // / filename callbacks only see body fields appended BEFORE the file.
   const fd = new FormData();
   fd.append('kind', kind);
   fd.append('lotId', selectedId);
+  if (kind === 'hero' && imgIndex > 1) fd.append('imgIndex', String(imgIndex));
   fd.append('file', file);
   try {
     statusEl.textContent = `Uploader ${kind}…`;
     const res = await fetch('/api/upload', { method: 'POST', body: fd });
     const data = await res.json();
     statusEl.textContent = `${kind} uploadet`;
-    // For hero, sync heroExt onto the in-memory lot so subsequent renders
-    // resolve the right URL without a full reload.
+    const ext = (data.filename?.split('.').pop()?.toLowerCase()) || 'jpg';
+    const lot = lotsBank.find(l => l.id === selectedId);
+    // Sync the uploaded extension onto the in-memory lot so subsequent renders
+    // (and the next save) resolve the right URL without a full reload.
     if (kind === 'hero' && data.filename) {
-      const ext = data.filename.split('.').pop()?.toLowerCase() || 'jpg';
-      const lot = lotsBank.find(l => l.id === selectedId);
-      if (lot) lot.heroExt = ext;
+      if (imgIndex === 1) {
+        if (lot) lot.heroExt = ext;
+      } else if (lot) {
+        lot.heroImages = lot.heroImages || [];
+        while (lot.heroImages.length < imgIndex - 1) lot.heroImages.push({});
+        lot.heroImages[imgIndex - 2].ext = ext;
+      }
     }
     const v = Date.now();
-    const lot = lotsBank.find(l => l.id === selectedId);
-    if (kind === 'hero') heroPreview.src = `/assets/hero/lot-${selectedId}_FINAL.${lot?.heroExt || 'jpg'}?v=${v}`;
-    else if (kind === 'logo' && data.filename) {
+    if (kind === 'hero' && imgIndex === 1) {
+      heroPreview.src = `/assets/hero/lot-${selectedId}_FINAL.${lot?.heroExt || 'jpg'}?v=${v}`;
+    } else if (kind === 'hero') {
+      heroCtls[imgIndex - 1].preview.src = `/assets/hero/lot-${selectedId}_FINAL${imgIndex}.${ext}?v=${v}`;
+      setDirty(true);
+    } else if (kind === 'logo' && data.filename) {
       // Server now preserves the uploaded extension (so SVG stays SVG).
       // Persist the new URL onto the lot so the renderer uses it instead
       // of the legacy logo-lot-<id>.png default.
@@ -2127,6 +2243,11 @@ async function uploadFile(kind: 'hero' | 'logo', file: File) {
 }
 fHero.addEventListener('change', () => { if (fHero.files?.[0]) uploadFile('hero', fHero.files[0]); });
 fLogo.addEventListener('change', () => { if (fLogo.files?.[0]) uploadFile('logo', fLogo.files[0]); });
+// Image 2 & 3 uploads (index 1/2 of heroCtls -> image 2/3).
+heroCtls.forEach((c, i) => {
+  if (i === 0) return;
+  c.upload.addEventListener('change', () => { if (c.upload.files?.[0]) uploadFile('hero', c.upload.files[0], i + 1); });
+});
 
 // ---- Open controller in new window ----
 openCtrlBtn.addEventListener('click', () => {

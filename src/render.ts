@@ -30,6 +30,42 @@ function heroBgStyle(srcUrl: string, focal: string, scale: number): string {
   return `background-image: url('${srcUrl}'); background-size: cover; background-position: ${focal}; background-repeat: no-repeat; transform-origin: ${focal}; transform: scale(${scale});`;
 }
 
+// Resolve the ordered list of hero images for a lot: primary first, then any
+// additional images. Single-image lots return a one-element list.
+function collectHeroImages(lot: Lot): Array<{ url: string; focal: string; scale: number }> {
+  const primary = {
+    url: `/assets/hero/lot-${lot.id}_FINAL.${lot.heroExt || 'jpg'}`,
+    focal: lot.focal ?? photoFocal(lot.id),
+    scale: lot.heroScale ?? 1,
+  };
+  const extras = (lot.heroImages || []).map((im, i) => ({
+    url: `/assets/hero/lot-${lot.id}_FINAL${i + 2}.${im.ext || 'jpg'}`,
+    focal: im.focal ?? '50% 50%',
+    scale: im.scale ?? 1,
+  }));
+  return [primary, ...extras];
+}
+
+// Build the hero markup for a lot. One image -> a bare .hero-img (identical to
+// the legacy single-image output). Multiple -> a .hero-split flex container of
+// .hero-panel cells (each clips its own .hero-img), divided by green lines.
+// `direction` is 'row' for horizon (side-by-side) and 'column' for profile.
+function heroPanelsHtml(lot: Lot, direction: 'row' | 'column'): string {
+  const imgs = collectHeroImages(lot);
+  if (imgs.length <= 1) {
+    const im = imgs[0];
+    return `<div class="hero-img build-item" style="${heroBgStyle(im.url, im.focal, im.scale)} transition-delay:${delay(0, 0)}ms"></div>`;
+  }
+  const weights = lot.heroSplit && lot.heroSplit.length === imgs.length
+    ? lot.heroSplit
+    : imgs.map(() => 1);
+  const panels = imgs.map((im, i) => `
+      <div class="hero-panel" style="flex:${weights[i]} 1 0">
+        <div class="hero-img build-item" style="${heroBgStyle(im.url, im.focal, im.scale)} transition-delay:${delay(0, i)}ms"></div>
+      </div>`).join('');
+  return `<div class="hero-split hero-split--${direction}">${panels}</div>`;
+}
+
 function titleHtml(lot: Lot): string {
   const parts = lot.titleParts && lot.titleParts.length
     ? lot.titleParts
@@ -55,9 +91,6 @@ function titleSizePt(lot: Lot, layout: 'profile' | 'horizon'): number {
 function renderHorizonLot(lot: Lot, displayNum: string): string {
   const twoCol = lot.bullets.length >= 5;
   const titleSize = titleSizePt(lot, 'horizon');
-  const focal = lot.focal ?? photoFocal(lot.id);
-  const scale = lot.heroScale ?? 1;
-  const heroBg = heroBgStyle(`/assets/hero/lot-${lot.id}_FINAL.${lot.heroExt || 'jpg'}`, focal, scale);
 
   const bulletsInner = twoCol
     ? (() => {
@@ -75,7 +108,7 @@ function renderHorizonLot(lot: Lot, displayNum: string): string {
 
   return `
     <div class="hero-area">
-      <div class="hero-img build-item" style="${heroBg} transition-delay:${delay(0, 0)}ms"></div>
+      ${heroPanelsHtml(lot, 'row')}
       <div class="lot-num build-item" style="transition-delay:${delay(1, 0)}ms">${displayNum}</div>
     </div>
     <div class="caption-strip">
@@ -92,13 +125,10 @@ function renderHorizonLot(lot: Lot, displayNum: string): string {
 function renderProfileLot(lot: Lot, displayNum: string): string {
   const mirrored = lot.mirrored ?? isMirrored(lot.id);
   const titleSize = titleSizePt(lot, 'profile');
-  const focal = lot.focal ?? photoFocal(lot.id);
-  const scale = lot.heroScale ?? 1;
-  const heroBg = heroBgStyle(`/assets/hero/lot-${lot.id}_FINAL.${lot.heroExt || 'jpg'}`, focal, scale);
   return `
     <div class="profile ${mirrored ? 'mirrored' : ''}">
       <div class="photo-side">
-        <div class="hero-img build-item" style="${heroBg} transition-delay:${delay(0, 0)}ms"></div>
+        ${heroPanelsHtml(lot, 'column')}
       </div>
       <div class="text-side">
         <div class="lot-num build-item" style="transition-delay:${delay(0, 1)}ms">${displayNum}</div>

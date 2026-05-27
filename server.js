@@ -213,7 +213,13 @@ const upload = multer({
       const lotId = req.body.lotId || req.query.lotId;
       const kind  = req.body.kind  || req.query.kind;
       const ext   = (extname(file.originalname) || '.jpg').toLowerCase();
-      if (kind === 'hero') return cb(null, `lot-${lotId}_FINAL${ext}`);
+      if (kind === 'hero') {
+        // Multi-image lots: imgIndex 2/3 -> lot-<id>_FINAL2/3.<ext>.
+        // imgIndex 1 (or absent) keeps the legacy lot-<id>_FINAL.<ext>.
+        const idx = parseInt(req.body.imgIndex || req.query.imgIndex || '1', 10);
+        const suffix = idx > 1 ? String(idx) : '';
+        return cb(null, `lot-${lotId}_FINAL${suffix}${ext}`);
+      }
       if (kind === 'logo') return cb(null, `logo-lot-${lotId}${ext}`);
       if (kind === 'closing') return cb(null, file.originalname);
       if (kind === 'apple')      return cb(null, file.originalname);
@@ -508,8 +514,20 @@ app.post('/api/upload', upload.single('file'), (req, res) => {
   // In dev we skip — Vite would HMR-reload the generator mid-edit.
   if (isProd && kind === 'hero' && lotId) {
     const ext = extname(req.file.filename).replace(/^\./, '').toLowerCase();
+    const idx = parseInt(req.body.imgIndex || req.query.imgIndex || '1', 10);
     const lot = lotsFile.lots.find(l => l.id === lotId);
-    if (lot) { lot.heroExt = ext; saveLots(lotsFile); broadcastLotsUpdated(); }
+    if (lot) {
+      if (idx > 1) {
+        // Extra image (2/3): record ext on heroImages[idx-2].
+        lot.heroImages = lot.heroImages || [];
+        while (lot.heroImages.length < idx - 1) lot.heroImages.push({});
+        lot.heroImages[idx - 2].ext = ext;
+      } else {
+        lot.heroExt = ext;
+      }
+      saveLots(lotsFile);
+      broadcastLotsUpdated();
+    }
   }
   // Sound: bind the uploaded file to the lot's init / hammer slot (or to
   // the deck-wide defaults when no lotId is supplied).
