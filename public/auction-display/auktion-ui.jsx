@@ -277,7 +277,9 @@ function TeamBar({
           <div style={{
             fontSize: 11,
             letterSpacing: "0.06em",
-            color: palette.live,
+            // Pure white so light-on-light palettes (e.g. white live)
+            // don't wash the subtext out against the canvas.
+            color: "#FFFFFF",
             fontWeight: 600,
             fontFeatureSettings: "'tnum'",
           }}>
