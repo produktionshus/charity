@@ -911,7 +911,7 @@ function openOverridePopover(anchor: HTMLElement, tableId: string) {
     <span class="pop-id">${tableId}</span>
     ${isGhost
       ? `<span style="font-size:11px;color:var(--text-c2)">Ghost-celle. Gendan?</span>
-         <div class="pop-actions"><button class="pop-restore">Gendan via removed-list</button></div>`
+         <div class="pop-actions"><button class="pop-restore">Gendan bord</button></div>`
       : `<input type="text" placeholder="label-override (fx VIP)" value="${escapeHtml(current.label ?? '')}" />
          <div class="pop-actions">
            <button class="pop-save">Gem label</button>
@@ -923,14 +923,21 @@ function openOverridePopover(anchor: HTMLElement, tableId: string) {
 
   if (isGhost) {
     pop.querySelector('.pop-restore')!.addEventListener('click', () => {
-      // Strip the cell from config.removedCells
+      // A cell can be a ghost two ways: listed in config.removedCells, or
+      // deactivated via an override (active:false). Restore must clear both.
       const cellMatch = /^c(\d+)r(\d+)$/.exec(tableId);
-      if (!cellMatch) return;
-      const c = parseInt(cellMatch[1], 10);
-      const r = parseInt(cellMatch[2], 10);
-      baseItem.config.removedCells = (baseItem.config.removedCells || [])
-        .filter(cc => !(cc.col === c && cc.row === r));
-      bpRemovedEl.value = formatCellList1(baseItem.config.removedCells);
+      if (cellMatch) {
+        const c = parseInt(cellMatch[1], 10);
+        const r = parseInt(cellMatch[2], 10);
+        baseItem.config.removedCells = (baseItem.config.removedCells || [])
+          .filter(cc => !(cc.col === c && cc.row === r));
+        bpRemovedEl.value = formatCellList1(baseItem.config.removedCells);
+      }
+      const ov = baseItem.overrides?.[tableId];
+      if (ov && ov.active === false) {
+        if (ov.label == null) delete baseItem.overrides![tableId];
+        else delete ov.active;
+      }
       closePopover();
       setDirty(true);
       refreshPreview();
