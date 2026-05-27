@@ -85,9 +85,6 @@ function buildHammerOverlay(lotNum: string, finalPrice: number): HTMLElement {
       <div class="top"><span class="icon">🔨</span><span>Solgt</span></div>
       <div class="lot-line">${lot.title}<span class="lot-no">Lot ${lot.id}</span></div>
       <div class="bid" style="font-size:${hammerBidFontPx(finalPrice)}px">${fmtKr(finalPrice)}<span class="kr">kr</span></div>
-      <div class="foot">
-        <div class="item"><span>Bud</span><b>${fmtKr(finalPrice)} kr</b></div>
-      </div>
     </div>
     ${particles}
   `;

@@ -522,29 +522,31 @@ sync.on((state) => {
   // amounts to it. Each team's auctionAmount = the last bid (or finalPrice
   // if sold) on their bound lot.
   if (slide?.kind === 'auction-display') {
-    const iframe = currentEl?.querySelector('iframe') as HTMLIFrameElement | null;
-    if (iframe?.contentWindow) {
-      const teams = (EVENT_META.teams || []).map(t => {
-        // Per-lot breakdown so the bar can render vertical dividers
-        // between each lot's contribution to the live segment.
-        const ids = teamLotIds(t);
-        const lotAmounts: number[] = ids.map(id => {
-          const ls = state.lots?.[id];
-          if (!ls) return 0;
-          if (ls.status === 'sold' && typeof ls.finalPrice === 'number') return ls.finalPrice;
-          if (ls.bids?.length) return ls.bids[ls.bids.length - 1];
-          return 0;
-        });
-        const bidTotal = lotAmounts.reduce((s, v) => s + v, 0);
-        return {
-          ...t,
-          auctionAmount: bidTotal + (t.bonusAmount || 0),
-          lotAmounts,                     // [amt for lot1, amt for lot2, ...]
-          bonusAmount: t.bonusAmount || 0,
-        };
+    const teams = (EVENT_META.teams || []).map(t => {
+      // Per-lot breakdown so the bar can render vertical dividers
+      // between each lot's contribution to the live segment.
+      const ids = teamLotIds(t);
+      const lotAmounts: number[] = ids.map(id => {
+        const ls = state.lots?.[id];
+        if (!ls) return 0;
+        if (ls.status === 'sold' && typeof ls.finalPrice === 'number') return ls.finalPrice;
+        if (ls.bids?.length) return ls.bids[ls.bids.length - 1];
+        return 0;
       });
-      iframe.contentWindow.postMessage({ type: 'auction-display:teams', teams }, '*');
-    }
+      const bidTotal = lotAmounts.reduce((s, v) => s + v, 0);
+      return {
+        ...t,
+        auctionAmount: bidTotal + (t.bonusAmount || 0),
+        lotAmounts,                     // [amt for lot1, amt for lot2, ...]
+        bonusAmount: t.bonusAmount || 0,
+      };
+    });
+    // The AD iframe is persistent (mounted outside currentEl), so the
+    // legacy `currentEl?.querySelector('iframe')` path never finds it on
+    // AD slides — that's why bars stayed flat at preAmount. Use the
+    // persistent-iframe channel which queues messages until the iframe
+    // signals it's ready.
+    postToAd({ type: 'auction-display:teams', teams });
   }
 
   // Hybrid bar-strip on lot slides bound to a team — update widths live.

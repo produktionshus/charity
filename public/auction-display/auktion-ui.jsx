@@ -9,7 +9,7 @@ function AuctionHeader({ theme, clock, phase, totalRaised, teams }) {
   const phaseLabel = {
     intro: "Velkommen",
     reveal: "Pre-event reveal",
-    total: "Status før auktion",
+    total: "Akkumuleret status",
     pause: "Næste lot",
     auction: "Live auktion",
     final: "Resultat",
