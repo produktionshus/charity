@@ -77,7 +77,18 @@ function claimAudioLead() {
   // The click itself counts as a user gesture — unlock audio AND retry
   // any media-slide videos that may have failed to autoplay at mount.
   unlockAudio();
+  // iOS Safari often needs a full pause→unmute→play cycle on the click's
+  // call-stack to actually drop the muted flag on a video that started
+  // muted under the autoplay policy.
   document.querySelectorAll<HTMLVideoElement>('video').forEach(v => {
+    const wantsUnmuted = v.dataset.wantsUnmuted === '1';
+    if (wantsUnmuted) {
+      try {
+        v.pause();
+        v.muted = false;
+        v.volume = 1;
+      } catch {}
+    }
     v.play().catch(() => {});
   });
 }
@@ -302,13 +313,17 @@ function swapSlide(idx: number, force = false) {
   // HTML attribute when the video is mounted via innerHTML. Set the
   // properties explicitly + force playsInline + kick playback off.
   next.querySelectorAll<HTMLVideoElement>('video').forEach(v => {
-    v.muted = true;                     // required for autoplay on iOS
+    const wantsUnmuted = v.dataset.wantsUnmuted === '1';
+    // Only force muted=true if the operator hasn't already unlocked audio
+    // (or the item explicitly wants sound). Otherwise iOS treats the video
+    // as silent and we lose the soundtrack even after the audio is live.
+    v.muted = !(audioUnlocked && wantsUnmuted);
+    if (audioUnlocked && wantsUnmuted) v.volume = 1;
     v.playsInline = true;
     v.setAttribute('webkit-playsinline', 'true');
     v.autoplay = true;
     const tryPlay = () => v.play().catch(() => {});
     tryPlay();
-    // Some iOS versions need the play call after `canplay` fires.
     v.addEventListener('canplay', tryPlay, { once: true });
     v.addEventListener('loadedmetadata', tryPlay, { once: true });
   });

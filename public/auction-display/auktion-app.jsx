@@ -102,7 +102,7 @@ function AuctionApp() {
           theme={theme}
           clock={clock}
           phase={phase}
-          totalRaised={phase !== 'intro' ? totalRaised : null}
+          totalRaised={(phase === 'total' || phase === 'auction' || phase === 'final') ? totalRaised : null}
           teams={teams}
         />
         <div style={{
