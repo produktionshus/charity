@@ -281,7 +281,7 @@ function TeamBar({
             fontWeight: 600,
             fontFeatureSettings: "'tnum'",
           }}>
-            + {formatKr(live)} live
+            Heraf {formatKr(live)} live
           </div>
         )}
       </div>
