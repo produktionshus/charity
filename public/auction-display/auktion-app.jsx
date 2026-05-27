@@ -65,7 +65,10 @@ function AuctionApp() {
   const totalRaised = teams.reduce((sum, tm) => sum + totalForTeam(tm), 0);
   const winner = rankTeams(teams)[0];
 
-  const showAuctionPart = phase === 'auction' || phase === 'final';
+  // `total` is the "akkumuleret status" phase between rounds — show live
+  // segment + lot dividers, but without the focus panel (auction) or the
+  // winner crown (final). `auction` adds focus, `final` reveals winner.
+  const showAuctionPart = phase === 'total' || phase === 'auction' || phase === 'final';
   const focusTeamId = phase === 'auction' || phase === 'pause'
     ? teams[state.activeLot]?.id
     : null;
