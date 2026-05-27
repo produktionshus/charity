@@ -309,9 +309,13 @@
 /* Cells whose logos are all wide-aspect stack vertically so each logo
    gets ~full cell width instead of being squashed to 50% next to a
    sibling. Toggled by viewer.ts after measuring naturalWidth/Height. */
+/* Higher specificity (.--multi + .--stack-v) so this wins against the
+   later-declared `.sponsor-cell--multi .sponsor-cell-logos { gap: 2px 6px }`
+   rule that otherwise overrides via source order. */
+.sponsor-cell--multi.sponsor-cell--stack-v .sponsor-cell-logos,
 .sponsor-cell--stack-v .sponsor-cell-logos {
   flex-direction: column;
-  gap: 10px;
+  gap: 14px;
 }
 .sponsor-cell--stack-v .sponsor-cell-logo {
   max-width: 92%;
