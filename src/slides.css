@@ -306,6 +306,23 @@
   max-width: calc(50% - 4px);
   max-height: calc(var(--cell-logo-cap, 0.85in) * 0.85);
 }
+/* Text-only sponsor entries (donorNames) — sit inline with logos when the
+   lot mixes images + text, or stand alone when no logo is configured. */
+.sponsor-cell-name {
+  font-family: var(--font-body, 'Plus Jakarta Sans', sans-serif);
+  font-weight: 600;
+  font-size: 9pt;
+  letter-spacing: 0.04em;
+  text-align: center;
+  color: var(--ink, #2A2A2A);
+  line-height: 1.15;
+  max-width: 90%;
+  word-break: break-word;
+}
+.sponsor-cell--multi .sponsor-cell-name {
+  max-width: calc(50% - 4px);
+  font-size: 8pt;
+}
 .sponsor-cell--multi .sponsor-cell-logos { gap: 2px 6px; }
 /* 3+ logos shrink further so they fit a single cell. */
 .sponsor-cell--multi .sponsor-cell-logos:has(> .sponsor-cell-logo:nth-child(3)) .sponsor-cell-logo {

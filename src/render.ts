@@ -189,13 +189,30 @@ export function renderSponsorIndex(item?: SponsorIndexItem): string {
   const cells = LOTS.map((l, i) => {
     const t = FIRST_CELL + i * CELL_STAGGER;
     const dn = displayNumFor(l.id);
-    const mainSrc = l.sponsorLogoSrc || `/assets/logo/logo-lot-${l.id}.png`;
-    const logos = [mainSrc, ...(l.extraSponsorLogos || [])];
-    const logoImgs = logos.map(src => `<img class="sponsor-cell-logo" src="${src}" alt="" />`).join('');
+    // Mirror sponsorBlockHtml's logic so text-only donor names appear in
+    // the index just like they do on the lot detail slide. A lot with the
+    // legacy single-logo default still resolves to mainSrc; lots with
+    // donor names append text entries; lots with ONLY donor names skip
+    // the broken default-path img entirely.
+    const hasLogos = !!(l.sponsorLogoSrc || l.extraSponsorLogos?.length) || !l.donorNames?.length;
+    const hasNames = !!(l.donorNames && l.donorNames.length);
+    const items: string[] = [];
+    if (hasLogos) {
+      const mainSrc = l.sponsorLogoSrc || `/assets/logo/logo-lot-${l.id}.png`;
+      items.push(`<img class="sponsor-cell-logo" src="${mainSrc}" alt="" />`);
+      for (const src of (l.extraSponsorLogos || [])) {
+        items.push(`<img class="sponsor-cell-logo" src="${src}" alt="" />`);
+      }
+    }
+    if (hasNames) {
+      for (const n of l.donorNames!) {
+        items.push(`<span class="sponsor-cell-name">${n.toUpperCase()}</span>`);
+      }
+    }
     return `
-      <div class="sponsor-cell build-item${logos.length > 1 ? ' sponsor-cell--multi' : ''}" data-lot="${l.id}" style="transition-delay:${t}ms">
+      <div class="sponsor-cell build-item${items.length > 1 ? ' sponsor-cell--multi' : ''}" data-lot="${l.id}" style="transition-delay:${t}ms">
         <div class="sponsor-cell-num">${dn}</div>
-        <div class="sponsor-cell-logos">${logoImgs}</div>
+        <div class="sponsor-cell-logos">${items.join('')}</div>
       </div>
     `;
   }).join('');
