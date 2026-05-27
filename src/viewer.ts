@@ -52,6 +52,30 @@ function unlockAudio() {
   });
 }
 // Future videos mounted after the initial unlock should also un-mute.
+// Inspect each sponsor-index cell after mount: if all logos in a cell are
+// wide-aspect (>= 1.8), stack them vertically so each gets the full cell
+// width instead of being squashed to 50% next to a sibling wide logo.
+function decorateSponsorCells(root: ParentNode) {
+  const cells = root.querySelectorAll<HTMLElement>('.sponsor-cell--multi');
+  cells.forEach(cell => {
+    const imgs = cell.querySelectorAll<HTMLImageElement>('.sponsor-cell-logo');
+    if (imgs.length < 2) return;
+    let pending = imgs.length;
+    const check = () => {
+      if (--pending > 0) return;
+      const allWide = Array.from(imgs).every(img => {
+        if (!img.naturalWidth || !img.naturalHeight) return false;
+        return img.naturalWidth / img.naturalHeight >= 1.8;
+      });
+      if (allWide) cell.classList.add('sponsor-cell--stack-v');
+    };
+    imgs.forEach(img => {
+      if (img.complete) check();
+      else { img.addEventListener('load', check, { once: true }); img.addEventListener('error', check, { once: true }); }
+    });
+  });
+}
+
 function unmuteWantedVideos(root: ParentNode) {
   if (!audioUnlocked) return;
   root.querySelectorAll<HTMLVideoElement>('video[data-wants-unmuted="1"]').forEach(v => {
@@ -321,6 +345,10 @@ function swapSlide(idx: number, force = false) {
   slideFrame.insertBefore(next, slideFrame.firstChild);
   fitToViewport(slideFrame, next);
   next.classList.add('is-visible');
+  // On sponsor-index: auto-stack cells whose logos are all wide-aspect so
+  // 2 horizontal logos sitting side-by-side don't get squashed to 50%
+  // width. Stacking vertically lets each take ~full cell width.
+  if (slide.kind === 'sponsor-index') decorateSponsorCells(next);
   unmuteWantedVideos(next);
   // Some browsers (notably iPad Safari) don't honour autoplay set as an
   // HTML attribute when the video is mounted via innerHTML. Set the

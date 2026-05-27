@@ -306,6 +306,17 @@
   max-width: calc(50% - 4px);
   max-height: calc(var(--cell-logo-cap, 0.85in) * 0.85);
 }
+/* Cells whose logos are all wide-aspect stack vertically so each logo
+   gets ~full cell width instead of being squashed to 50% next to a
+   sibling. Toggled by viewer.ts after measuring naturalWidth/Height. */
+.sponsor-cell--stack-v .sponsor-cell-logos {
+  flex-direction: column;
+  gap: 2px;
+}
+.sponsor-cell--stack-v .sponsor-cell-logo {
+  max-width: 92%;
+  max-height: calc(var(--cell-logo-cap, 0.85in) * 0.50);
+}
 /* Text-only sponsor entries (donorNames) — sit inline with logos when the
    lot mixes images + text, or stand alone when no logo is configured. */
 .sponsor-cell-name {

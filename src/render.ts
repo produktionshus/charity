@@ -183,10 +183,13 @@ export function renderSponsorIndex(item?: SponsorIndexItem): string {
   const FIRST_CELL = 750;
   const CELL_STAGGER = 130;
   const title = item?.title ?? 'AUKTIONENS SPONSORER';
-  const L = chooseSponsorLayout(LOTS.length);
+  // Hide lots flagged as "extra" — they break the main numbering and
+  // shouldn't appear in the sponsor index next to the canonical lots.
+  const indexLots = LOTS.filter(l => !l.extra);
+  const L = chooseSponsorLayout(indexLots.length);
   const logoCap = Math.max(0.5, L.ch - 0.50);   // leave room for the lot-num + padding
   const numSize = L.cw < 1.25 ? 11 : L.cw < 1.4 ? 12 : 14;
-  const cells = LOTS.map((l, i) => {
+  const cells = indexLots.map((l, i) => {
     const t = FIRST_CELL + i * CELL_STAGGER;
     const dn = displayNumFor(l.id);
     // Mirror sponsorBlockHtml's logic so text-only donor names appear in
