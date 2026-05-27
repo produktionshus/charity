@@ -550,6 +550,17 @@ app.use('/sounds', express.static(soundsDir));
 
 let httpServer;
 if (isProd) {
+  // Force revalidation on the standalone /auction-display/ and /wish-loop/
+  // modules' HTML + .jsx files — they're served as static text from dist/
+  // and have no cache-busting query strings on the <script src> tags.
+  // Without this, browsers cache the in-browser-Babel-transpiled JSX
+  // indefinitely and never pick up redeploys until the user hard-reloads.
+  app.use((req, res, next) => {
+    if (/^\/(auction-display|wish-loop)\/.+\.(html|jsx)$/.test(req.path)) {
+      res.set('Cache-Control', 'no-cache, must-revalidate');
+    }
+    next();
+  });
   app.use(express.static(resolve(__dirname, 'dist')));
   app.get('*', (_req, res) => res.sendFile(resolve(__dirname, 'dist/index.html')));
   httpServer = createServer(app);
