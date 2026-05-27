@@ -317,7 +317,12 @@
   color: var(--ink, #2A2A2A);
   line-height: 1.15;
   max-width: 90%;
-  word-break: break-word;
+  /* Only break on whitespace — never mid-word. Otherwise long surnames
+     like "ANKERDAL" got chopped into "ANKERDA L" across lines. */
+  word-break: normal;
+  overflow-wrap: normal;
+  white-space: normal;
+  hyphens: none;
 }
 .sponsor-cell--multi .sponsor-cell-name {
   max-width: calc(50% - 4px);
