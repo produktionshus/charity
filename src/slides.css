@@ -311,7 +311,7 @@
    sibling. Toggled by viewer.ts after measuring naturalWidth/Height. */
 .sponsor-cell--stack-v .sponsor-cell-logos {
   flex-direction: column;
-  gap: 2px;
+  gap: 10px;
 }
 .sponsor-cell--stack-v .sponsor-cell-logo {
   max-width: 92%;
