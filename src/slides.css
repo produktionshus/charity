@@ -589,11 +589,16 @@
 }
 .team-bar-overlay .tb-row {
   display: grid;
-  grid-template-columns: 110px 1fr 130px;
+  grid-template-columns: 150px 1fr 130px;
   gap: 12px;
   align-items: center;
   opacity: 0.30;
   transition: opacity 300ms ease;
+}
+.team-bar-overlay .tb-name {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .team-bar-overlay .tb-row--active {
   opacity: 1;
@@ -602,7 +607,10 @@
   font-family: 'JetBrains Mono', ui-monospace, monospace;
   font-size: 11pt;
   font-weight: 700;
-  color: var(--tb-live);
+  /* Always pure white — team palettes with light live colors (e.g. white
+     on the Underholdning team) would otherwise wash out against the glass
+     overlay background. */
+  color: #FFFFFF;
   letter-spacing: 0.06em;
   text-transform: uppercase;
 }
@@ -637,7 +645,10 @@
 .team-bar-overlay .tb-divider {
   position: absolute; top: 0; bottom: 0;
   width: 2px;
-  background: rgba(255, 252, 243, 0.55);
+  /* Use base (the darker of the two team colors) so the divider stays
+     visible against the bright live segment — incl. light-on-light
+     palettes like grey/white where a white divider would disappear. */
+  background: var(--tb-base);
   transform: translateX(-1px);
   transition: left 800ms cubic-bezier(.65,.05,.36,1);
 }
@@ -646,12 +657,14 @@
   font-size: 13pt;
   font-weight: 700;
   font-feature-settings: 'tnum';
-  color: #FFFCF3;
+  color: #FFFFFF;
   text-align: right;
   letter-spacing: -0.01em;
 }
 .team-bar-overlay .tb-row--active .tb-amount {
-  color: var(--tb-live);
+  /* Keep pure white — team's live color would be unreadable for palettes
+     where live is itself white-ish. Size bump still signals active row. */
+  color: #FFFFFF;
   font-size: 15pt;
 }
 

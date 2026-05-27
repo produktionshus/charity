@@ -202,7 +202,10 @@ function TeamBar({
                 left: `${x}%`,
                 top: 2, bottom: 2,
                 width: 2,
-                background: 'rgba(0,0,0,0.32)',
+                // Use palette.base (darker color) so divider stays visible
+                // against the bright live segment, incl. light-on-light
+                // palettes like grey/white.
+                background: palette.base,
                 transform: 'translateX(-1px)',
                 transition: 'left 1.0s cubic-bezier(.4,.0,.2,1)',
                 pointerEvents: 'none',
