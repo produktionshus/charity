@@ -135,6 +135,7 @@ function renderLotImage(container: HTMLElement, slide: Slide | null, big: boolea
   // Render the slide preview into the mount
   const slideEl = renderSlide(slide);
   slideEl.classList.add('is-visible', 'no-build');
+  slideEl.querySelectorAll<HTMLVideoElement>('video').forEach(v => { v.muted = true; v.volume = 0; });
   mount.appendChild(slideEl);
   requestAnimationFrame(() => fitToViewport(mount, slideEl));
 
@@ -251,6 +252,11 @@ function renderAuctioneerPanel(slide: Slide | null) {
   auctBg.appendChild(mount);
   const slideEl = renderSlide(slide);
   slideEl.classList.add('is-visible', 'no-build');
+  // Controller mirror is a preview, never an audio source — force every
+  // video silent regardless of the item's videoMuted setting.
+  slideEl.querySelectorAll<HTMLVideoElement>('video').forEach(v => {
+    v.muted = true; v.volume = 0;
+  });
   mount.appendChild(slideEl);
   requestAnimationFrame(() => fitToViewport(mount, slideEl));
 
@@ -393,6 +399,7 @@ function renderSidebar(state: any) {
         const mount = row.querySelector<HTMLElement>('.preview-mount')!;
         const slideEl = renderSlide(slide);
         slideEl.classList.add('is-visible', 'no-build');
+        slideEl.querySelectorAll<HTMLVideoElement>('video').forEach(v => { v.muted = true; v.volume = 0; });
         mount.appendChild(slideEl);
         requestAnimationFrame(() => fitToViewport(mount, slideEl));
       }
@@ -684,6 +691,7 @@ function renderBonusPanel() {
         <input type="number" class="bonus-amount" min="0" step="500" placeholder="kr" />
         <button class="bonus-add">+ Tilføj</button>
         <span class="bonus-total">${bonus ? `bonus: ${bonus.toLocaleString('da-DK').replace(/,/g, '.')} kr` : ''}</span>
+        ${bonus ? `<button class="bonus-reset" title="Nulstil bonus til 0">Nulstil</button>` : ''}
       </div>
     `;
   }).join('');
@@ -691,6 +699,7 @@ function renderBonusPanel() {
     const id = row.dataset.id!;
     const inp = row.querySelector<HTMLInputElement>('.bonus-amount')!;
     const btn = row.querySelector<HTMLButtonElement>('.bonus-add')!;
+    const reset = row.querySelector<HTMLButtonElement>('.bonus-reset');
     btn.addEventListener('click', async () => {
       const add = parseInt(inp.value, 10) || 0;
       if (!add) return;
@@ -703,6 +712,15 @@ function renderBonusPanel() {
         inp.value = '';
       } catch {}
       btn.disabled = false;
+    });
+    reset?.addEventListener('click', async () => {
+      if (!confirm(`Nulstil bonus for ${id} til 0?`)) return;
+      try {
+        await fetch(`/api/meta/teams/${encodeURIComponent(id)}/bonus`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ set: 0 }),
+        });
+      } catch {}
     });
   });
 }
@@ -852,7 +870,7 @@ drawerTabSettings.addEventListener('click', () => toggleDrawer(drawerSettings, d
 drawerTabSound.addEventListener('click', () => toggleDrawer(drawerSound, drawerTabSound));
 drawerTabHistory.addEventListener('click', () => toggleDrawer(drawerHistory, drawerTabHistory));
 resetAuctionsBtn.addEventListener('click', () => {
-  if (!confirm('Nulstil ALLE auktioner? Alle bud + hammerslag slettes.')) return;
+  if (!confirm('Nulstil ALLE auktioner? Alle bud, hammerslag og bonus-donationer slettes.')) return;
   sync.send({ type: 'reset-auctions' } as any);
 });
 

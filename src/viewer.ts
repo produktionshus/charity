@@ -40,6 +40,7 @@ const fmtKr = (n: number) => n.toLocaleString('da-DK').replace(/,/g, '.');
 function unlockAudio() {
   if (audioUnlocked) return;
   audioUnlocked = true;
+  try { localStorage.setItem('viewer.audioUnlocked', String(Date.now())); } catch {}
   const a = new Audio();
   a.muted = true;
   a.play().catch(() => {});
@@ -66,12 +67,23 @@ document.addEventListener('keydown', unlockAudio, { once: true });
 // message that other viewers in the same browser honour by stepping
 // down. This lets a backstage screen run alongside the main viewer
 // without double-playback.
+// Persisted: if this browser was the audio leader within the last 24h,
+// boot back into leader mode automatically so a refresh doesn't lose
+// the setting. (The browser autoplay policy itself still requires a
+// real user gesture before sound actually plays — but mounting videos
+// unmuted from boot makes the per-slide click unnecessary.)
 const VIEWER_ID = Math.random().toString(36).slice(2);
-let isAudioLeader = false;
+let isAudioLeader = (() => {
+  try {
+    const ts = parseInt(localStorage.getItem('viewer.audioLeader') || '0', 10);
+    return Date.now() - ts < 24 * 60 * 60 * 1000;
+  } catch { return false; }
+})();
 let viewerChan: BroadcastChannel | null = null;
 try { viewerChan = new BroadcastChannel('kidsaid-viewer'); } catch { /* unsupported */ }
 function claimAudioLead() {
   isAudioLeader = true;
+  try { localStorage.setItem('viewer.audioLeader', String(Date.now())); } catch {}
   viewerChan?.postMessage({ type: 'viewer-claim', id: VIEWER_ID, ts: Date.now() });
   updateAudioStatusBadge();
   // The click itself counts as a user gesture — unlock audio AND retry
@@ -94,6 +106,7 @@ function claimAudioLead() {
 }
 function releaseAudioLead() {
   isAudioLeader = false;
+  try { localStorage.removeItem('viewer.audioLeader'); } catch {}
   if (currentAudio) { try { currentAudio.pause(); } catch {} currentAudio = null; }
   updateAudioStatusBadge();
 }
@@ -542,17 +555,18 @@ sync.on((state) => {
     const overlay = currentEl?.querySelector('.team-bar-overlay') as HTMLElement | null;
     if (overlay) {
       const teams = EVENT_META.teams || [];
-      const totals: Array<{ id: string; pre: number; live: number; total: number }> = teams.map(t => {
+      const totals: Array<{ id: string; pre: number; live: number; total: number; lotAmounts: number[] }> = teams.map(t => {
         const pre = t.preAmount || 0;
-        let bid = 0;
-        for (const id of teamLotIds(t)) {
+        const lotAmounts: number[] = teamLotIds(t).map(id => {
           const ls = state.lots?.[id];
-          if (!ls) continue;
-          if (ls.status === 'sold' && typeof ls.finalPrice === 'number') bid += ls.finalPrice;
-          else if (ls.bids?.length) bid += ls.bids[ls.bids.length - 1];
-        }
+          if (!ls) return 0;
+          if (ls.status === 'sold' && typeof ls.finalPrice === 'number') return ls.finalPrice;
+          if (ls.bids?.length) return ls.bids[ls.bids.length - 1];
+          return 0;
+        });
+        const bid = lotAmounts.reduce((s, v) => s + v, 0);
         const live = bid + (t.bonusAmount || 0);
-        return { id: t.id, pre, live, total: pre + live };
+        return { id: t.id, pre, live, total: pre + live, lotAmounts };
       });
       const max = Math.max(1, ...totals.map(t => t.total));
       for (const t of totals) {
@@ -561,11 +575,31 @@ sync.on((state) => {
         const preEl = row.querySelector('.tb-pre') as HTMLElement | null;
         const liveEl = row.querySelector('.tb-live') as HTMLElement | null;
         const amtEl = row.querySelector('.tb-amount') as HTMLElement | null;
+        const divEl = row.querySelector('.tb-dividers') as HTMLElement | null;
         const preW = (t.pre / max) * 100;
         const liveW = (t.live / max) * 100;
         if (preEl) preEl.style.width = `${preW}%`;
         if (liveEl) { liveEl.style.left = `${preW}%`; liveEl.style.width = `${liveW}%`; }
         if (amtEl) amtEl.textContent = `kr ${(t.total).toLocaleString('da-DK').replace(/,/g, '.')}`;
+        // Render per-lot dividers in the live segment when the team binds
+        // more than one lot. Each divider sits at the running sum boundary
+        // between consecutive lots (skip the final boundary — that's the
+        // live-segment end, not a separator).
+        if (divEl) {
+          const lots = t.lotAmounts || [];
+          if (lots.length > 1) {
+            let running = t.pre;
+            const slices = lots.slice(0, -1);
+            const html = slices.map(amt => {
+              running += amt;
+              const x = (running / max) * 100;
+              return `<div class="tb-divider" style="left:${x}%"></div>`;
+            }).join('');
+            divEl.innerHTML = html;
+          } else if (divEl.childNodes.length) {
+            divEl.innerHTML = '';
+          }
+        }
       }
     }
   }

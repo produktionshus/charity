@@ -627,6 +627,20 @@
 .team-bar-overlay .tb-row--active .tb-bar {
   box-shadow: 0 0 12px color-mix(in srgb, var(--tb-live) 50%, transparent);
 }
+/* Per-lot dividers inside the live segment — drawn after .tb-pre/.tb-live
+   so they paint on top. JS populates child .tb-divider nodes when a team
+   binds >1 lot, positioning each at the running sum boundary. */
+.team-bar-overlay .tb-dividers {
+  position: absolute; top: 0; bottom: 0; left: 0; right: 0;
+  pointer-events: none;
+}
+.team-bar-overlay .tb-divider {
+  position: absolute; top: 0; bottom: 0;
+  width: 2px;
+  background: rgba(255, 252, 243, 0.55);
+  transform: translateX(-1px);
+  transition: left 800ms cubic-bezier(.65,.05,.36,1);
+}
 .team-bar-overlay .tb-amount {
   font-family: 'JetBrains Mono', ui-monospace, monospace;
   font-size: 13pt;

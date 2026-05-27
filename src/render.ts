@@ -344,6 +344,7 @@ export function renderTeamBarOverlay(currentLotId: string): string {
         <div class="tb-bar">
           <div class="tb-pre" style="width:${preW}%"></div>
           <div class="tb-live" style="left:${preW}%;width:0%"></div>
+          <div class="tb-dividers"></div>
         </div>
         <span class="tb-amount">kr ${pre.toLocaleString('da-DK').replace(/,/g, '.')}</span>
       </div>

@@ -256,15 +256,20 @@ app.get('/api/lots', (_req, res) => {
 
 // Quick bonus-donation endpoint — adds DKK to a specific team's bonusAmount
 // without rewriting the full meta payload. Used by controller's live panel.
+// Accepts { add: N } (delta) or { set: N } (absolute value, e.g. reset).
 app.post('/api/meta/teams/:id/bonus', (req, res) => {
   if (!lotsFile.meta || !Array.isArray(lotsFile.meta.teams)) {
     return res.status(404).json({ error: 'No teams configured' });
   }
   const team = lotsFile.meta.teams.find(t => t.id === req.params.id);
   if (!team) return res.status(404).json({ error: 'Team not found' });
-  const add = Number(req.body?.add) || 0;
-  if (!add) return res.status(400).json({ error: 'Missing add amount' });
-  team.bonusAmount = Math.max(0, (Number(team.bonusAmount) || 0) + add);
+  if (typeof req.body?.set === 'number') {
+    team.bonusAmount = Math.max(0, Number(req.body.set) || 0);
+  } else {
+    const add = Number(req.body?.add) || 0;
+    if (!add) return res.status(400).json({ error: 'Missing add/set' });
+    team.bonusAmount = Math.max(0, (Number(team.bonusAmount) || 0) + add);
+  }
   saveLots(lotsFile);
   broadcastLotsUpdated();
   res.json({ id: team.id, bonusAmount: team.bonusAmount });
@@ -649,6 +654,18 @@ wss.on('connection', (ws) => {
       }
     } else if (msg.type === 'reset-auctions') {
       state.lots = freshLots();
+      // Zero out per-team bonus donations alongside the lot/bid reset so
+      // a fresh head-to-head round starts from 0 across the board.
+      if (lotsFile.meta && Array.isArray(lotsFile.meta.teams)) {
+        let touched = false;
+        for (const t of lotsFile.meta.teams) {
+          if (Number(t.bonusAmount) > 0) { t.bonusAmount = 0; touched = true; }
+        }
+        if (touched) {
+          saveLots(lotsFile);
+          broadcastLotsUpdated();
+        }
+      }
     } else if (msg.type === 'set-sound' && state.sounds[msg.lotNum]) {
       state.sounds[msg.lotNum] = { ...state.sounds[msg.lotNum], ...msg.config };
       // Persist to lots.json so the mapping survives server restart.

@@ -747,6 +747,9 @@ function refreshPreview() {
     slideEl.className = 'slide-canvas slide-media';
     slideEl.classList.add('is-visible', 'no-build');
     slideEl.innerHTML = renderMedia(merged);
+    // Generator preview is a preview, never an audio source — mute any
+    // mounted video regardless of the item's videoMuted setting.
+    slideEl.querySelectorAll<HTMLVideoElement>('video').forEach(v => { v.muted = true; v.volume = 0; });
     wrap.appendChild(slideEl);
     requestAnimationFrame(() => fitToViewport(wrap, slideEl));
     previewMeta.textContent = `media · ${merged.mode}`;
