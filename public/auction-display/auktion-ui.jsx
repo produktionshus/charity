@@ -390,11 +390,12 @@ function IntroScreen({ teams, theme, anonymous }) {
       flexDirection: "column",
       alignItems: "center",
       justifyContent: "center",
-      gap: 40,
+      gap: "clamp(28px, 3vw, 56px)",
     }}>
       <div style={{
         fontFamily: "'JetBrains Mono', monospace",
-        fontSize: 12, letterSpacing: "0.32em",
+        fontSize: "clamp(13px, 1.0vw, 20px)",
+        letterSpacing: "0.32em",
         textTransform: "uppercase",
         color: theme.headerDim,
       }}>
@@ -403,8 +404,8 @@ function IntroScreen({ teams, theme, anonymous }) {
       <div style={{
         display: "grid",
         gridTemplateColumns: "repeat(4, 1fr)",
-        gap: 24,
-        width: "min(82%, 1100px)",
+        gap: "clamp(20px, 1.6vw, 36px)",
+        width: "min(92%, 1700px)",
       }}>
         {teams.map((team) => {
           const pal = paletteFor(team);
@@ -414,25 +415,29 @@ function IntroScreen({ teams, theme, anonymous }) {
               style={{
                 background: theme.canvasHi,
                 border: `1px solid ${pal.live}33`,
-                borderRadius: 10,
-                padding: "32px 20px",
+                borderRadius: 14,
+                padding: "clamp(40px, 3vw, 64px) clamp(20px, 2vw, 36px)",
                 display: "flex",
                 flexDirection: "column",
                 alignItems: "center",
-                gap: 14,
+                gap: "clamp(18px, 1.6vw, 28px)",
               }}
             >
               <div style={{
-                width: 56, height: 56,
+                width: "clamp(72px, 7vw, 130px)",
+                height: "clamp(72px, 7vw, 130px)",
                 borderRadius: "50%",
                 background: pal.live,
-                boxShadow: `0 0 24px ${pal.live}66`,
+                boxShadow: `0 0 clamp(28px, 2.4vw, 44px) ${pal.live}66`,
               }} />
               <div style={{
                 fontFamily: "'Space Grotesk', sans-serif",
-                fontSize: 22, fontWeight: 600,
+                fontSize: "clamp(26px, 2.4vw, 44px)",
+                fontWeight: 600,
                 letterSpacing: "0.05em",
                 color: theme.headerInk,
+                textAlign: "center",
+                lineHeight: 1.15,
               }}>
                 {anonymous ? "HOLD ?" : team.name.toUpperCase()}
               </div>
