@@ -68,7 +68,10 @@ function AuctionApp() {
   // `total` is the "akkumuleret status" phase between rounds — show live
   // segment + lot dividers, but without the focus panel (auction) or the
   // winner crown (final). `auction` adds focus, `final` reveals winner.
-  const showAuctionPart = phase === 'total' || phase === 'auction' || phase === 'final';
+  // `reveal` also shows the live segment so pre-event team bonus donations
+  // are visible from the very first reveal slide; before any lot is sold
+  // the live segment is purely the bonus contribution.
+  const showAuctionPart = phase === 'reveal' || phase === 'total' || phase === 'auction' || phase === 'final';
   const focusTeamId = phase === 'auction' || phase === 'pause'
     ? teams[state.activeLot]?.id
     : null;
