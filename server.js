@@ -4,11 +4,12 @@
 
 import { createServer } from 'http';
 import { WebSocketServer } from 'ws';
-import { readFileSync, writeFileSync, readdirSync, existsSync, mkdirSync, unlinkSync, cpSync, copyFileSync } from 'fs';
+import { readFileSync, writeFileSync, readdirSync, existsSync, mkdirSync, unlinkSync, renameSync, cpSync, copyFileSync } from 'fs';
 import { dirname, resolve, extname } from 'path';
 import { fileURLToPath } from 'url';
 import express from 'express';
 import multer from 'multer';
+import sharp from 'sharp';
 import { v4 as uuidv4 } from 'uuid';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -505,8 +506,60 @@ app.post('/api/lots/reorder', (req, res) => {
   res.json({ ok: true });
 });
 
-app.post('/api/upload', upload.single('file'), (req, res) => {
+// ---- Image post-processing ----
+// Customers upload print-quality originals (>10MB, >5000px) — way too heavy
+// for the live auction over flaky venue Wi-Fi. Shrink raster uploads to fit
+// 2500px on the longest side and re-encode where it pays off.
+//   - hero / logo / extra-logo -> WebP @85 (smallest payload; client persists
+//     the new URL so the .webp extension flows through automatically)
+//   - closing / apple / wish-bg -> resize in place, keep original format
+//     (these filenames are referenced verbatim in lots.json; changing the
+//     extension would break the references)
+//   - sound / video / svg / gif -> skipped (vector, animated, or not images)
+const MAX_DIM = 2500;
+const WEBP_QUALITY = 85;
+const JPEG_QUALITY = 85;
+const RASTER_EXTS = new Set(['.jpg', '.jpeg', '.png', '.webp', '.avif', '.tiff', '.bmp']);
+const WEBP_KINDS  = new Set(['hero', 'logo', 'extra-logo']);
+
+async function processUpload(req) {
+  if (!req.file) return;
+  const kind = req.body.kind || req.query.kind;
+  if (kind === 'sound') return;
+  const ext = extname(req.file.filename).toLowerCase();
+  if (!RASTER_EXTS.has(ext)) return;
+  const src = req.file.path;
+  let meta;
+  try { meta = await sharp(src).metadata(); }
+  catch { return; }                                       // not a decodable image
+  const tooBig = (meta.width || 0) > MAX_DIM || (meta.height || 0) > MAX_DIM;
+  const convertToWebp = WEBP_KINDS.has(kind) && ext !== '.webp';
+  if (!tooBig && !convertToWebp) return;
+
+  const pipe = sharp(src).rotate();                       // honour EXIF orientation
+  if (tooBig) pipe.resize({ width: MAX_DIM, height: MAX_DIM, fit: 'inside', withoutEnlargement: true });
+
+  if (convertToWebp) {
+    const newFilename = req.file.filename.slice(0, -ext.length) + '.webp';
+    const newPath = resolve(dirname(src), newFilename);
+    await pipe.webp({ quality: WEBP_QUALITY }).toFile(newPath);
+    if (newPath !== src) unlinkSync(src);
+    req.file.filename = newFilename;
+    req.file.path = newPath;
+  } else {
+    // Resize in place: write to .tmp then replace (sharp can't read+write same file).
+    const tmp = src + '.tmp';
+    if (ext === '.jpg' || ext === '.jpeg') pipe.jpeg({ quality: JPEG_QUALITY });
+    await pipe.toFile(tmp);
+    unlinkSync(src);
+    renameSync(tmp, src);
+  }
+}
+
+app.post('/api/upload', upload.single('file'), async (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'No file' });
+  try { await processUpload(req); }
+  catch (e) { console.warn('image process failed:', e?.message || e); }
   const kind = req.body.kind || req.query.kind;
   const lotId = req.body.lotId || req.query.lotId;
   // In prod (no Vite watcher), persist heroExt immediately so viewer +
