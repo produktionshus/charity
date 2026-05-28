@@ -152,7 +152,7 @@ function BarsBoard({
   showAuctionPart, showLot, showBaseLabel,
   focusOverlay, crownOverlay,
 }) {
-  const SLOT = 100;
+  const SLOT = 130;   // taller row gives bars breathing room and lets larger text fit
   const hasFocus = !!focusOverlay;
   const topPad = hasFocus ? 140 : (crownOverlay ? 120 : 0);
 

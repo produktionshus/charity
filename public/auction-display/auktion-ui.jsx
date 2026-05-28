@@ -123,16 +123,16 @@ function TeamBar({
 
       {/* Name + lot */}
       <div style={{
-        minWidth: 200,
-        maxWidth: 240,
+        minWidth: 280,
+        maxWidth: 360,
         display: "flex",
         flexDirection: "column",
-        gap: 2,
+        gap: 4,
         color: theme.headerInk,
       }}>
         <div style={{
           fontFamily: "'Space Grotesk', sans-serif",
-          fontSize: focused ? "clamp(20px, 2.0vw, 30px)" : "clamp(17px, 1.7vw, 24px)",
+          fontSize: focused ? "clamp(26px, 2.6vw, 40px)" : "clamp(22px, 2.2vw, 32px)",
           fontWeight: 600,
           letterSpacing: "0.03em",
           transition: "font-size .3s",
@@ -142,12 +142,12 @@ function TeamBar({
         {showLot && team.lot && !anonymous && (
           <div style={{
             fontFamily: "'JetBrains Mono', monospace",
-            fontSize: 10,
+            fontSize: 13,
             letterSpacing: "0.08em",
             textTransform: "uppercase",
             color: theme.headerDim,
-            lineHeight: 1.2,
-            maxWidth: 240,
+            lineHeight: 1.25,
+            maxWidth: 360,
           }}>
             Lot · {team.lot.title}
           </div>
@@ -157,7 +157,7 @@ function TeamBar({
       {/* The bar itself */}
       <div style={{
         flex: 1,
-        height: "min(56%, 38px)",
+        height: "min(56%, 46px)",
         background: theme.trackBg,
         borderRadius: 4,
         position: "relative",
@@ -253,17 +253,17 @@ function TeamBar({
 
       {/* Total amount on the right */}
       <div style={{
-        minWidth: 170,
+        minWidth: 260,
         textAlign: "right",
         fontFamily: "'JetBrains Mono', monospace",
         color: theme.headerInk,
         display: "flex",
         flexDirection: "column",
         alignItems: "flex-end",
-        gap: 1,
+        gap: 3,
       }}>
         <div style={{
-          fontSize: focused ? "clamp(22px, 2.4vw, 38px)" : "clamp(17px, 1.9vw, 28px)",
+          fontSize: focused ? "clamp(30px, 3.2vw, 50px)" : "clamp(24px, 2.6vw, 40px)",
           fontWeight: 700,
           letterSpacing: "-0.02em",
           fontFeatureSettings: "'tnum'",
@@ -275,7 +275,7 @@ function TeamBar({
         </div>
         {revealed && live > 0 && (
           <div style={{
-            fontSize: 11,
+            fontSize: 15,
             letterSpacing: "0.06em",
             // Pure white so light-on-light palettes (e.g. white live)
             // don't wash the subtext out against the canvas.
