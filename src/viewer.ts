@@ -5,6 +5,7 @@ import { SyncClient } from './ws-client';
 import { renderSlide, teamLotIds, fitToViewport } from './render';
 import { SLIDES, EVENT_META, lotById, auctionDisplayById, wishLoopById, mediaById, displayNumFor, refreshLotsFromServer } from './slides';
 import { applyChromeFromMeta } from './event-meta-apply';
+import type { AppState } from './state';
 
 // Apply localStorage fallback before first paint, then refresh from server
 // later when EVENT_META is populated.
@@ -217,6 +218,35 @@ let adIframe: HTMLIFrameElement | null = null;
 let adIframeReady = false;
 const adPendingMessages: any[] = [];
 
+// Cached most recent server state — needed when lots-updated fires without
+// an accompanying state push (e.g. adding a pre-event bonus donation) so we
+// can recompute team auctionAmounts using the latest bids + new bonus.
+let lastState: AppState | null = null;
+
+// Build the per-team AD payload: folds bonusAmount into auctionAmount and
+// emits per-lot bid breakdown for the live-segment dividers. Used from
+// both the state handler and lots-updated handler so bonus always reaches
+// the AD iframe, even outside live auctions.
+function computeAdTeams(state: AppState | null) {
+  return (EVENT_META.teams || []).map(t => {
+    const ids = teamLotIds(t);
+    const lotAmounts: number[] = ids.map(id => {
+      const ls = state?.lots?.[id];
+      if (!ls) return 0;
+      if (ls.status === 'sold' && typeof ls.finalPrice === 'number') return ls.finalPrice;
+      if (ls.bids?.length) return ls.bids[ls.bids.length - 1];
+      return 0;
+    });
+    const bidTotal = lotAmounts.reduce((s, v) => s + v, 0);
+    return {
+      ...t,
+      auctionAmount: bidTotal + (t.bonusAmount || 0),
+      lotAmounts,
+      bonusAmount: t.bonusAmount || 0,
+    };
+  });
+}
+
 // ---- Sponsor ticker (rolling marquee shown on wish-loop + media slides) ----
 let tickerEl: HTMLElement | null = null;
 function ensureTicker(): HTMLElement {
@@ -271,7 +301,10 @@ function renderTicker() {
 
 function ensureAdIframe() {
   if (adIframe) return adIframe;
-  const teams = EVENT_META.teams || [];
+  // Use computeAdTeams so the very first AD render shows bonus + bid
+  // contributions; raw EVENT_META.teams lack auctionAmount and would
+  // briefly draw an empty live segment until the next state arrived.
+  const teams = computeAdTeams(lastState);
   const cfg = { teams, state: { screen: 'intro' } };
   const cfgEncoded = encodeURIComponent(JSON.stringify(cfg));
   const ifr = document.createElement('iframe');
@@ -485,7 +518,7 @@ sync.onLotsUpdated(async () => {
   // Push fresh team config (colors, names, lot-bindings) into the
   // persistent auction-display iframe — operator edits in generator
   // would otherwise stick to the old config until full page reload.
-  if (adIframe) postToAd({ type: 'auction-display:teams', teams: EVENT_META.teams || [] });
+  if (adIframe) postToAd({ type: 'auction-display:teams', teams: computeAdTeams(lastState) });
   // Force re-render only on lots-updated since the underlying data may have
   // changed. swapSlide's same-id guard still skips work if nothing relevant
   // actually shifted.
@@ -493,6 +526,7 @@ sync.onLotsUpdated(async () => {
 });
 
 sync.on((state) => {
+  lastState = state;
   if (state.slideIdx !== currentSlideIdx) {
     currentSlideIdx = state.slideIdx;
     swapSlide(currentSlideIdx);
@@ -547,34 +581,13 @@ sync.on((state) => {
   firstStateMsg = false;
 
   // If an auction-display iframe is currently mounted, forward live team
-  // amounts to it. Each team's auctionAmount = the last bid (or finalPrice
-  // if sold) on their bound lot.
+  // amounts to it. The AD iframe is persistent (mounted outside currentEl),
+  // so the legacy `currentEl?.querySelector('iframe')` path never finds it
+  // on AD slides — that's why bars stayed flat at preAmount before. Use
+  // the persistent-iframe channel which queues messages until the iframe
+  // signals it's ready.
   if (slide?.kind === 'auction-display') {
-    const teams = (EVENT_META.teams || []).map(t => {
-      // Per-lot breakdown so the bar can render vertical dividers
-      // between each lot's contribution to the live segment.
-      const ids = teamLotIds(t);
-      const lotAmounts: number[] = ids.map(id => {
-        const ls = state.lots?.[id];
-        if (!ls) return 0;
-        if (ls.status === 'sold' && typeof ls.finalPrice === 'number') return ls.finalPrice;
-        if (ls.bids?.length) return ls.bids[ls.bids.length - 1];
-        return 0;
-      });
-      const bidTotal = lotAmounts.reduce((s, v) => s + v, 0);
-      return {
-        ...t,
-        auctionAmount: bidTotal + (t.bonusAmount || 0),
-        lotAmounts,                     // [amt for lot1, amt for lot2, ...]
-        bonusAmount: t.bonusAmount || 0,
-      };
-    });
-    // The AD iframe is persistent (mounted outside currentEl), so the
-    // legacy `currentEl?.querySelector('iframe')` path never finds it on
-    // AD slides — that's why bars stayed flat at preAmount. Use the
-    // persistent-iframe channel which queues messages until the iframe
-    // signals it's ready.
-    postToAd({ type: 'auction-display:teams', teams });
+    postToAd({ type: 'auction-display:teams', teams: computeAdTeams(state) });
   }
 
   // Hybrid bar-strip on lot slides bound to a team — update widths live.
