@@ -361,6 +361,14 @@ function swapSlide(idx: number, force = false) {
         },
       });
     }
+    // Always re-push teams on AD entry. sync.on(state) also pushes, but on
+    // boot it can race refreshLotsFromServer — if state arrives before the
+    // /api/lots refresh has folded the current bonus into EVENT_META, the
+    // first AD visit shows live=0 and operators had to navigate away and
+    // back to see donations land. swapSlide is called again with force=true
+    // after refresh completes (line below the boot block), so this catches
+    // the post-refresh fresh data without waiting for the next nav.
+    postToAd({ type: 'auction-display:teams', teams: computeAdTeams(lastState) });
     const previous = currentEl;
     if (previous) previous.classList.add('entering');
     currentEl = null;
