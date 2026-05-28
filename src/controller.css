@@ -50,6 +50,7 @@ body.controller input { font-family: inherit; }
 /* ---------- App shell ---------- */
 .app {
   height: 100vh;
+  height: 100dvh;            /* dvh accounts for iOS Safari URL bar so the topbar isn't clipped */
   width: 100vw;
   background:
     radial-gradient(80% 60% at 0% 0%, rgba(16, 185, 129, 0.10), transparent 60%),
@@ -1560,4 +1561,14 @@ body.controller.theme-kidsaid .panel .panel-head .label {
   .zone-next        { grid-area: next; }
   .panel.zone-bid   { grid-area: bid; }
   .panel.auct-panel { grid-area: auct; }
+  /* Let topbar size to its content + wrap so prev/next stay reachable on
+     narrow iPad portrait (the fixed 5-col grid pushed buttons off-screen). */
+  .app { grid-template-rows: auto 1fr; }
+  .topbar {
+    display: flex; flex-wrap: wrap;
+    gap: 8px 12px;
+    padding: 8px 12px;
+  }
+  .topbar-spacer { display: none; }                 /* no flex:1 in wrap-mode */
+  #open-buttons { display: none; }                  /* dev links — not needed on iPad */
 }
