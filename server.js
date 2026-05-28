@@ -310,13 +310,20 @@ app.put('/api/meta', (req, res) => {
     if (typeof b.sponsorTicker.speedSec === 'number') m.sponsorTicker.speedSec = b.sponsorTicker.speedSec;
   }
   if (Array.isArray(b.teams)) {
+    // bonusAmount is owned by the dedicated POST /api/meta/teams/:id/bonus
+    // endpoint — running auctions accumulate it across the event. Generator
+    // saves carry a stale snapshot from page-load and would silently wipe
+    // donations added in between. Preserve the server's current value
+    // keyed by team id, and only fall back to 0 for brand-new teams that
+    // don't yet exist on disk.
+    const prevBonus = new Map((m.teams || []).map(t => [t.id, Number(t.bonusAmount) || 0]));
     m.teams = b.teams.map(t => ({
       id: t.id, name: t.name || '',
       baseColor: t.baseColor,
       liveColor: t.liveColor,
       palette: t.palette,                              // legacy fallback
       preAmount: Number(t.preAmount) || 0,
-      bonusAmount: Number(t.bonusAmount) || 0,
+      bonusAmount: prevBonus.get(t.id) ?? 0,           // never trust client; bonus is server-owned
       lotId: t.lotId || undefined,                     // legacy single-lot field
       lotIds: Array.isArray(t.lotIds) ? t.lotIds.filter(x => typeof x === 'string' && x) : undefined,
       lot: t.lot ? { title: t.lot.title || '', description: t.lot.description || '' } : undefined,
