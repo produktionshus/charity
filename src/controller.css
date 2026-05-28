@@ -1544,3 +1544,20 @@ body.controller.theme-kidsaid .panel .panel-head .label {
   .lot-num-overlay { font-size: 56px; }
   .bid-amount { font-size: 42px; }
 }
+
+/* iPad-portrait (and any tall/narrow viewport): pack Nuværende, Næste and
+   Auctioneer-view into a short row of thumbnails along the top so the Live
+   auction panel can grow full-width below — gives the bid buttons room. */
+@media (orientation: portrait) {
+  .main {
+    grid-template-columns: 1fr 1fr 1fr;
+    grid-template-rows: 180px 1fr;
+    grid-template-areas:
+      "current next auct"
+      "bid bid bid";
+  }
+  .panel.live       { grid-area: current; }
+  .zone-next        { grid-area: next; }
+  .panel.zone-bid   { grid-area: bid; }
+  .panel.auct-panel { grid-area: auct; }
+}
