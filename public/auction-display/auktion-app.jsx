@@ -7,7 +7,7 @@
 // `state` matches the AuctionDisplayState type from slides.ts:
 //   { screen, revealCount, activeLot, ranking, namesVisible, showBaseLabel }
 
-const { useState: _appState, useEffect: _appEffect } = React;
+const { useState: _appState, useEffect: _appEffect, useRef: _appRef } = React;
 
 function AuctionApp() {
   const initial = window.__AUCTION_CONFIG__ || {};
@@ -152,12 +152,34 @@ function BarsBoard({
   showAuctionPart, showLot, showBaseLabel,
   focusOverlay, crownOverlay,
 }) {
-  const SLOT = 130;   // taller row gives bars breathing room and lets larger text fit
   const hasFocus = !!focusOverlay;
   const topPad = hasFocus ? 140 : (crownOverlay ? 120 : 0);
 
+  // Measure available height so rows spread across the full stage instead of
+  // clustering at the top with empty space below. Fixed-pixel SLOT looked
+  // squished on a 1080p LED because 4×130=520px filled only half the area
+  // below the header.
+  const containerRef = _appRef(null);
+  const [containerH, setContainerH] = _appState(0);
+  _appEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const update = () => setContainerH(el.clientHeight);
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  const MARGIN_TOP = 8;
+  const MIN_SLOT = 130;
+  const MAX_SLOT = 220;
+  const avail = Math.max(0, containerH - topPad - MARGIN_TOP);
+  const rawSlot = containerH > 0 ? avail / teams.length : MIN_SLOT;
+  const SLOT = Math.max(MIN_SLOT, Math.min(MAX_SLOT, Math.floor(rawSlot)));
+
   return (
-    <div style={{
+    <div ref={containerRef} style={{
       position: 'relative', flex: 1, minHeight: 0,
       paddingTop: topPad,
     }}>
@@ -166,7 +188,7 @@ function BarsBoard({
       <div style={{
         position: 'relative',
         height: `${teams.length * SLOT}px`,
-        marginTop: 8,
+        marginTop: MARGIN_TOP,
       }}>
         {teams.map(tm => {
           const pal = paletteFor(tm);
