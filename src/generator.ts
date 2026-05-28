@@ -570,8 +570,13 @@ function populateForm(lot: Lot) {
   fLayout.value = lot.layout || 'horizon';
   fMirrored.checked = !!lot.mirrored;
   const focal = (lot.focal || '50% 50%').replace(/%/g, '').split(/\s+/).map(s => parseInt(s, 10));
-  fFocalX.value = String(focal[0] || 50); fFocalXVal.textContent = `${focal[0] || 50}%`;
-  fFocalY.value = String(focal[1] || 50); fFocalYVal.textContent = `${focal[1] || 50}%`;
+  // Use Number.isFinite so a legitimate 0% (hard-left / hard-top crop) survives
+  // — `0 || 50` would silently rewrite it to 50 on reload and the next save
+  // would persist the fallback.
+  const fxVal = Number.isFinite(focal[0]) ? focal[0] : 50;
+  const fyVal = Number.isFinite(focal[1]) ? focal[1] : 50;
+  fFocalX.value = String(fxVal); fFocalXVal.textContent = `${fxVal}%`;
+  fFocalY.value = String(fyVal); fFocalYVal.textContent = `${fyVal}%`;
   const scalePct = Math.round((lot.heroScale ?? 1) * 100);
   fScale.value = String(scalePct);
   fScaleVal.textContent = `${scalePct}%`;
@@ -600,8 +605,11 @@ function populateForm(lot: Lot) {
     if (i > 0) {
       const im = heroImages[i - 1];
       const f = ((im?.focal) || '50% 50%').replace(/%/g, '').split(/\s+/).map(s => parseInt(s, 10));
-      c.fx.value = String(f[0] || 50); c.fxVal.textContent = `${f[0] || 50}%`;
-      c.fy.value = String(f[1] || 50); c.fyVal.textContent = `${f[1] || 50}%`;
+      // Same 0-vs-missing fix as image 1's focal sliders above.
+      const exFx = Number.isFinite(f[0]) ? f[0] : 50;
+      const exFy = Number.isFinite(f[1]) ? f[1] : 50;
+      c.fx.value = String(exFx); c.fxVal.textContent = `${exFx}%`;
+      c.fy.value = String(exFy); c.fyVal.textContent = `${exFy}%`;
       const sp = Math.round(((im?.scale) ?? 1) * 100);
       c.scale.value = String(sp); c.scaleVal.textContent = `${sp}%`;
       c.preview.src = `/assets/hero/lot-${lot.id}_FINAL${i + 1}.${im?.ext || 'jpg'}?v=${v}`;
