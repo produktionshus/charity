@@ -1872,8 +1872,12 @@ saveBtn.addEventListener('click', async () => {
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify(patch),
     });
-    const idx = lotsBank.findIndex(l => l.id === selectedId);
-    if (idx >= 0) lotsBank[idx] = updated;
+    // Refresh BOTH banks — selection/populate reads itemsBank, so updating
+    // only lotsBank left a stale copy that reverted edits on re-select.
+    const lotIdx = lotsBank.findIndex(l => l.id === selectedId);
+    if (lotIdx >= 0) lotsBank[lotIdx] = updated;
+    const itemIdx = itemsBank.findIndex(i => i.id === selectedId);
+    if (itemIdx >= 0) itemsBank[itemIdx] = updated;
     setDirty(false);
     renderList();
     refreshPreview();
