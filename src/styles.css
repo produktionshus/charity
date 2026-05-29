@@ -150,18 +150,27 @@ body.viewer {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  padding: 0.6in 0.7in;
-  gap: 0.18in;
+  justify-content: flex-start;
+  padding: 0.55in 0.7in 0.6in;
+  gap: 0;
 }
 .slide-contest .contest-title {
   font-family: var(--font-title);
   font-weight: 700;
-  font-size: 50pt;
+  font-size: 64pt;
   color: var(--green);
-  letter-spacing: 0.04em;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
   text-align: center;
-  line-height: 1.05;
+  line-height: 1.02;
+  margin-top: 0.05in;
+}
+.slide-contest .contest-rule {
+  width: calc(100% - 2in);
+  height: 1px;
+  margin: 0.14in auto 0;
+  background: var(--green);
+  opacity: 0.5;
 }
 .slide-contest .contest-sub {
   font-family: var(--font-title);
@@ -171,32 +180,32 @@ body.viewer {
   letter-spacing: 0.06em;
   text-align: center;
   max-width: 10in;
+  margin-top: 0.16in;
 }
 .slide-contest .contest-blocks {
-  margin-top: 0.25in;
   flex: 1 1 auto;
   min-height: 0;
   width: 100%;
   display: flex;
   flex-direction: row;
   flex-wrap: nowrap;
-  align-items: stretch;
+  align-items: center;
   justify-content: center;
-  gap: 0.5in;
+  gap: 0.6in;
 }
 .slide-contest .contest-block {
   flex: 1 1 0;
   min-width: 0;
-  max-width: 4.2in;
+  max-width: 4.4in;
   display: flex;
   flex-direction: column;
   align-items: center;
   text-align: center;
-  gap: 0.14in;
+  gap: 0.28in;
 }
 .slide-contest .contest-block-img {
-  flex: 1 1 auto;
-  min-height: 0;
+  flex: 0 0 auto;
+  height: 2.6in;
   width: 100%;
   display: flex;
   align-items: center;

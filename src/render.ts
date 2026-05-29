@@ -499,6 +499,7 @@ export function renderContest(item?: ContestItem): string {
   return `
     <div class="contest-content" data-count="${blocks.length}">
       ${title ? `<h1 class="contest-title build-item" style="transition-delay:${delay(0)}ms">${title}</h1>` : ''}
+      ${title ? `<div class="contest-rule build-item" style="transition-delay:${delay(0) + 100}ms"></div>` : ''}
       ${sub ? `<p class="contest-sub build-item" style="transition-delay:${delay(1)}ms">${sub}</p>` : ''}
       <div class="contest-blocks">${cells}</div>
     </div>
