@@ -231,22 +231,62 @@ let carouselCleanup: (() => void) | null = null;
 // .is-active on the next tile and queue the next advance. Loops forever.
 function startCarousel(root: HTMLElement) {
   const tiles = Array.from(root.querySelectorAll<HTMLElement>('.carousel-stage > .carousel-image'));
-  if (tiles.length < 2) return;          // single image: nothing to cycle
+  if (!tiles.length) return;
+  // Extract the bare URL from each tile's background-image so we can
+  // preload it via an Image() before the cross-fade begins. Otherwise an
+  // image that hasn't entered the browser cache yet would fade in over
+  // emptiness (the bg-image only starts loading when the tile becomes
+  // visible on some browsers, and large JPEGs took multiple seconds to
+  // appear — operators saw a blank frame mid-transition).
+  const urls = tiles.map(t => {
+    const m = /url\(["']?([^"')]+)["']?\)/.exec(t.style.backgroundImage || '');
+    return m ? m[1] : '';
+  });
+  const loaded = new Set<number>();
+  function preload(i: number): Promise<void> {
+    if (loaded.has(i) || !urls[i]) return Promise.resolve();
+    return new Promise(resolve => {
+      const img = new Image();
+      img.onload = img.onerror = () => { loaded.add(i); resolve(); };
+      img.src = urls[i];
+    });
+  }
+  // Eagerly request every image once; the first one is also awaited
+  // explicitly so the .is-active toggle doesn't fire until pixels are
+  // decoded. Subsequent images are normally cached by the time their
+  // dwell expires, but `advance` still awaits as a safety net.
+  for (let i = 1; i < urls.length; i++) preload(i);
+
+  if (tiles.length < 2) {
+    // Single image: just make sure it's visible once it loads, then
+    // exit — nothing to cycle.
+    preload(0).then(() => tiles[0].classList.add('is-active'));
+    return;
+  }
+
   let idx = 0;
-  tiles.forEach((t, i) => t.classList.toggle('is-active', i === 0));
   let handle: ReturnType<typeof setTimeout> | null = null;
-  const advance = () => {
-    const cur = tiles[idx];
-    const next = tiles[(idx + 1) % tiles.length];
-    cur.classList.remove('is-active');
-    next.classList.add('is-active');
-    idx = (idx + 1) % tiles.length;
-    const sec = parseFloat(tiles[idx].dataset.seconds || '5');
-    handle = setTimeout(advance, Math.max(500, sec * 1000));
-  };
-  const firstSec = parseFloat(tiles[0].dataset.seconds || '5');
-  handle = setTimeout(advance, Math.max(500, firstSec * 1000));
+  let cancelled = false;
+  preload(0).then(() => {
+    if (cancelled) return;
+    tiles[0].classList.add('is-active');
+    const firstSec = parseFloat(tiles[0].dataset.seconds || '5');
+    handle = setTimeout(tick, Math.max(500, firstSec * 1000));
+  });
+  function tick() {
+    if (cancelled) return;
+    const nextIdx = (idx + 1) % tiles.length;
+    preload(nextIdx).then(() => {
+      if (cancelled) return;
+      tiles[idx].classList.remove('is-active');
+      tiles[nextIdx].classList.add('is-active');
+      idx = nextIdx;
+      const sec = parseFloat(tiles[idx].dataset.seconds || '5');
+      handle = setTimeout(tick, Math.max(500, sec * 1000));
+    });
+  }
   carouselCleanup = () => {
+    cancelled = true;
     if (handle) clearTimeout(handle);
     handle = null;
   };
