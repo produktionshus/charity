@@ -395,7 +395,22 @@ function renderTicker() {
     // blank spacer (not a "·") between segments so each loop starts cleanly
     // with the prefix instead of a dangling divider.
     row.innerHTML = `${segment}<span class="ticker-gap"></span>${segment}<span class="ticker-gap"></span>`;
-    el.style.setProperty('--ticker-speed', `${speed}s`);
+    // Constant readable speed: the loop duration scales with the measured
+    // content width so 5 sponsors and 50 sponsors scroll past at the SAME
+    // pixels/second. A fixed `--ticker-speed` (seconds per loop) would force a
+    // long list to scroll too fast to read; here speedSec is just a readability
+    // dial (lower = faster) and never determines whether the full list finishes.
+    // Measure in rAF so display:block + the new row content are laid out first
+    // (offsetWidth ignores the slide's transform-scale, giving stable layout px).
+    requestAnimationFrame(() => {
+      // The row holds two identical segments; one full visual pass = half its width.
+      const onePassPx = row.offsetWidth / 2;
+      if (onePassPx <= 0) return;
+      const REF = 5400;                    // speed=60 -> 90 px/s (comfortable read)
+      const pxPerSec = REF / Math.max(1, speed);
+      const durSec = Math.max(8, onePassPx / pxPerSec);
+      el.style.setProperty('--ticker-speed', `${durSec.toFixed(1)}s`);
+    });
   }
   // Reveal + resume. Never use display:none so the animation is never reset.
   el.style.display = 'block';
