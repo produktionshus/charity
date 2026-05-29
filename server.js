@@ -433,8 +433,8 @@ app.post('/api/lots', (req, res) => {
       active: req.body.active ?? true,
       label: req.body.label || 'Billedkarrusel',
       images: Array.isArray(req.body.images) ? req.body.images : [],
-      defaultSeconds: Number(req.body.defaultSeconds) || 5,
-      fadeMs:         Number(req.body.fadeMs)         || 800,
+      defaultSeconds: Number(req.body.defaultSeconds) || 10,
+      fadeMs:         Number(req.body.fadeMs)         || 2000,
       bgColor:        req.body.bgColor                || '#000',
       showTicker:     req.body.showTicker             ?? false,
     };

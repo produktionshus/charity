@@ -145,8 +145,8 @@ export interface CarouselItem {
   active: boolean;
   label?: string;            // generator label
   images: CarouselImage[];
-  defaultSeconds?: number;   // dwell used when an image has no per-image override (default 5)
-  fadeMs?: number;           // crossfade duration in ms (default 800)
+  defaultSeconds?: number;   // dwell used when an image has no per-image override (default 10)
+  fadeMs?: number;           // crossfade duration in ms (default 2000)
   bgColor?: string;          // letterbox/background colour (default '#000')
   showTicker?: boolean;      // per-instance ticker visibility (default false)
 }

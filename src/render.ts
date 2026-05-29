@@ -513,8 +513,8 @@ export function renderContest(item?: ContestItem): string {
 // <div> tiles so the active tile fades in over the previous one without
 // reflow. Loops forever.
 export function renderCarousel(item?: CarouselItem): string {
-  const fadeMs = Math.max(50, Number(item?.fadeMs) || 800);
-  const defaultSec = Math.max(0.5, Number(item?.defaultSeconds) || 5);
+  const fadeMs = Math.max(50, Number(item?.fadeMs) || 2000);
+  const defaultSec = Math.max(0.5, Number(item?.defaultSeconds) || 10);
   const bg = item?.bgColor || '#000';
   const images = (item?.images || []).filter(im => im && im.src);
   if (!images.length) {

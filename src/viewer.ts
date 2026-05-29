@@ -270,7 +270,7 @@ function startCarousel(root: HTMLElement) {
   preload(0).then(() => {
     if (cancelled) return;
     tiles[0].classList.add('is-active');
-    const firstSec = parseFloat(tiles[0].dataset.seconds || '5');
+    const firstSec = parseFloat(tiles[0].dataset.seconds || '10');
     handle = setTimeout(tick, Math.max(500, firstSec * 1000));
   });
   function tick() {
@@ -281,7 +281,7 @@ function startCarousel(root: HTMLElement) {
       tiles[idx].classList.remove('is-active');
       tiles[nextIdx].classList.add('is-active');
       idx = nextIdx;
-      const sec = parseFloat(tiles[idx].dataset.seconds || '5');
+      const sec = parseFloat(tiles[idx].dataset.seconds || '10');
       handle = setTimeout(tick, Math.max(500, sec * 1000));
     });
   }

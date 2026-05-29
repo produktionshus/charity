@@ -460,6 +460,11 @@ function renderList() {
       title = car.label || '(uden navn)';
       const count = Array.isArray(car.images) ? car.images.length : 0;
       badge = !car.active ? 'INACTIVE' : `BILLEDKARRUSEL · ${count}`;
+    } else if (isContestItem(item)) {
+      dn = 'KO';
+      title = item.label || item.title || '(uden navn)';
+      const count = Array.isArray(item.blocks) ? item.blocks.length : 0;
+      badge = !item.active ? 'INACTIVE' : `KONKURRENCE · ${count}`;
     }
     row.innerHTML = `
       <span class="drag-handle">⋮⋮</span>
@@ -2187,8 +2192,8 @@ saveBtn.addEventListener('click', async () => {
 function populateCarouselForm(item: any) {
   crActiveEl.checked = item.active ?? true;
   crLabelEl.value = item.label ?? '';
-  crFadeMsEl.value = String(item.fadeMs ?? 800);
-  crDefaultSecondsEl.value = String(item.defaultSeconds ?? 5);
+  crFadeMsEl.value = String(item.fadeMs ?? 2000);
+  crDefaultSecondsEl.value = String(item.defaultSeconds ?? 10);
   crBgColorEl.value = (typeof item.bgColor === 'string' && /^#[0-9a-f]{6}$/i.test(item.bgColor))
     ? item.bgColor
     : '#000000';
@@ -2204,8 +2209,8 @@ function readCarouselForm(): any {
   return {
     active: crActiveEl.checked,
     label: crLabelEl.value.trim() || 'Billedkarrusel',
-    fadeMs: Number.isFinite(fadeMs) && fadeMs > 0 ? fadeMs : 800,
-    defaultSeconds: Number.isFinite(defaultSec) && defaultSec > 0 ? defaultSec : 5,
+    fadeMs: Number.isFinite(fadeMs) && fadeMs > 0 ? fadeMs : 2000,
+    defaultSeconds: Number.isFinite(defaultSec) && defaultSec > 0 ? defaultSec : 10,
     bgColor: crBgColorEl.value || '#000',
     showTicker: crShowTickerEl.checked,
     images: crImagesDraft.map(im => ({
@@ -2312,8 +2317,8 @@ newCarouselBtn.addEventListener('click', async () => {
         active: true,
         label: `Billedkarrusel ${itemsBank.filter(i => (i as any).kind === 'carousel').length + 1}`,
         images: [],
-        defaultSeconds: 5,
-        fadeMs: 800,
+        defaultSeconds: 10,
+        fadeMs: 2000,
         bgColor: '#000',
         showTicker: false,
       } as any),
