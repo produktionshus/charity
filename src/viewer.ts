@@ -334,6 +334,7 @@ function computeAdTeams(state: AppState | null) {
 
 // ---- Sponsor ticker (rolling marquee shown on wish-loop + media slides) ----
 let tickerEl: HTMLElement | null = null;
+let lastTickerSig = '';
 function ensureTicker(): HTMLElement {
   if (tickerEl) return tickerEl;
   tickerEl = document.createElement('div');
@@ -344,7 +345,6 @@ function ensureTicker(): HTMLElement {
 }
 function renderTicker() {
   const t = EVENT_META.sponsorTicker;
-  console.log('[ticker]', { meta: t, slideKind: SLIDES[currentSlideIdx]?.kind });
   const slide = SLIDES[currentSlideIdx];
   // Allowed only on wish-loop + media slides — lots, sponsor-index,
   // closing, bordplan, auction-display, cover are all excluded.
@@ -352,7 +352,6 @@ function renderTicker() {
   let itemAllows = true;
   if (slide?.kind === 'wish-loop' && slide.itemId) {
     eligible = true;
-    const item = (window as any).__wishLookup?.(slide.itemId) ?? null;
     // Use sync lookup via slides module
     const wl = wishLoopById(slide.itemId);
     itemAllows = wl?.showTicker !== false;
@@ -363,25 +362,46 @@ function renderTicker() {
   }
   const enabled = !!(t?.enabled && eligible && itemAllows && (t.prefix || (t.sponsors && t.sponsors.length)));
   if (!enabled) {
-    if (tickerEl) tickerEl.style.display = 'none';
+    // Hide WITHOUT display:none — display:none resets the CSS marquee animation,
+    // so the names would restart from the prefix every time the deck returns to
+    // a ticker slide (and a long sponsor list never finishes). Instead pause the
+    // animation (freezing its position) and hide via visibility, so it resumes
+    // exactly where it left off and works through the whole list across slides.
+    if (tickerEl) {
+      tickerEl.style.visibility = 'hidden';
+      const tr = tickerEl.querySelector('.ticker-track') as HTMLElement | null;
+      if (tr) tr.style.animationPlayState = 'paused';
+    }
     return;
   }
   const el = ensureTicker();
+  const prefix = (t!.prefix || '').trim();
+  const sponsors = t!.sponsors || [];
+  const speed = t!.speedSec ?? 60;
+  // Only rebuild the row when the ticker content actually changes. Rewriting it
+  // on every unrelated lots-updated event is wasteful, and re-setting the speed
+  // restarts the animation — both undermine the seamless continuous scroll.
+  const sig = JSON.stringify({ prefix, sponsors, speed });
+  if (sig !== lastTickerSig) {
+    lastTickerSig = sig;
+    const row = el.querySelector('.ticker-row') as HTMLElement;
+    // Build each sponsor as its own <span> with explicit <span class="ticker-sep">
+    // dividers between every entry so margin styling actually spaces them.
+    const sponsorTags = sponsors
+      .map(s => `<span class="ticker-name">${s}</span>`)
+      .join('<span class="ticker-sep">·</span>');
+    const segment = `<span class="ticker-prefix">${prefix}</span><span class="ticker-sep">·</span>${sponsorTags}`;
+    // Duplicate the segment so the marquee can loop seamlessly. Use a
+    // blank spacer (not a "·") between segments so each loop starts cleanly
+    // with the prefix instead of a dangling divider.
+    row.innerHTML = `${segment}<span class="ticker-gap"></span>${segment}<span class="ticker-gap"></span>`;
+    el.style.setProperty('--ticker-speed', `${speed}s`);
+  }
+  // Reveal + resume. Never use display:none so the animation is never reset.
   el.style.display = 'block';
-  const row = el.querySelector('.ticker-row') as HTMLElement;
-  const prefix = (t.prefix || '').trim();
-  const sponsors = t.sponsors || [];
-  // Build each sponsor as its own <span> with explicit <span class="ticker-sep">
-  // dividers between every entry so margin styling actually spaces them.
-  const sponsorTags = sponsors
-    .map(s => `<span class="ticker-name">${s}</span>`)
-    .join('<span class="ticker-sep">·</span>');
-  const segment = `<span class="ticker-prefix">${prefix}</span><span class="ticker-sep">·</span>${sponsorTags}`;
-  // Duplicate the segment so the marquee can loop seamlessly. Use a
-  // blank spacer (not a "·") between segments so each loop starts cleanly
-  // with the prefix instead of a dangling divider.
-  row.innerHTML = `${segment}<span class="ticker-gap"></span>${segment}<span class="ticker-gap"></span>`;
-  el.style.setProperty('--ticker-speed', `${t.speedSec ?? 60}s`);
+  el.style.visibility = 'visible';
+  const tr = el.querySelector('.ticker-track') as HTMLElement | null;
+  if (tr) tr.style.animationPlayState = 'running';
 }
 
 function ensureAdIframe() {
