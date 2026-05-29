@@ -262,6 +262,13 @@ body.viewer #slide-frame {
   align-items: center;
   height: 100%;
   white-space: nowrap;
+  /* Size to content (the two duplicated segments), NOT the full ticker width.
+     The keyframe scrolls translateX(-50%), and -50% is relative to THIS
+     element's own width — so the track must equal the content width for one
+     loop to move exactly one full segment. If it filled the container instead,
+     -50% would only scroll ~half a screen and the list would visibly restart
+     after the first few names. */
+  width: max-content;
   animation: ticker-scroll var(--ticker-speed, 60s) linear infinite;
   will-change: transform;
 }
