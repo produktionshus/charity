@@ -183,6 +183,7 @@ body.viewer {
   margin-top: 0.16in;
 }
 .slide-contest .contest-blocks {
+  margin-top: 0.7in;
   flex: 1 1 auto;
   min-height: 0;
   width: 100%;
@@ -205,7 +206,7 @@ body.viewer {
 }
 .slide-contest .contest-block-img {
   flex: 0 0 auto;
-  height: 2.6in;
+  height: 2.4in;
   width: 100%;
   display: flex;
   align-items: center;
