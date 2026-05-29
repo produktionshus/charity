@@ -344,9 +344,13 @@
   flex-wrap: nowrap;
   gap: 6px;
 }
+/* Each stacked logo shares the cell height equally (flex:1 1 0 + min-height:0),
+   so any number of logos fit and shrink to fit — count- and aspect-agnostic. */
 .sponsor-cell--stack-v .sponsor-cell-logo {
   max-width: 92%;
-  max-height: calc(var(--cell-logo-cap, 0.85in) * 0.42);
+  flex: 1 1 0;
+  min-height: 0;
+  height: 0;
 }
 /* Text-only sponsor entries (donorNames) — sit inline with logos when the
    lot mixes images + text, or stand alone when no logo is configured. */
