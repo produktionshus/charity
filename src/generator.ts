@@ -2,9 +2,9 @@
 // Reads + writes through /api/lots; broadcasts ws 'lots-updated' so the
 // viewer / auctioneer / controller refresh themselves on save.
 
-import { renderSlide, renderCover, renderClosing, renderSponsorIndex, renderWishLoop, renderMedia, renderAuctionDisplay, fitToViewport } from './render';
+import { renderSlide, renderCover, renderClosing, renderSponsorIndex, renderWishLoop, renderMedia, renderAuctionDisplay, renderContest, renderCarousel, fitToViewport } from './render';
 import { EVENT_META } from './slides';
-import type { Lot, BordplanItem, CoverItem, ClosingItem, SponsorIndexItem, WishLoopItem, MediaItem, AuctionDisplayItem, AuctionTeam, AuctionDisplayState, DeckItem } from './slides';
+import type { Lot, BordplanItem, CoverItem, ClosingItem, SponsorIndexItem, WishLoopItem, MediaItem, AuctionDisplayItem, ContestItem, ContestBlock, AuctionTeam, AuctionDisplayState, DeckItem } from './slides';
 import { renderBordplanSlide } from './render-bordplan';
 import type { FloorPlanConfig } from './bordplan-engine';
 
@@ -121,7 +121,7 @@ let lotsBank: Lot[] = [];     // filtered alias = items where kind!=='bordplan'
 let selectedId: string | null = sessionStorage.getItem('gen.selectedId');
 let dirty = false;
 
-function itemKind(item: DeckItem | undefined): 'lot' | 'bordplan' | 'cover' | 'closing' | 'sponsor-index' | 'wish-loop' | 'media' | 'auction-display' {
+function itemKind(item: DeckItem | undefined): 'lot' | 'bordplan' | 'cover' | 'closing' | 'sponsor-index' | 'wish-loop' | 'media' | 'auction-display' | 'contest' | 'carousel' {
   if (item && (item as any).kind === 'bordplan') return 'bordplan';
   if (item && (item as any).kind === 'cover') return 'cover';
   if (item && (item as any).kind === 'closing') return 'closing';
@@ -129,6 +129,8 @@ function itemKind(item: DeckItem | undefined): 'lot' | 'bordplan' | 'cover' | 'c
   if (item && (item as any).kind === 'wish-loop') return 'wish-loop';
   if (item && (item as any).kind === 'media') return 'media';
   if (item && (item as any).kind === 'auction-display') return 'auction-display';
+  if (item && (item as any).kind === 'contest') return 'contest';
+  if (item && (item as any).kind === 'carousel') return 'carousel';
   return 'lot';
 }
 function isBordplanItem(item: DeckItem | undefined): item is BordplanItem {
@@ -151,6 +153,9 @@ function isMediaItem(item: DeckItem | undefined): item is MediaItem {
 }
 function isAuctionDisplayItem(item: DeckItem | undefined): item is AuctionDisplayItem {
   return !!item && (item as any).kind === 'auction-display';
+}
+function isContestItem(item: DeckItem | undefined): item is ContestItem {
+  return !!item && (item as any).kind === 'contest';
 }
 
 // ---- Bordplan form DOM ----
@@ -226,6 +231,20 @@ const mdShowTickerEl = document.getElementById('md-show-ticker') as HTMLInputEle
 const mdVideoOptsEl = document.getElementById('md-video-opts')!;
 const mdSaveBtn    = document.getElementById('md-save')!;
 
+const formCarousel = document.getElementById('gen-form-carousel')!;
+const crActiveEl         = document.getElementById('cr-active')          as HTMLInputElement;
+const crLabelEl          = document.getElementById('cr-label')           as HTMLInputElement;
+const crFadeMsEl         = document.getElementById('cr-fade-ms')         as HTMLInputElement;
+const crDefaultSecondsEl = document.getElementById('cr-default-seconds') as HTMLInputElement;
+const crBgColorEl        = document.getElementById('cr-bg-color')        as HTMLInputElement;
+const crShowTickerEl     = document.getElementById('cr-show-ticker')     as HTMLInputElement;
+const crImageListEl      = document.getElementById('cr-image-list')!;
+const crImageUploadEl    = document.getElementById('cr-image-upload')    as HTMLInputElement;
+const crSaveBtn          = document.getElementById('cr-save')!;
+// Live edit copy of the carousel's image list. Renders to the list view on
+// every change; readCarouselForm flattens this into the saved payload.
+let crImagesDraft: Array<{ src: string; seconds?: number; alt?: string }> = [];
+
 const formSponsorIndex = document.getElementById('gen-form-sponsorindex')!;
 const siActiveEl   = document.getElementById('si-active') as HTMLInputElement;
 const siLabelEl    = document.getElementById('si-label')  as HTMLInputElement;
@@ -242,6 +261,15 @@ const covLogoScaleEl   = document.getElementById('cov-logo-scale') as HTMLInputE
 const covLogoScaleVal  = document.getElementById('cov-logo-scale-val')!;
 const covActiveEl      = document.getElementById('cov-active')     as HTMLInputElement;
 const covSaveBtn       = document.getElementById('cov-save')!;
+const formContest    = document.getElementById('gen-form-contest')!;
+const ctActiveEl     = document.getElementById('ct-active')    as HTMLInputElement;
+const ctLabelEl      = document.getElementById('ct-label')     as HTMLInputElement;
+const ctTitleEl      = document.getElementById('ct-title')     as HTMLInputElement;
+const ctSubtitleEl   = document.getElementById('ct-subtitle')  as HTMLInputElement;
+const ctBlockListEl  = document.getElementById('ct-block-list')!;
+const ctAddBlockBtn  = document.getElementById('ct-add-block') as HTMLButtonElement;
+const ctSaveBtn      = document.getElementById('ct-save')!;
+let ctBlocks: ContestBlock[] = [];
 const bpLabelEl     = document.getElementById('bp-label')      as HTMLInputElement;
 const bpEventNameEl = document.getElementById('bp-event-name') as HTMLInputElement;
 const bpColsEl      = document.getElementById('bp-cols')       as HTMLInputElement;
@@ -426,6 +454,12 @@ function renderList() {
       dn = 'AD';
       title = item.label || '(uden navn)';
       badge = !item.active ? 'INACTIVE' : `AUKTION-DISPLAY · ${item.screen || 'intro'}`;
+    } else if (kind === 'carousel') {
+      dn = 'CR';
+      const car = item as any;
+      title = car.label || '(uden navn)';
+      const count = Array.isArray(car.images) ? car.images.length : 0;
+      badge = !car.active ? 'INACTIVE' : `BILLEDKARRUSEL · ${count}`;
     }
     row.innerHTML = `
       <span class="drag-handle">⋮⋮</span>
@@ -526,7 +560,15 @@ function selectLot(id: string) {
   formWishLoop.style.display = 'none';
   formMedia.style.display = 'none';
   formAuctionDisplay.style.display = 'none';
-  if (kind === 'auction-display') {
+  formContest.style.display = 'none';
+  formCarousel.style.display = 'none';
+  if (kind === 'carousel') {
+    formCarousel.style.display = 'flex';
+    populateCarouselForm(item as any);
+  } else if (kind === 'contest') {
+    formContest.style.display = 'flex';
+    populateContestForm(item as ContestItem);
+  } else if (kind === 'auction-display') {
     formAuctionDisplay.style.display = 'flex';
     populateAuctionDisplayForm(item as AuctionDisplayItem);
   } else if (kind === 'media') {
@@ -834,6 +876,28 @@ function refreshPreview() {
     wrap.appendChild(slideEl);
     requestAnimationFrame(() => fitToViewport(wrap, slideEl));
     previewMeta.textContent = 'sponsor-index';
+    return;
+  }
+  if (isContestItem(item)) {
+    const merged: ContestItem = { ...item, ...readContestForm() };
+    const slideEl = document.createElement('div');
+    slideEl.className = 'slide-canvas slide-contest';
+    slideEl.classList.add('is-visible', 'no-build');
+    slideEl.innerHTML = renderContest(merged);
+    wrap.appendChild(slideEl);
+    requestAnimationFrame(() => fitToViewport(wrap, slideEl));
+    previewMeta.textContent = `konkurrence · ${merged.blocks.length} blok(ke)`;
+    return;
+  }
+  if (itemKind(item) === 'carousel') {
+    const merged: any = { ...item, ...readCarouselForm() };
+    const slideEl = document.createElement('div');
+    slideEl.className = 'slide-canvas slide-carousel';
+    slideEl.classList.add('is-visible', 'no-build');
+    slideEl.innerHTML = renderCarousel(merged);
+    wrap.appendChild(slideEl);
+    requestAnimationFrame(() => fitToViewport(wrap, slideEl));
+    previewMeta.textContent = `billedkarrusel · ${merged.images.length} billed${merged.images.length === 1 ? '' : 'er'}`;
     return;
   }
   if (isAuctionDisplayItem(item)) {
@@ -1284,6 +1348,184 @@ clSaveBtn.addEventListener('click', async () => {
   const patch = readClosingForm();
   try {
     statusEl.textContent = 'Gemmer closing…';
+    const updated = await api(`/api/lots/${encodeURIComponent(selectedId)}`, {
+      method: 'PUT',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(patch),
+    });
+    const idx = itemsBank.findIndex(i => i.id === selectedId);
+    if (idx >= 0) itemsBank[idx] = updated;
+    setDirty(false);
+    renderList();
+    refreshPreview();
+    statusEl.textContent = 'Gemt';
+  } catch (e: any) {
+    statusEl.textContent = 'Save failed: ' + e.message;
+  }
+});
+
+// ---- Contest / lodtrækning form ----
+const CONTEST_MAX_BLOCKS = 4;
+function populateContestForm(item: ContestItem) {
+  editIdEl.textContent = item.id;
+  editDisplayNumEl.textContent = 'KONKURRENCE';
+  deleteBtn.style.display = 'inline-flex';
+  duplicateBtn.style.display = 'inline-flex';
+  resetFocalBtn.style.display = 'none';
+  ctActiveEl.checked = !!item.active;
+  ctLabelEl.value    = item.label    ?? '';
+  ctTitleEl.value    = item.title    ?? '';
+  ctSubtitleEl.value = item.subtitle ?? '';
+  ctBlocks = (item.blocks || []).map(b => ({
+    src: b.src ?? null,
+    heading: b.heading ?? '',
+    lines: Array.isArray(b.lines) ? b.lines.slice(0, 3) : [],
+  }));
+  renderContestBlockList();
+}
+function readContestForm(): Partial<ContestItem> {
+  return {
+    active:   ctActiveEl.checked,
+    label:    ctLabelEl.value,
+    title:    ctTitleEl.value,
+    subtitle: ctSubtitleEl.value,
+    blocks:   ctBlocks.map(b => ({
+      src: b.src ?? null,
+      heading: b.heading || undefined,
+      lines: (b.lines || []).map(l => l.trim()).filter(Boolean).slice(0, 3),
+    })),
+  };
+}
+function renderContestBlockList() {
+  ctBlockListEl.innerHTML = '';
+  ctBlocks.forEach((b, idx) => {
+    const card = document.createElement('div');
+    card.className = 'ct-block-card';
+    card.draggable = true;
+    card.dataset.idx = String(idx);
+    const lines = b.lines || [];
+    const imgInner = b.src
+      ? `<img src="${escapeHtml(b.src)}" alt="" onerror="this.style.opacity=0.2" />`
+      : `<span class="ct-block-empty">Intet billede</span>`;
+    card.innerHTML = `
+      <div class="ct-block-head"><span class="ct-block-num">Blok ${idx + 1}</span>
+        <button type="button" class="cl-del-btn" data-action="del" title="Fjern blok">✕</button>
+      </div>
+      <div class="ct-block-imgwrap">${imgInner}</div>
+      <label class="ct-block-upload">
+        <input type="file" data-action="img" accept="image/png,image/jpeg,image/webp,image/svg+xml" />
+        <span>Skift billede/logo</span>
+      </label>
+      <input type="text" class="ct-block-field" data-field="heading" placeholder="Overskrift" value="${escapeHtml(b.heading || '')}" />
+      <input type="text" class="ct-block-field" data-field="line0" placeholder="Info linje 1" value="${escapeHtml(lines[0] || '')}" />
+      <input type="text" class="ct-block-field" data-field="line1" placeholder="Info linje 2" value="${escapeHtml(lines[1] || '')}" />
+      <input type="text" class="ct-block-field" data-field="line2" placeholder="Info linje 3" value="${escapeHtml(lines[2] || '')}" />
+    `;
+    ctBlockListEl.appendChild(card);
+  });
+  if (!ctBlocks.length) {
+    const empty = document.createElement('div');
+    empty.className = 'ov-empty';
+    empty.textContent = '(Ingen blokke — tilføj 1–4 nedenfor)';
+    ctBlockListEl.appendChild(empty);
+  }
+  ctAddBlockBtn.disabled = ctBlocks.length >= CONTEST_MAX_BLOCKS;
+}
+function onContestChange() { setDirty(true); refreshPreview(); }
+ctBlockListEl.addEventListener('input', (e) => {
+  const el = e.target as HTMLInputElement;
+  const field = el.dataset.field;
+  if (!field) return;
+  const card = el.closest<HTMLElement>('.ct-block-card');
+  if (!card) return;
+  const idx = parseInt(card.dataset.idx!, 10);
+  const b = ctBlocks[idx];
+  if (!b) return;
+  if (field === 'heading') {
+    b.heading = el.value;
+  } else if (field.startsWith('line')) {
+    const li = parseInt(field.slice(4), 10);
+    if (!b.lines) b.lines = [];
+    b.lines[li] = el.value;
+  }
+  onContestChange();
+});
+ctBlockListEl.addEventListener('click', (e) => {
+  const btn = (e.target as HTMLElement).closest<HTMLButtonElement>('button[data-action="del"]');
+  if (!btn) return;
+  const card = btn.closest<HTMLElement>('.ct-block-card');
+  if (!card) return;
+  const idx = parseInt(card.dataset.idx!, 10);
+  ctBlocks.splice(idx, 1);
+  renderContestBlockList();
+  onContestChange();
+});
+ctBlockListEl.addEventListener('change', async (e) => {
+  const el = e.target as HTMLInputElement;
+  if (el.dataset.action !== 'img' || !el.files?.[0]) return;
+  const card = el.closest<HTMLElement>('.ct-block-card');
+  if (!card) return;
+  const idx = parseInt(card.dataset.idx!, 10);
+  const b = ctBlocks[idx];
+  if (!b) return;
+  const fd = new FormData();
+  fd.append('kind', 'contest');
+  fd.append('file', el.files[0]);
+  try {
+    statusEl.textContent = 'Uploader billede…';
+    const res = await fetch('/api/upload', { method: 'POST', body: fd });
+    const data = await res.json();
+    if (!data.filename) throw new Error('no filename');
+    b.src = `/assets/contest/${data.filename}`;
+    renderContestBlockList();
+    onContestChange();
+    statusEl.textContent = 'Billede uploadet';
+  } catch (err: any) {
+    statusEl.textContent = 'Upload failed: ' + err.message;
+  }
+});
+let ctDragIdx: number | null = null;
+ctBlockListEl.addEventListener('dragstart', (e) => {
+  const card = (e.target as HTMLElement).closest<HTMLElement>('.ct-block-card');
+  if (!card || card.dataset.idx === undefined) return;
+  ctDragIdx = parseInt(card.dataset.idx!, 10);
+  card.classList.add('dragging');
+});
+ctBlockListEl.addEventListener('dragover', (e) => {
+  e.preventDefault();
+  const card = (e.target as HTMLElement).closest<HTMLElement>('.ct-block-card');
+  ctBlockListEl.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
+  if (card && card.dataset.idx !== undefined) card.classList.add('drag-over');
+});
+ctBlockListEl.addEventListener('dragend', () => {
+  ctBlockListEl.querySelectorAll('.ct-block-card').forEach(el => el.classList.remove('dragging', 'drag-over'));
+  ctDragIdx = null;
+});
+ctBlockListEl.addEventListener('drop', (e) => {
+  e.preventDefault();
+  const card = (e.target as HTMLElement).closest<HTMLElement>('.ct-block-card');
+  if (!card || card.dataset.idx === undefined || ctDragIdx === null) return;
+  const targetIdx = parseInt(card.dataset.idx!, 10);
+  if (targetIdx === ctDragIdx) return;
+  const [moved] = ctBlocks.splice(ctDragIdx, 1);
+  ctBlocks.splice(targetIdx, 0, moved);
+  ctDragIdx = null;
+  renderContestBlockList();
+  onContestChange();
+});
+ctAddBlockBtn.addEventListener('click', () => {
+  if (ctBlocks.length >= CONTEST_MAX_BLOCKS) return;
+  ctBlocks.push({ src: null, heading: '', lines: [] });
+  renderContestBlockList();
+  onContestChange();
+});
+[ctActiveEl, ctLabelEl, ctTitleEl, ctSubtitleEl]
+  .forEach(el => el.addEventListener('input', onContestChange));
+ctSaveBtn.addEventListener('click', async () => {
+  if (!selectedId) return;
+  const patch = readContestForm();
+  try {
+    statusEl.textContent = 'Gemmer konkurrence…';
     const updated = await api(`/api/lots/${encodeURIComponent(selectedId)}`, {
       method: 'PUT',
       headers: { 'content-type': 'application/json' },
@@ -1941,6 +2183,151 @@ saveBtn.addEventListener('click', async () => {
 });
 
 // ---- New / Delete ----
+// ---- Carousel (billedkarrusel) editor ----
+function populateCarouselForm(item: any) {
+  crActiveEl.checked = item.active ?? true;
+  crLabelEl.value = item.label ?? '';
+  crFadeMsEl.value = String(item.fadeMs ?? 800);
+  crDefaultSecondsEl.value = String(item.defaultSeconds ?? 5);
+  crBgColorEl.value = (typeof item.bgColor === 'string' && /^#[0-9a-f]{6}$/i.test(item.bgColor))
+    ? item.bgColor
+    : '#000000';
+  crShowTickerEl.checked = !!item.showTicker;
+  crImagesDraft = Array.isArray(item.images)
+    ? item.images.map((im: any) => ({ src: String(im.src || ''), seconds: Number(im.seconds) || undefined, alt: im.alt }))
+    : [];
+  renderCarouselImageList();
+}
+function readCarouselForm(): any {
+  const fadeMs = parseInt(crFadeMsEl.value, 10);
+  const defaultSec = parseFloat(crDefaultSecondsEl.value);
+  return {
+    active: crActiveEl.checked,
+    label: crLabelEl.value.trim() || 'Billedkarrusel',
+    fadeMs: Number.isFinite(fadeMs) && fadeMs > 0 ? fadeMs : 800,
+    defaultSeconds: Number.isFinite(defaultSec) && defaultSec > 0 ? defaultSec : 5,
+    bgColor: crBgColorEl.value || '#000',
+    showTicker: crShowTickerEl.checked,
+    images: crImagesDraft.map(im => ({
+      src: im.src,
+      ...(Number(im.seconds) > 0 ? { seconds: Number(im.seconds) } : {}),
+      ...(im.alt ? { alt: im.alt } : {}),
+    })),
+  };
+}
+function renderCarouselImageList() {
+  if (!crImagesDraft.length) {
+    crImageListEl.innerHTML = '<div style="font-style:italic;color:rgba(228,223,200,0.7);padding:6px 4px">Ingen billeder endnu — upload nogle nedenfor.</div>';
+    return;
+  }
+  crImageListEl.innerHTML = crImagesDraft.map((im, i) => `
+    <div class="carousel-row" data-idx="${i}" style="display:flex;align-items:center;gap:8px;padding:4px;background:rgba(255,255,255,0.04);border-radius:6px">
+      <img src="${im.src}" alt="" style="width:64px;height:40px;object-fit:contain;background:#000;border-radius:4px" />
+      <span class="carousel-fname" style="flex:1;font-size:11px;opacity:0.8;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${im.src.split('/').pop() || im.src}</span>
+      <label style="font-size:11px;opacity:0.8;display:flex;align-items:center;gap:4px">sek
+        <input type="number" class="carousel-seconds" min="0" max="120" step="0.5" value="${im.seconds ?? ''}" placeholder="auto" style="width:60px" />
+      </label>
+      <button type="button" class="link-btn carousel-up" title="Op">↑</button>
+      <button type="button" class="link-btn carousel-down" title="Ned">↓</button>
+      <button type="button" class="drawer-danger carousel-del" title="Slet">✕</button>
+    </div>
+  `).join('');
+}
+crImageListEl.addEventListener('input', (e) => {
+  const target = e.target as HTMLElement;
+  if (!target.classList.contains('carousel-seconds')) return;
+  const row = target.closest<HTMLElement>('.carousel-row');
+  if (!row) return;
+  const idx = parseInt(row.dataset.idx || '0', 10);
+  const v = parseFloat((target as HTMLInputElement).value);
+  crImagesDraft[idx].seconds = Number.isFinite(v) && v > 0 ? v : undefined;
+  setDirty(true);
+  refreshPreview();
+});
+crImageListEl.addEventListener('click', (e) => {
+  const t = e.target as HTMLElement;
+  const row = t.closest<HTMLElement>('.carousel-row');
+  if (!row) return;
+  const idx = parseInt(row.dataset.idx || '0', 10);
+  if (t.classList.contains('carousel-del')) {
+    crImagesDraft.splice(idx, 1);
+  } else if (t.classList.contains('carousel-up') && idx > 0) {
+    [crImagesDraft[idx - 1], crImagesDraft[idx]] = [crImagesDraft[idx], crImagesDraft[idx - 1]];
+  } else if (t.classList.contains('carousel-down') && idx < crImagesDraft.length - 1) {
+    [crImagesDraft[idx + 1], crImagesDraft[idx]] = [crImagesDraft[idx], crImagesDraft[idx + 1]];
+  } else {
+    return;
+  }
+  renderCarouselImageList();
+  setDirty(true);
+  refreshPreview();
+});
+crImageUploadEl.addEventListener('change', async () => {
+  const files = Array.from(crImageUploadEl.files || []);
+  if (!files.length) return;
+  for (const file of files) {
+    const fd = new FormData();
+    fd.append('kind', 'carousel');
+    fd.append('file', file);
+    try {
+      const res = await fetch('/api/upload', { method: 'POST', body: fd });
+      const data = await res.json();
+      if (data?.filename) crImagesDraft.push({ src: `/assets/carousel/${data.filename}` });
+    } catch (e: any) { statusEl.textContent = 'Upload failed: ' + e.message; }
+  }
+  crImageUploadEl.value = '';
+  renderCarouselImageList();
+  setDirty(true);
+  refreshPreview();
+});
+[crActiveEl, crLabelEl, crFadeMsEl, crDefaultSecondsEl, crBgColorEl, crShowTickerEl]
+  .forEach(el => el.addEventListener('input', () => { setDirty(true); refreshPreview(); }));
+crSaveBtn.addEventListener('click', async () => {
+  if (!selectedId) return;
+  try {
+    statusEl.textContent = 'Gemmer billedkarrusel…';
+    const updated = await api(`/api/lots/${encodeURIComponent(selectedId)}`, {
+      method: 'PUT', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(readCarouselForm()),
+    });
+    const idx = itemsBank.findIndex(i => i.id === selectedId);
+    if (idx >= 0) itemsBank[idx] = updated;
+    setDirty(false);
+    renderList();
+    refreshPreview();
+    statusEl.textContent = 'Gemt';
+  } catch (e: any) {
+    statusEl.textContent = 'Save failed: ' + e.message;
+  }
+});
+
+const newCarouselBtn = document.getElementById('new-carousel')!;
+newCarouselBtn.addEventListener('click', async () => {
+  try {
+    const created = await api('/api/lots', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        kind: 'carousel',
+        active: true,
+        label: `Billedkarrusel ${itemsBank.filter(i => (i as any).kind === 'carousel').length + 1}`,
+        images: [],
+        defaultSeconds: 5,
+        fadeMs: 800,
+        bgColor: '#000',
+        showTicker: false,
+      } as any),
+    });
+    itemsBank.push(created);
+    selectedId = created.id;
+    renderList();
+    selectLot(created.id);
+    statusEl.textContent = 'Billedkarrusel oprettet';
+  } catch (e: any) {
+    statusEl.textContent = 'Create failed: ' + e.message;
+  }
+});
+
 const newAuctionDisplayBtn = document.getElementById('new-auctiondisplay')!;
 newAuctionDisplayBtn.addEventListener('click', async () => {
   try {
@@ -2111,6 +2498,31 @@ newCoverBtn.addEventListener('click', async () => {
     statusEl.textContent = 'Cover oprettet';
   } catch (e: any) {
     statusEl.textContent = 'Create cover failed: ' + e.message;
+  }
+});
+
+const newContestBtn = document.getElementById('new-contest')!;
+newContestBtn.addEventListener('click', async () => {
+  try {
+    const created = await api('/api/lots', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        kind: 'contest',
+        active: true,
+        label: 'Konkurrence',
+        title: 'KONKURRENCE',
+        subtitle: '',
+        blocks: [{ src: null, heading: '', lines: [] }],
+      } as any),
+    });
+    itemsBank.push(created);
+    selectedId = created.id;
+    renderList();
+    selectLot(created.id);
+    statusEl.textContent = 'Konkurrence oprettet';
+  } catch (e: any) {
+    statusEl.textContent = 'Create konkurrence failed: ' + e.message;
   }
 });
 

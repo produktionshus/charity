@@ -2,7 +2,7 @@
 // Each animated element carries class="build-item" and an inline
 // transition-delay derived from its build group + in-group index.
 
-import { LOTS, SLIDES, EVENT_META, lotById, bordplanById, coverById, closingById, sponsorIndexById, wishLoopById, mediaById, auctionDisplayById, displayNumFor, type Slide, type Lot, type CoverItem, type ClosingItem, type SponsorIndexItem, type WishLoopItem, type MediaItem, type AuctionDisplayItem } from './slides';
+import { LOTS, SLIDES, EVENT_META, lotById, bordplanById, coverById, closingById, sponsorIndexById, wishLoopById, mediaById, auctionDisplayById, contestById, carouselById, displayNumFor, type Slide, type Lot, type CoverItem, type ClosingItem, type SponsorIndexItem, type WishLoopItem, type MediaItem, type AuctionDisplayItem, type ContestItem, type CarouselItem } from './slides';
 import { lotLayout, isMirrored, photoFocal, HORIZON_TITLE_SIZE_OVERRIDE } from './layout';
 import { renderBordplanSlide } from './render-bordplan';
 
@@ -477,6 +477,65 @@ export function renderCover(item?: CoverItem): string {
   `;
 }
 
+// ---- Contest / lodtrækning ----
+// Heading + optional subtitle over a row of 1-4 horizontal blocks. Each block
+// has a large image/logo, a small heading and up to 3 info lines.
+export function renderContest(item?: ContestItem): string {
+  const title = item?.title ?? '';
+  const sub = item?.subtitle ?? '';
+  const blocks = (item?.blocks || []).slice(0, 4);
+  const blockStart = 2;
+  const cells = blocks.map((b, i) => {
+    const t = delay(blockStart + i);
+    const img = b.src
+      ? `<div class="contest-block-img"><img src="${b.src}" alt="" /></div>`
+      : `<div class="contest-block-img contest-block-img--empty"></div>`;
+    const heading = b.heading ? `<div class="contest-block-heading">${b.heading}</div>` : '';
+    const lines = (b.lines || []).filter(l => l && l.trim())
+      .map(l => `<div class="contest-block-line">${l}</div>`).join('');
+    const info = lines ? `<div class="contest-block-info">${lines}</div>` : '';
+    return `<div class="contest-block build-item" style="transition-delay:${t}ms">${img}${heading}${info}</div>`;
+  }).join('');
+  return `
+    <div class="contest-content" data-count="${blocks.length}">
+      ${title ? `<h1 class="contest-title build-item" style="transition-delay:${delay(0)}ms">${title}</h1>` : ''}
+      ${sub ? `<p class="contest-sub build-item" style="transition-delay:${delay(1)}ms">${sub}</p>` : ''}
+      <div class="contest-blocks">${cells}</div>
+    </div>
+  `;
+}
+
+// Image carousel — cross-fading bank of uploaded photos. Each image carries
+// its own dwell time in seconds (falling back to item.defaultSeconds); a
+// single fadeMs governs the crossfade duration. The viewer attaches a JS
+// timer when the slide enters and clears it on leave (see startCarousel /
+// stopCarousel in viewer.ts). Rendered as a stack of absolutely-positioned
+// <div> tiles so the active tile fades in over the previous one without
+// reflow. Loops forever.
+export function renderCarousel(item?: CarouselItem): string {
+  const fadeMs = Math.max(50, Number(item?.fadeMs) || 800);
+  const defaultSec = Math.max(0.5, Number(item?.defaultSeconds) || 5);
+  const bg = item?.bgColor || '#000';
+  const images = (item?.images || []).filter(im => im && im.src);
+  if (!images.length) {
+    return `
+      <div class="carousel-stage carousel-stage--empty" style="background:${bg}">
+        <div class="carousel-empty">Ingen billeder uploadet endnu</div>
+      </div>
+    `;
+  }
+  const tiles = images.map((im, i) => {
+    const sec = Number(im.seconds) > 0 ? Number(im.seconds) : defaultSec;
+    const active = i === 0 ? ' is-active' : '';
+    return `<div class="carousel-image build-item${active}" data-seconds="${sec}" style="background-image:url('${im.src}'); transition-duration:${fadeMs}ms"></div>`;
+  }).join('');
+  return `
+    <div class="carousel-stage" data-fade-ms="${fadeMs}" data-image-count="${images.length}" style="background:${bg}; --carousel-fade-ms:${fadeMs}ms">
+      ${tiles}
+    </div>
+  `;
+}
+
 // Optional lot override lets the generator render edits live without
 // roundtripping through lots.json / bundled imports.
 export function renderSlide(slide: Slide, lotOverride?: Lot, displayNumOverride?: string): HTMLElement {
@@ -519,6 +578,12 @@ export function renderSlide(slide: Slide, lotOverride?: Lot, displayNumOverride?
   } else if (slide.kind === 'auction-display') {
     const item = slide.itemId ? auctionDisplayById(slide.itemId) : undefined;
     root.innerHTML = renderAuctionDisplay(item);
+  } else if (slide.kind === 'contest') {
+    const item = slide.itemId ? contestById(slide.itemId) : undefined;
+    root.innerHTML = renderContest(item);
+  } else if (slide.kind === 'carousel') {
+    const item = slide.itemId ? carouselById(slide.itemId) : undefined;
+    root.innerHTML = renderCarousel(item);
   } else if (slide.kind === 'bordplan') {
     const item = bordplanById(slide.itemId!);
     if (!item) return root;

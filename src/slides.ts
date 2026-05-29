@@ -6,7 +6,7 @@
 import lotsJson from './lots.json';
 import type { FloorPlanConfig } from './bordplan-engine';
 
-export type SlideKind = 'cover' | 'sponsor-index' | 'lot' | 'closing' | 'bordplan' | 'wish-loop' | 'media' | 'auction-display';
+export type SlideKind = 'cover' | 'sponsor-index' | 'lot' | 'closing' | 'bordplan' | 'wish-loop' | 'media' | 'auction-display' | 'contest' | 'carousel';
 
 export interface Slide {
   id: string;
@@ -115,6 +115,42 @@ export interface WishLoopItem {
   showTicker?: boolean;            // per-instance ticker visibility (default true)
 }
 
+export interface ContestBlock {
+  src: string | null;        // path under /assets/contest/ or absolute URL
+  heading?: string;          // small heading under the image
+  lines?: string[];          // 1-3 extra info lines
+}
+
+export interface ContestItem {
+  id: string;
+  kind: 'contest';
+  active: boolean;
+  label?: string;            // generator label
+  title?: string;            // big heading
+  subtitle?: string;         // optional smaller supplementary sub-text
+  blocks: ContestBlock[];    // 1-4 horizontal blocks
+}
+
+// Image carousel — a slide that cycles through a bank of uploaded photos
+// with a soft cross-fade between them and a configurable per-image dwell.
+// Loops forever while the slide is active.
+export interface CarouselImage {
+  src: string;               // path under /assets/carousel/ (or absolute URL)
+  seconds?: number;          // dwell time before fading to next (default = item.defaultSeconds)
+  alt?: string;
+}
+export interface CarouselItem {
+  id: string;
+  kind: 'carousel';
+  active: boolean;
+  label?: string;            // generator label
+  images: CarouselImage[];
+  defaultSeconds?: number;   // dwell used when an image has no per-image override (default 5)
+  fadeMs?: number;           // crossfade duration in ms (default 800)
+  bgColor?: string;          // letterbox/background colour (default '#000')
+  showTicker?: boolean;      // per-instance ticker visibility (default false)
+}
+
 export interface Lot {
   id: string;
   kind?: 'lot';                     // optional discriminator (default 'lot')
@@ -174,7 +210,7 @@ export interface SoundConfig {
   hammerVolume?: number;   // 0..1.5
 }
 
-export type DeckItem = Lot | BordplanItem | CoverItem | ClosingItem | SponsorIndexItem | WishLoopItem | MediaItem | AuctionDisplayItem;
+export type DeckItem = Lot | BordplanItem | CoverItem | ClosingItem | SponsorIndexItem | WishLoopItem | MediaItem | AuctionDisplayItem | ContestItem | CarouselItem;
 function isLot(item: DeckItem): item is Lot {
   return (item as any).kind === undefined || (item as any).kind === 'lot';
 }
@@ -198,6 +234,12 @@ function isMedia(item: DeckItem): item is MediaItem {
 }
 function isAuctionDisplay(item: DeckItem): item is AuctionDisplayItem {
   return (item as any).kind === 'auction-display';
+}
+function isCarousel(item: DeckItem): item is CarouselItem {
+  return (item as any).kind === 'carousel';
+}
+function isContest(item: DeckItem): item is ContestItem {
+  return (item as any).kind === 'contest';
 }
 
 // All items from the bank (active + inactive). Generator edits this list.
@@ -335,6 +377,10 @@ function buildSlides(): Slide[] {
       slides.push({ id: `media-${item.id}`, kind: 'media', itemId: item.id });
     } else if (isAuctionDisplay(item)) {
       slides.push({ id: `auction-display-${item.id}`, kind: 'auction-display', itemId: item.id });
+    } else if (isContest(item)) {
+      slides.push({ id: `contest-${item.id}`, kind: 'contest', itemId: item.id });
+    } else if (isCarousel(item)) {
+      slides.push({ id: `carousel-${item.id}`, kind: 'carousel', itemId: item.id });
     } else if (isLot(item)) {
       if (!lotsEmitted) {
         if (!hasSponsorIndex) flushSponsorIndex();
@@ -379,6 +425,14 @@ export function mediaById(id: string): MediaItem | undefined {
 export function auctionDisplayById(id: string): AuctionDisplayItem | undefined {
   const item = ALL_ITEMS.find(i => i.id === id && isAuctionDisplay(i));
   return item as AuctionDisplayItem | undefined;
+}
+export function contestById(id: string): ContestItem | undefined {
+  const item = ALL_ITEMS.find(i => i.id === id && isContest(i));
+  return item as ContestItem | undefined;
+}
+export function carouselById(id: string): CarouselItem | undefined {
+  const item = ALL_ITEMS.find(i => i.id === id && isCarousel(i));
+  return item as CarouselItem | undefined;
 }
 
 export const SLIDES: Slide[] = buildSlides();

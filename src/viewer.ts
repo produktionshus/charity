@@ -221,6 +221,40 @@ let adIframe: HTMLIFrameElement | null = null;
 let adIframeReady = false;
 const adPendingMessages: any[] = [];
 
+// Carousel timer — set when the active slide is a carousel, cleared on leave.
+// The closure captures the cycle index + setTimeout handle so we never leak
+// timers across slide transitions.
+let carouselCleanup: (() => void) | null = null;
+
+// Drive the cross-fade cycle for a freshly-mounted carousel slide. Each tile
+// carries its own dwell time in data-seconds; on every tick we toggle
+// .is-active on the next tile and queue the next advance. Loops forever.
+function startCarousel(root: HTMLElement) {
+  const tiles = Array.from(root.querySelectorAll<HTMLElement>('.carousel-stage > .carousel-image'));
+  if (tiles.length < 2) return;          // single image: nothing to cycle
+  let idx = 0;
+  tiles.forEach((t, i) => t.classList.toggle('is-active', i === 0));
+  let handle: ReturnType<typeof setTimeout> | null = null;
+  const advance = () => {
+    const cur = tiles[idx];
+    const next = tiles[(idx + 1) % tiles.length];
+    cur.classList.remove('is-active');
+    next.classList.add('is-active');
+    idx = (idx + 1) % tiles.length;
+    const sec = parseFloat(tiles[idx].dataset.seconds || '5');
+    handle = setTimeout(advance, Math.max(500, sec * 1000));
+  };
+  const firstSec = parseFloat(tiles[0].dataset.seconds || '5');
+  handle = setTimeout(advance, Math.max(500, firstSec * 1000));
+  carouselCleanup = () => {
+    if (handle) clearTimeout(handle);
+    handle = null;
+  };
+}
+function stopCarousel() {
+  if (carouselCleanup) { carouselCleanup(); carouselCleanup = null; }
+}
+
 // Cached most recent server state — needed when lots-updated fires without
 // an accompanying state push (e.g. adding a pre-event bonus donation) so we
 // can recompute team auctionAmounts using the latest bids + new bonus.
@@ -344,6 +378,10 @@ function swapSlide(idx: number, force = false) {
   const slide = SLIDES[idx];
   if (!slide) { console.warn('no slide at idx', idx, 'of', SLIDES.length); return; }
   if (!force && currentEl && currentSlideId === slide.id) return;
+  // Tear down any per-slide background timers (currently just the carousel
+  // cycle) before swapping — otherwise the previous slide's timer would
+  // continue mutating DOM that's about to be removed.
+  stopCarousel();
   currentSlideId = slide.id;
 
   if (slide.kind === 'auction-display') {
@@ -393,6 +431,7 @@ function swapSlide(idx: number, force = false) {
   // 2 horizontal logos sitting side-by-side don't get squashed to 50%
   // width. Stacking vertically lets each take ~full cell width.
   if (slide.kind === 'sponsor-index') decorateSponsorCells(next);
+  if (slide.kind === 'carousel') startCarousel(next);
   unmuteWantedVideos(next);
   // Some browsers (notably iPad Safari) don't honour autoplay set as an
   // HTML attribute when the video is mounted via innerHTML. Set the

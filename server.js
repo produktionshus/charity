@@ -151,6 +151,10 @@ function buildServerSlides() {
       out.push({ kind: 'media', itemId: item.id });
     } else if (item.kind === 'auction-display') {
       out.push({ kind: 'auction-display', itemId: item.id });
+    } else if (item.kind === 'carousel') {
+      out.push({ kind: 'carousel', itemId: item.id });
+    } else if (item.kind === 'contest') {
+      out.push({ kind: 'contest', itemId: item.id });
     } else if (!item.kind || item.kind === 'lot') {
       if (!lotsEmitted) {
         if (!hasSponsorIndex && !out.some(s => s.kind === 'sponsor-index')) {
@@ -184,7 +188,9 @@ const applesDir  = resolve(assetsDir, 'apples');
 const wishLoopDir = resolve(assetsDir, 'wish-loop');
 const mediaDir    = resolve(assetsDir, 'media');
 const coverDir    = resolve(assetsDir, 'cover');
-for (const d of [heroDir, logoDir, closingDir, applesDir, wishLoopDir, mediaDir, coverDir, soundsDir]) {
+const carouselDir = resolve(assetsDir, 'carousel');
+const contestDir  = resolve(assetsDir, 'contest');
+for (const d of [heroDir, logoDir, closingDir, applesDir, wishLoopDir, mediaDir, coverDir, carouselDir, contestDir, soundsDir]) {
   if (!existsSync(d)) mkdirSync(d, { recursive: true });
 }
 
@@ -209,6 +215,8 @@ const upload = multer({
       if (kind === 'media')     return cb(null, mediaDir);
       if (kind === 'cover-logo') return cb(null, coverDir);
       if (kind === 'extra-logo') return cb(null, logoDir);
+      if (kind === 'carousel')  return cb(null, carouselDir);
+      if (kind === 'contest')   return cb(null, contestDir);
       if (kind === 'sound')     return cb(null, soundsDir);
       cb(new Error('Unknown upload kind: ' + kind), '');
     },
@@ -230,6 +238,15 @@ const upload = multer({
       if (kind === 'media')      return cb(null, file.originalname);
       if (kind === 'cover-logo') return cb(null, file.originalname);
       if (kind === 'extra-logo') return cb(null, `extra-${lotId || Date.now()}-${file.originalname}`);
+      if (kind === 'carousel') {
+        // Prefix with a millisecond timestamp so re-uploading a file with the
+        // same name keeps both versions and the operator's image list stays
+        // deterministic.
+        return cb(null, `${Date.now()}-${file.originalname}`);
+      }
+      if (kind === 'contest') {
+        return cb(null, `${Date.now()}-${file.originalname}`);
+      }
       if (kind === 'sound') {
         const which = req.body.which || req.query.which;
         const e = (extname(file.originalname) || '.mp3').toLowerCase();
@@ -408,6 +425,28 @@ app.post('/api/lots', (req, res) => {
       videoAutoplay: req.body.videoAutoplay ?? true,
       fit:           req.body.fit           || 'cover',
       bgColor:       req.body.bgColor       || '#000',
+    };
+  } else if (kind === 'carousel') {
+    newItem = {
+      id: uuidv4(),
+      kind: 'carousel',
+      active: req.body.active ?? true,
+      label: req.body.label || 'Billedkarrusel',
+      images: Array.isArray(req.body.images) ? req.body.images : [],
+      defaultSeconds: Number(req.body.defaultSeconds) || 5,
+      fadeMs:         Number(req.body.fadeMs)         || 800,
+      bgColor:        req.body.bgColor                || '#000',
+      showTicker:     req.body.showTicker             ?? false,
+    };
+  } else if (kind === 'contest') {
+    newItem = {
+      id: uuidv4(),
+      kind: 'contest',
+      active: req.body.active ?? true,
+      label: req.body.label || 'Konkurrence',
+      title: req.body.title || '',
+      subtitle: req.body.subtitle || '',
+      blocks: Array.isArray(req.body.blocks) ? req.body.blocks : [],
     };
   } else if (kind === 'wish-loop') {
     newItem = {
