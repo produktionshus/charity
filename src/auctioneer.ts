@@ -167,7 +167,7 @@ sync.on((state) => {
     monitor.classList.remove('show-header');
     monitor.classList.remove('has-bid');
     lotnumEl.textContent = '—';
-    titleEl.textContent = slide?.kind === 'cover' ? 'Cover' : slide?.kind === 'sponsor-index' ? 'Sponsorer' : slide?.kind === 'closing' ? 'Tak for i aften' : slide?.kind === 'wish-loop' ? 'Børnenes ønsker' : slide?.kind === 'media' ? 'Media' : slide?.kind === 'auction-display' ? '4-hold konkurrence' : '';
+    titleEl.textContent = slide?.kind === 'cover' ? 'Cover' : slide?.kind === 'sponsor-index' ? 'Sponsorer' : slide?.kind === 'closing' ? 'Tak for i aften' : slide?.kind === 'wish-loop' ? 'Børnenes ønsker' : slide?.kind === 'media' ? 'Media' : slide?.kind === 'auction-display' ? '4-hold konkurrence' : slide?.kind === 'contest' ? 'Konkurrence' : '';
     donorEl.textContent = '';
     bidEl.innerHTML = `—<span class="kr">kr</span>`;
     lastBid = null;

@@ -211,6 +211,68 @@ body.generator {
 }
 .closing-add-row input[type='file'] { display: none; }
 
+/* Contest / lodtrækning block editor */
+.contest-block-list {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+  margin: 6px 0 0;
+}
+.ct-block-card {
+  display: flex; flex-direction: column; gap: 5px;
+  background: var(--bg-card);
+  border: 1px solid var(--line-c2);
+  border-radius: 5px;
+  padding: 7px;
+  cursor: grab;
+  position: relative;
+}
+.ct-block-card.dragging { opacity: 0.4; }
+.ct-block-card.drag-over { outline: 2px dashed var(--green-400); }
+.ct-block-head {
+  display: flex; align-items: center; justify-content: space-between;
+}
+.ct-block-num {
+  font-size: 10px; font-weight: 700; letter-spacing: 0.04em;
+  color: var(--text-c2); text-transform: uppercase;
+}
+.ct-block-card .cl-del-btn {
+  width: 22px; height: 22px; padding: 0;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid var(--line-c2);
+  border-radius: 3px;
+  color: var(--text-c2);
+  font-size: 11px; cursor: pointer;
+}
+.ct-block-card .cl-del-btn:hover { color: #F87171; }
+.ct-block-imgwrap {
+  width: 100%; height: 72px;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(255,255,255,0.04);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.ct-block-imgwrap img { max-width: 100%; max-height: 100%; object-fit: contain; }
+.ct-block-empty { font-size: 9px; color: var(--text-c2); opacity: 0.6; }
+.ct-block-upload {
+  display: inline-flex; align-items: center; justify-content: center;
+  padding: 4px 8px;
+  background: #0D2A21; color: #E4DFC8;
+  border: 1px dashed rgba(255,255,255,0.30);
+  border-radius: 4px;
+  cursor: pointer; font-size: 10px; font-weight: 600;
+}
+.ct-block-upload input[type='file'] { display: none; }
+.ct-block-field {
+  width: 100%;
+  padding: 4px 6px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid var(--line-c2);
+  border-radius: 3px;
+  color: var(--text-c);
+  font-size: 11px;
+}
+
 /* Extra sponsor logos picker */
 .extra-logo-list {
   list-style: none; margin: 6px 0; padding: 0;
