@@ -236,6 +236,8 @@ const covTitleEl       = document.getElementById('cov-title')      as HTMLInputE
 const covSubtitleEl    = document.getElementById('cov-subtitle')   as HTMLInputElement;
 const covAttributionEl = document.getElementById('cov-attribution') as HTMLInputElement;
 const covLogoFileEl    = document.getElementById('cov-logo-file')  as HTMLInputElement;
+const covLogoUploadEl  = document.getElementById('cov-logo-upload') as HTMLInputElement;
+const covLogoPreviewEl = document.getElementById('cov-logo-preview') as HTMLImageElement;
 const covLogoScaleEl   = document.getElementById('cov-logo-scale') as HTMLInputElement;
 const covLogoScaleVal  = document.getElementById('cov-logo-scale-val')!;
 const covActiveEl      = document.getElementById('cov-active')     as HTMLInputElement;
@@ -1088,6 +1090,7 @@ function populateCoverForm(item: CoverItem) {
   covSubtitleEl.value = item.subtitle ?? '';
   covAttributionEl.value = item.attribution ?? '';
   covLogoFileEl.value = item.logoFile ?? '';
+  updateCoverLogoPreview();
   const scalePct = Math.round((item.logoScale ?? 1) * 100);
   covLogoScaleEl.value = String(scalePct);
   covLogoScaleVal.textContent = scalePct + '%';
@@ -1104,6 +1107,33 @@ function readCoverForm(): Partial<CoverItem> {
     logoScale: scale === 1 ? undefined : scale,
   };
 }
+function updateCoverLogoPreview() {
+  const f = covLogoFileEl.value.trim();
+  covLogoPreviewEl.src = f ? `/assets/${f}?v=${Date.now()}` : '';
+  covLogoPreviewEl.style.display = f ? '' : 'none';
+}
+async function uploadCoverLogo(file: File) {
+  const fd = new FormData();
+  fd.append('kind', 'cover-logo');
+  fd.append('file', file);
+  try {
+    statusEl.textContent = 'Uploader logo…';
+    const res = await fetch('/api/upload', { method: 'POST', body: fd });
+    const data = await res.json();
+    if (!data.filename) throw new Error('no filename');
+    covLogoFileEl.value = `cover/${data.filename}`;
+    updateCoverLogoPreview();
+    setDirty(true);
+    refreshPreview();
+    statusEl.textContent = 'Logo uploadet';
+  } catch (e: any) {
+    statusEl.textContent = 'Upload failed: ' + e.message;
+  }
+}
+covLogoUploadEl.addEventListener('change', () => {
+  if (covLogoUploadEl.files?.[0]) uploadCoverLogo(covLogoUploadEl.files[0]);
+});
+covLogoFileEl.addEventListener('input', updateCoverLogoPreview);
 covLogoScaleEl.addEventListener('input', () => {
   covLogoScaleVal.textContent = covLogoScaleEl.value + '%';
 });

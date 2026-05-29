@@ -183,7 +183,8 @@ const closingDir = resolve(assetsDir, 'closing');
 const applesDir  = resolve(assetsDir, 'apples');
 const wishLoopDir = resolve(assetsDir, 'wish-loop');
 const mediaDir    = resolve(assetsDir, 'media');
-for (const d of [heroDir, logoDir, closingDir, applesDir, wishLoopDir, mediaDir, soundsDir]) {
+const coverDir    = resolve(assetsDir, 'cover');
+for (const d of [heroDir, logoDir, closingDir, applesDir, wishLoopDir, mediaDir, coverDir, soundsDir]) {
   if (!existsSync(d)) mkdirSync(d, { recursive: true });
 }
 
@@ -206,6 +207,7 @@ const upload = multer({
       if (kind === 'apple')     return cb(null, applesDir);
       if (kind === 'wish-bg')   return cb(null, wishLoopDir);
       if (kind === 'media')     return cb(null, mediaDir);
+      if (kind === 'cover-logo') return cb(null, coverDir);
       if (kind === 'extra-logo') return cb(null, logoDir);
       if (kind === 'sound')     return cb(null, soundsDir);
       cb(new Error('Unknown upload kind: ' + kind), '');
@@ -226,6 +228,7 @@ const upload = multer({
       if (kind === 'apple')      return cb(null, file.originalname);
       if (kind === 'wish-bg')    return cb(null, file.originalname);
       if (kind === 'media')      return cb(null, file.originalname);
+      if (kind === 'cover-logo') return cb(null, file.originalname);
       if (kind === 'extra-logo') return cb(null, `extra-${lotId || Date.now()}-${file.originalname}`);
       if (kind === 'sound') {
         const which = req.body.which || req.query.which;
