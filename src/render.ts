@@ -227,19 +227,32 @@ export function renderSponsorIndex(item?: SponsorIndexItem): string {
     // legacy single-logo default still resolves to mainSrc; lots with
     // donor names append text entries; lots with ONLY donor names skip
     // the broken default-path img entirely.
-    const hasLogos = !!(l.sponsorLogoSrc || l.extraSponsorLogos?.length) || !l.donorNames?.length;
-    const hasNames = !!(l.donorNames && l.donorNames.length);
+    // Private-donor lots (sponsor field starts with "Doneret…") have
+    // neither a logo nor a donor name list — the lot detail slide already
+    // short-circuits to a "Doneret af privat person" label, so mirror it
+    // here. Otherwise the index falls into the !donorNames.length branch
+    // below, defaults mainSrc to the conventional logo path, and renders
+    // a broken-image icon when that file doesn't exist.
+    const isPrivate = /^doneret/i.test(l.sponsor || '');
+    const hasLogos = !isPrivate && (!!(l.sponsorLogoSrc || l.extraSponsorLogos?.length) || !l.donorNames?.length);
+    const hasNames = !isPrivate && !!(l.donorNames && l.donorNames.length);
     const items: string[] = [];
-    if (hasLogos) {
-      const mainSrc = l.sponsorLogoSrc || `/assets/logo/logo-lot-${l.id}.png`;
-      items.push(`<img class="sponsor-cell-logo" src="${mainSrc}" alt="" />`);
-      for (const src of (l.extraSponsorLogos || [])) {
-        items.push(`<img class="sponsor-cell-logo" src="${src}" alt="" />`);
+    if (isPrivate) {
+      // Private-donor lots short-circuit: a single italic label, mirroring
+      // the lot-detail slide's .sponsor-private style.
+      items.push(`<span class="sponsor-cell-name sponsor-cell-name--private">Doneret af privat person</span>`);
+    } else {
+      if (hasLogos) {
+        const mainSrc = l.sponsorLogoSrc || `/assets/logo/logo-lot-${l.id}.png`;
+        items.push(`<img class="sponsor-cell-logo" src="${mainSrc}" alt="" />`);
+        for (const src of (l.extraSponsorLogos || [])) {
+          items.push(`<img class="sponsor-cell-logo" src="${src}" alt="" />`);
+        }
       }
-    }
-    if (hasNames) {
-      for (const n of l.donorNames!) {
-        items.push(`<span class="sponsor-cell-name">${n.toUpperCase()}</span>`);
+      if (hasNames) {
+        for (const n of l.donorNames!) {
+          items.push(`<span class="sponsor-cell-name">${n.toUpperCase()}</span>`);
+        }
       }
     }
     const multi = items.length > 1;
