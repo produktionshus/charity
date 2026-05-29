@@ -235,6 +235,8 @@ const covTitleEl       = document.getElementById('cov-title')      as HTMLInputE
 const covSubtitleEl    = document.getElementById('cov-subtitle')   as HTMLInputElement;
 const covAttributionEl = document.getElementById('cov-attribution') as HTMLInputElement;
 const covLogoFileEl    = document.getElementById('cov-logo-file')  as HTMLInputElement;
+const covLogoScaleEl   = document.getElementById('cov-logo-scale') as HTMLInputElement;
+const covLogoScaleVal  = document.getElementById('cov-logo-scale-val')!;
 const covActiveEl      = document.getElementById('cov-active')     as HTMLInputElement;
 const covSaveBtn       = document.getElementById('cov-save')!;
 const bpLabelEl     = document.getElementById('bp-label')      as HTMLInputElement;
@@ -1081,8 +1083,12 @@ function populateCoverForm(item: CoverItem) {
   covSubtitleEl.value = item.subtitle ?? '';
   covAttributionEl.value = item.attribution ?? '';
   covLogoFileEl.value = item.logoFile ?? '';
+  const scalePct = Math.round((item.logoScale ?? 1) * 100);
+  covLogoScaleEl.value = String(scalePct);
+  covLogoScaleVal.textContent = scalePct + '%';
 }
 function readCoverForm(): Partial<CoverItem> {
+  const scale = Number(covLogoScaleEl.value) / 100;
   return {
     active: covActiveEl.checked,
     label: covLabelEl.value,
@@ -1090,9 +1096,13 @@ function readCoverForm(): Partial<CoverItem> {
     subtitle: covSubtitleEl.value,
     attribution: covAttributionEl.value,
     logoFile: covLogoFileEl.value || undefined,
+    logoScale: scale === 1 ? undefined : scale,
   };
 }
-[covActiveEl, covLabelEl, covTitleEl, covSubtitleEl, covAttributionEl, covLogoFileEl]
+covLogoScaleEl.addEventListener('input', () => {
+  covLogoScaleVal.textContent = covLogoScaleEl.value + '%';
+});
+[covActiveEl, covLabelEl, covTitleEl, covSubtitleEl, covAttributionEl, covLogoFileEl, covLogoScaleEl]
   .forEach(el => el.addEventListener('input', () => { setDirty(true); refreshPreview(); }));
 covSaveBtn.addEventListener('click', async () => {
   if (!selectedId) return;
@@ -2151,6 +2161,7 @@ duplicateBtn.addEventListener('click', async () => {
       subtitle: item.subtitle,
       attribution: item.attribution,
       logoFile: item.logoFile,
+      logoScale: item.logoScale,
     };
   } else {
     const lot = item as Lot;

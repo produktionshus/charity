@@ -36,6 +36,7 @@ export interface CoverItem {
   subtitle?: string;         // default "STJERNEGOLF 2026"
   attribution?: string;      // default "AUKTION VED KASPER NIELSEN"
   logoFile?: string;         // relative to /assets/, default 'artsolo-logo.png'
+  logoScale?: number;        // size multiplier on base 1.2in width, default 1
 }
 
 export interface ClosingItem {

@@ -446,13 +446,15 @@ export function renderCover(item?: CoverItem): string {
   const sub   = item?.subtitle ?? 'STJERNEGOLF 2026';
   const attr  = item?.attribution ?? 'AUKTION VED KASPER NIELSEN';
   const logo  = item?.logoFile ?? 'artsolo-logo.png';
+  const scale = typeof item?.logoScale === 'number' && item.logoScale > 0 ? item.logoScale : 1;
+  const logoW = (1.2 * scale).toFixed(3);
   return `
     <div class="cover-content">
       <h1 class="cover-title build-item" style="transition-delay:${delay(0)}ms">${title}</h1>
       <div class="accent-line build-item" style="transition-delay:${delay(1)}ms"></div>
       <p class="cover-sub build-item" style="transition-delay:${delay(2)}ms">${sub}</p>
       <p class="cover-attr build-item" style="transition-delay:${delay(3)}ms">${attr}</p>
-      ${logo ? `<img class="cover-artsolo build-item" style="transition-delay:${delay(4)}ms" src="/assets/${logo}" alt="" />` : ''}
+      ${logo ? `<img class="cover-artsolo build-item" style="transition-delay:${delay(4)}ms;width:${logoW}in" src="/assets/${logo}" alt="" />` : ''}
     </div>
   `;
 }
