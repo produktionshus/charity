@@ -486,15 +486,15 @@ export function renderContest(item?: ContestItem): string {
   const blocks = (item?.blocks || []).slice(0, 4);
   const blockStart = 2;
   const cells = blocks.map((b, i) => {
-    const t = delay(blockStart + i);
+    const g = blockStart + i;
     const img = b.src
-      ? `<div class="contest-block-img"><img src="${b.src}" alt="" /></div>`
-      : `<div class="contest-block-img contest-block-img--empty"></div>`;
-    const heading = b.heading ? `<div class="contest-block-heading">${b.heading}</div>` : '';
+      ? `<div class="contest-block-img build-item" style="transition-delay:${delay(g, 0)}ms"><img src="${b.src}" alt="" /></div>`
+      : `<div class="contest-block-img contest-block-img--empty build-item" style="transition-delay:${delay(g, 0)}ms"></div>`;
+    const heading = b.heading ? `<div class="contest-block-heading build-item" style="transition-delay:${delay(g, 1)}ms">${b.heading}</div>` : '';
     const lines = (b.lines || []).filter(l => l && l.trim())
-      .map(l => `<div class="contest-block-line">${l}</div>`).join('');
+      .map((l, li) => `<div class="contest-block-line build-item" style="transition-delay:${delay(g, 2 + li)}ms">${l}</div>`).join('');
     const info = lines ? `<div class="contest-block-info">${lines}</div>` : '';
-    return `<div class="contest-block build-item" style="transition-delay:${t}ms">${img}${heading}${info}</div>`;
+    return `<div class="contest-block">${img}${heading}${info}</div>`;
   }).join('');
   return `
     <div class="contest-content" data-count="${blocks.length}">
