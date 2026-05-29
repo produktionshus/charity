@@ -530,7 +530,7 @@ export function renderCarousel(item?: CarouselItem): string {
     return `<div class="carousel-image build-item${active}" data-seconds="${sec}" style="background-image:url('${im.src}'); transition-duration:${fadeMs}ms"></div>`;
   }).join('');
   return `
-    <div class="carousel-stage" data-fade-ms="${fadeMs}" data-image-count="${images.length}" style="background:${bg}; --carousel-fade-ms:${fadeMs}ms">
+    <div class="carousel-stage" data-fade-ms="${fadeMs}" data-image-count="${images.length}" style="background:${bg}; --carousel-bg:${bg}; --carousel-fade-ms:${fadeMs}ms">
       ${tiles}
     </div>
   `;

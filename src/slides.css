@@ -785,6 +785,10 @@
 .carousel-image {
   position: absolute;
   inset: 0;
+  /* Letterbox colour painted on the tile itself, not just the stage —
+     otherwise portrait images leave transparent margins and the previous
+     tile (still fading out behind us) bleeds through on the sides. */
+  background-color: var(--carousel-bg, #000);
   background-position: center center;
   background-repeat: no-repeat;
   background-size: contain;       /* "contain with letterbox" per requirement */

@@ -267,11 +267,18 @@ function startCarousel(root: HTMLElement) {
   let idx = 0;
   let handle: ReturnType<typeof setTimeout> | null = null;
   let cancelled = false;
+  // Safe parse + clamp so a missing/NaN dataset.seconds can never schedule a
+  // 0-delay tick (which would burn CPU in a tight loop) — minimum dwell is
+  // 0.5s, fallback if absent or unparseable is 10s.
+  const dwellMs = (i: number): number => {
+    const raw = tiles[i].dataset.seconds;
+    const n = raw ? parseFloat(raw) : NaN;
+    return Math.max(500, (Number.isFinite(n) && n > 0 ? n : 10) * 1000);
+  };
   preload(0).then(() => {
     if (cancelled) return;
     tiles[0].classList.add('is-active');
-    const firstSec = parseFloat(tiles[0].dataset.seconds || '10');
-    handle = setTimeout(tick, Math.max(500, firstSec * 1000));
+    handle = setTimeout(tick, dwellMs(0));
   });
   function tick() {
     if (cancelled) return;
@@ -281,8 +288,9 @@ function startCarousel(root: HTMLElement) {
       tiles[idx].classList.remove('is-active');
       tiles[nextIdx].classList.add('is-active');
       idx = nextIdx;
-      const sec = parseFloat(tiles[idx].dataset.seconds || '10');
-      handle = setTimeout(tick, Math.max(500, sec * 1000));
+      // Re-schedule unconditionally — the modulo above wraps last → first
+      // so the carousel loops forever until stopCarousel() flips cancelled.
+      handle = setTimeout(tick, dwellMs(idx));
     });
   }
   carouselCleanup = () => {
