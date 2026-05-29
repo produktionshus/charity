@@ -569,7 +569,7 @@ const MAX_DIM = 2500;
 const WEBP_QUALITY = 85;
 const JPEG_QUALITY = 85;
 const RASTER_EXTS = new Set(['.jpg', '.jpeg', '.png', '.webp', '.avif', '.tiff', '.bmp']);
-const WEBP_KINDS  = new Set(['hero', 'logo', 'extra-logo']);
+const WEBP_KINDS  = new Set(['hero', 'logo', 'extra-logo', 'carousel']);
 
 async function processUpload(req) {
   if (!req.file) return;

@@ -527,7 +527,13 @@ export function renderCarousel(item?: CarouselItem): string {
   const tiles = images.map((im, i) => {
     const sec = Number(im.seconds) > 0 ? Number(im.seconds) : defaultSec;
     const active = i === 0 ? ' is-active' : '';
-    return `<div class="carousel-image build-item${active}" data-seconds="${sec}" style="background-image:url('${im.src}'); transition-duration:${fadeMs}ms"></div>`;
+    // No .build-item here — the carousel manages its own opacity via the
+    // .is-active toggle. The deck-wide .slide-canvas.is-visible .build-item
+    // rule would otherwise force every tile to opacity 1 at the same time
+    // (it has higher specificity than .carousel-image.is-active) so the
+    // crossfade never fired and the carousel appeared to stop on whichever
+    // tile sat at the top of the stack.
+    return `<div class="carousel-image${active}" data-seconds="${sec}" style="background-image:url('${im.src}'); transition-duration:${fadeMs}ms"></div>`;
   }).join('');
   return `
     <div class="carousel-stage" data-fade-ms="${fadeMs}" data-image-count="${images.length}" style="background:${bg}; --carousel-bg:${bg}; --carousel-fade-ms:${fadeMs}ms">
