@@ -339,11 +339,14 @@
 .sponsor-cell--multi.sponsor-cell--stack-v .sponsor-cell-logos,
 .sponsor-cell--stack-v .sponsor-cell-logos {
   flex-direction: column;
-  gap: 14px;
+  /* nowrap is essential: with wrap, a logo pair taller than the cell spills
+     into a second column and renders side-by-side instead of stacked. */
+  flex-wrap: nowrap;
+  gap: 6px;
 }
 .sponsor-cell--stack-v .sponsor-cell-logo {
   max-width: 92%;
-  max-height: calc(var(--cell-logo-cap, 0.85in) * 0.50);
+  max-height: calc(var(--cell-logo-cap, 0.85in) * 0.42);
 }
 /* Text-only sponsor entries (donorNames) — sit inline with logos when the
    lot mixes images + text, or stand alone when no logo is configured. */
