@@ -59,6 +59,9 @@ function unlockAudio() {
 function decorateSponsorCells(root: ParentNode) {
   const cells = root.querySelectorAll<HTMLElement>('.sponsor-cell--multi');
   cells.forEach(cell => {
+    // Explicit per-lot layout (vertical/horizontal) is already applied at
+    // render time and shared with the controller — only auto-measure here.
+    if (cell.dataset.stack && cell.dataset.stack !== 'auto') return;
     const imgs = cell.querySelectorAll<HTMLImageElement>('.sponsor-cell-logo');
     if (imgs.length < 2) return;
     let pending = imgs.length;

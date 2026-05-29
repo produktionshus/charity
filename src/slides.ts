@@ -148,6 +148,10 @@ export interface Lot {
   // Additional sponsor logos rendered horizontally next to the main one.
   // Stored as relative paths under /assets/logo/.
   extraSponsorLogos?: string[];
+  // Sponsor-index cell logo layout when a cell has 2+ logos.
+  // 'auto' (default) defers to the viewer's wide-aspect heuristic; 'vertical'
+  // / 'horizontal' force a deterministic layout shared by controller + viewer.
+  sponsorStack?: 'auto' | 'vertical' | 'horizontal' | null;
   // Optional per-lot layout tweaks. Horizon caption height + profile photo
   // width are in inches; defaults are 2.25in and 5.8in respectively.
   horizonCaptionIn?: number;

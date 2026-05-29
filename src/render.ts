@@ -242,8 +242,13 @@ export function renderSponsorIndex(item?: SponsorIndexItem): string {
         items.push(`<span class="sponsor-cell-name">${n.toUpperCase()}</span>`);
       }
     }
+    const multi = items.length > 1;
+    const stack = l.sponsorStack ?? 'auto';
+    // Explicit vertical/horizontal is applied here so controller + viewer match.
+    // 'auto' carries no class and lets the viewer's wide-aspect heuristic decide.
+    const stackClass = multi && stack === 'vertical' ? ' sponsor-cell--stack-v' : '';
     return `
-      <div class="sponsor-cell build-item${items.length > 1 ? ' sponsor-cell--multi' : ''}" data-lot="${l.id}" style="transition-delay:${t}ms">
+      <div class="sponsor-cell build-item${multi ? ' sponsor-cell--multi' : ''}${stackClass}" data-lot="${l.id}" data-stack="${stack}" style="transition-delay:${t}ms">
         <div class="sponsor-cell-num">${dn}</div>
         <div class="sponsor-cell-logos">${items.join('')}</div>
       </div>

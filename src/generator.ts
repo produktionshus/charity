@@ -56,6 +56,7 @@ const fHero      = document.getElementById('f-hero')     as HTMLInputElement;
 const fLogo      = document.getElementById('f-logo')     as HTMLInputElement;
 const fExtraLogoUploadEl = document.getElementById('f-extra-logo-upload') as HTMLInputElement;
 const extraLogoListEl    = document.getElementById('extra-logo-list')!;
+const fSponsorStack      = document.getElementById('f-sponsor-stack') as HTMLSelectElement;
 const heroPreview = document.getElementById('hero-preview') as HTMLImageElement;
 const logoPreview = document.getElementById('logo-preview') as HTMLImageElement;
 
@@ -596,6 +597,7 @@ function populateForm(lot: Lot) {
   const mainLogoUrl = lot.sponsorLogoSrc || `/assets/logo/logo-lot-${lot.id}.png`;
   logoPreview.src = `${mainLogoUrl}?v=${Date.now()}`;
   renderExtraLogoList(lot.extraSponsorLogos || []);
+  fSponsorStack.value = lot.sponsorStack ?? 'auto';
   // Multi-image: image 1 focal/scale/preview set above. Populate extras 2 & 3,
   // split weights, count selector, then show/hide blocks.
   const heroImages = lot.heroImages || [];
@@ -723,6 +725,9 @@ function readForm(): Partial<Lot> {
     titleSizePt: fTitleSize.value ? parseInt(fTitleSize.value, 10) : undefined,
     horizonCaptionIn: parseFloat(fHorizonCap.value) || undefined,
     profilePhotoIn:   parseFloat(fProfilePhoto.value) || undefined,
+    sponsorStack: fSponsorStack.value === 'auto'
+      ? null
+      : (fSponsorStack.value as 'vertical' | 'horizontal'),
   };
 }
 
@@ -1828,7 +1833,7 @@ function onFormChange() {
   refreshPreview();
   renderValidation();
 }
-[fActive, fExtra, fExtraSuffix, fTitle, fSubtitle, fSponsor, fBullets, fDonorNames, fLayout, fMirrored, fTitleSize]
+[fActive, fExtra, fExtraSuffix, fTitle, fSubtitle, fSponsor, fBullets, fDonorNames, fLayout, fMirrored, fTitleSize, fSponsorStack]
   .forEach(el => el.addEventListener('input', onFormChange));
 fExtra.addEventListener('change', () => {
   rowExtraSuffix.style.display = fExtra.checked ? '' : 'none';
