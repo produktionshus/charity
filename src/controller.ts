@@ -6,7 +6,7 @@
 import QRCode from 'qrcode';
 import { SyncClient } from './ws-client';
 import { renderSlide, fitToViewport } from './render';
-import { SLIDES, LOTS, lotById, displayNumFor, refreshLotsFromServer, EVENT_META, type Slide } from './slides';
+import { SLIDES, LOTS, lotById, carouselById, displayNumFor, refreshLotsFromServer, EVENT_META, type Slide } from './slides';
 
 const sync = new SyncClient();
 
@@ -282,7 +282,7 @@ function renderAuctioneerPanel(slide: Slide | null) {
     auctStage.classList.remove('has-bid');
     auctStage.classList.remove('show-header');
     auctLotnum.textContent = '—';
-    auctTitle.textContent = slide.kind === 'cover' ? 'Cover' : slide.kind === 'sponsor-index' ? 'Sponsorer' : slide.kind === 'closing' ? 'Tak for i aften' : slide.kind === 'wish-loop' ? 'Børnenes ønsker' : slide.kind === 'media' ? 'Media' : slide.kind === 'auction-display' ? '4-hold konkurrence' : '';
+    auctTitle.textContent = slide.kind === 'cover' ? 'Cover' : slide.kind === 'sponsor-index' ? 'Sponsorer' : slide.kind === 'closing' ? 'Tak for i aften' : slide.kind === 'wish-loop' ? 'Børnenes ønsker' : slide.kind === 'media' ? 'Media' : slide.kind === 'auction-display' ? '4-hold konkurrence' : slide.kind === 'contest' ? 'Konkurrence' : slide.kind === 'carousel' ? 'Billedkarrusel' : '';
     auctDonor.textContent = '';
     auctBid.classList.add('idle');
     auctBid.innerHTML = `—<span class="kr">kr</span>`;
@@ -348,6 +348,8 @@ function renderSidebar(state: any) {
         : k === 'wish-loop' ? 'Ønske-loop'
         : k === 'media' ? 'Media'
         : k === 'auction-display' ? 'Auktion-display'
+        : k === 'contest' ? 'Konkurrence'
+        : k === 'carousel' ? 'Billedkarrusel'
         : k === 'closing' ? 'Afslutning'
         : k;
     for (let i = 0; i < SLIDES.length; i++) {
@@ -373,6 +375,8 @@ function renderSidebar(state: any) {
             : slide.kind === 'wish-loop' ? 'Ønske-loop'
             : slide.kind === 'media' ? 'Media'
             : slide.kind === 'auction-display' ? 'Auktion-display'
+            : slide.kind === 'contest' ? 'Konkurrence'
+            : slide.kind === 'carousel' ? 'Billedkarrusel'
             : 'Afslutning');
         const name = lot
           ? lot.title
@@ -382,6 +386,13 @@ function renderSidebar(state: any) {
             : slide.kind === 'wish-loop' ? 'Børnenes ønsker'
             : slide.kind === 'media' ? 'Media'
             : slide.kind === 'auction-display' ? '4-hold konkurrence'
+            : slide.kind === 'contest' ? 'Konkurrence'
+            : slide.kind === 'carousel' ? (() => {
+                // Use the operator-set label when available so multiple carousels
+                // are distinguishable in the flow; fall back to the generic name.
+                const item = slide.itemId ? carouselById(slide.itemId) : undefined;
+                return (item?.label && item.label.trim()) || 'Billedkarrusel';
+              })()
             : 'Tak for i aften');
         row.innerHTML = `
           <div class="lot-num-side">${lot ? displayNumFor(lot.id) : ''}</div>
