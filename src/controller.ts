@@ -556,13 +556,30 @@ function renderHistoryDrawer(state: any) {
   }
   const hasSections = sections.some(s => s.id !== null);
   let total = 0;
+  for (const sec of sections) total += sec.lotSum + sec.bonusSum;
+  // Day rollup — "Dag 1: H2H" / "Dag 1 · H2H" naming groups consecutive
+  // sections under one prefix header carrying their summed total.
+  const splitGroup = (name: string): { group: string | null; shortName: string } => {
+    const m = /^([^:·]+)[:·](.+)$/.exec(name || '');
+    if (!m || !m[1].trim() || !m[2].trim()) return { group: null, shortName: name };
+    return { group: m[1].trim(), shortName: m[2].trim() };
+  };
+  const groupOf = (sec: Sec): string | null => sec.id === null ? null : splitGroup(sec.name).group;
   const html: string[] = [];
-  for (const sec of sections) {
+  for (let i = 0; i < sections.length; i++) {
+    const sec = sections[i];
     const secTotal = sec.lotSum + sec.bonusSum;
-    total += secTotal;
     if (sec.id === null && !sec.rows.length && !sec.bonusRows.length) continue;
+    const { group, shortName } = sec.id === null ? { group: null, shortName: sec.name } : splitGroup(sec.name);
+    if (group && group !== (i > 0 ? groupOf(sections[i - 1]) : null)) {
+      let gTotal = 0;
+      for (let j = i; j < sections.length && groupOf(sections[j]) === group; j++) {
+        gTotal += sections[j].lotSum + sections[j].bonusSum;
+      }
+      html.push(`<li class="h-group"><span class="h-title">${group}</span><span class="h-amount">${fmtKr(gTotal)} kr</span></li>`);
+    }
     if (hasSections) {
-      html.push(`<li class="h-section"><span class="h-title">${sec.name}</span><span class="h-amount">${fmtKr(secTotal)} kr</span></li>`);
+      html.push(`<li class="h-section${group ? ' in-group' : ''}"><span class="h-title">${shortName}</span><span class="h-amount">${fmtKr(secTotal)} kr</span></li>`);
     }
     html.push(...sec.rows, ...sec.bonusRows);
   }

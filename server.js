@@ -347,8 +347,28 @@ app.get('/api/results', (_req, res) => {
     sec.bonuses.push({ teamId: t.id, teamName: t.name || t.id, amount: bonus });
     sec.bonusSum += bonus;
   }
-  const out = sections.map(s => ({ ...s, total: s.lotSum + s.bonusSum }));
-  res.json({ sections: out, grandTotal: out.reduce((sum, s) => sum + s.total, 0) });
+  // Day rollup — a "Dag 1: H2H" / "Dag 1 · H2H" naming convention groups
+  // sections by the prefix before the first ':' or '·', so multi-day events
+  // get a per-day total on top of the per-block sums.
+  const splitGroup = (name) => {
+    const m = /^([^:·]+)[:·](.+)$/.exec(name || '');
+    if (!m || !m[1].trim() || !m[2].trim()) return { group: null, shortName: name };
+    return { group: m[1].trim(), shortName: m[2].trim() };
+  };
+  const out = sections.map(s => ({
+    ...s,
+    ...(s.id === null ? { group: null, shortName: s.name } : splitGroup(s.name)),
+    total: s.lotSum + s.bonusSum,
+  }));
+  const groups = [];
+  for (const s of out) {
+    if (!s.group) continue;
+    let g = groups.find(x => x.name === s.group);
+    if (!g) { g = { name: s.group, total: 0, sections: [] }; groups.push(g); }
+    g.total += s.total;
+    g.sections.push(s.shortName);
+  }
+  res.json({ sections: out, groups, grandTotal: out.reduce((sum, s) => sum + s.total, 0) });
 });
 
 // Quick bonus-donation endpoint — adds DKK to a specific team's bonusAmount
