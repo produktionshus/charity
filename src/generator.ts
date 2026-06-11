@@ -448,11 +448,15 @@ function renderList() {
       if (item.id === selectedId) row.classList.add('selected');
       if (collapsed) row.classList.add('collapsed');
       const count = sectionItems(item.id).length;
+      // Caret + add are <span role="button">, not <button> — a native <button>
+      // swallows the mousedown so dragging the bar from its left edge (where
+      // every other row has its drag handle) never starts the drag.
       row.innerHTML = `
-        <button class="sec-caret" title="${collapsed ? 'Fold ud' : 'Fold sammen'}">${collapsed ? '▸' : '▾'}</button>
+        <span class="drag-handle">⋮⋮</span>
+        <span class="sec-caret" role="button" title="${collapsed ? 'Fold ud' : 'Fold sammen'}">${collapsed ? '▸' : '▾'}</span>
         <span class="gen-row-title">${escapeHtml((item as SectionItem).label || 'Sektion')}</span>
         <span class="gen-row-badge">${count} item${count === 1 ? '' : 's'}</span>
-        <button class="sec-add" title="Indsæt nyt lot sidst i denne sektion">+ lot</button>
+        <span class="sec-add" role="button" title="Indsæt nyt lot sidst i denne sektion">+ lot</span>
       `;
       row.querySelector('.sec-caret')!.addEventListener('click', (e) => {
         e.stopPropagation();
