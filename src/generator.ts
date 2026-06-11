@@ -4,7 +4,7 @@
 
 import { renderSlide, renderCover, renderClosing, renderSponsorIndex, renderWishLoop, renderMedia, renderAuctionDisplay, renderContest, renderCarousel, fitToViewport } from './render';
 import { EVENT_META } from './slides';
-import type { Lot, BordplanItem, CoverItem, ClosingItem, SponsorIndexItem, WishLoopItem, MediaItem, AuctionDisplayItem, ContestItem, ContestBlock, AuctionTeam, AuctionDisplayState, DeckItem } from './slides';
+import type { Lot, BordplanItem, CoverItem, ClosingItem, SponsorIndexItem, WishLoopItem, MediaItem, AuctionDisplayItem, ContestItem, ContestBlock, AuctionTeam, AuctionDisplayState, DeckItem, SectionItem } from './slides';
 import { renderBordplanSlide } from './render-bordplan';
 import type { FloorPlanConfig } from './bordplan-engine';
 
@@ -121,7 +121,8 @@ let lotsBank: Lot[] = [];     // filtered alias = items where kind!=='bordplan'
 let selectedId: string | null = sessionStorage.getItem('gen.selectedId');
 let dirty = false;
 
-function itemKind(item: DeckItem | undefined): 'lot' | 'bordplan' | 'cover' | 'closing' | 'sponsor-index' | 'wish-loop' | 'media' | 'auction-display' | 'contest' | 'carousel' {
+function itemKind(item: DeckItem | undefined): 'lot' | 'bordplan' | 'cover' | 'closing' | 'sponsor-index' | 'wish-loop' | 'media' | 'auction-display' | 'contest' | 'carousel' | 'section' {
+  if (item && (item as any).kind === 'section') return 'section';
   if (item && (item as any).kind === 'bordplan') return 'bordplan';
   if (item && (item as any).kind === 'cover') return 'cover';
   if (item && (item as any).kind === 'closing') return 'closing';
@@ -250,6 +251,31 @@ const siActiveEl   = document.getElementById('si-active') as HTMLInputElement;
 const siLabelEl    = document.getElementById('si-label')  as HTMLInputElement;
 const siTitleEl    = document.getElementById('si-title')  as HTMLInputElement;
 const siSaveBtn    = document.getElementById('si-save')!;
+
+// ---- Section form DOM ----
+const formSection = document.getElementById('gen-form-section')!;
+const secLabelEl  = document.getElementById('sec-label') as HTMLInputElement;
+const secSaveBtn  = document.getElementById('sec-save')!;
+const newSectionBtn = document.getElementById('new-section')!;
+
+// Collapsed section ids — survives the Vite auto-reload on lots.json writes.
+const collapsedSections = new Set<string>(
+  JSON.parse(sessionStorage.getItem('gen.collapsedSections') || '[]') as string[]
+);
+function saveCollapsed() {
+  sessionStorage.setItem('gen.collapsedSections', JSON.stringify([...collapsedSections]));
+}
+// Items belonging to a section = everything after its divider up to the next divider.
+function sectionItems(sectionId: string): DeckItem[] {
+  const start = itemsBank.findIndex(i => i.id === sectionId);
+  if (start < 0) return [];
+  const out: DeckItem[] = [];
+  for (let i = start + 1; i < itemsBank.length; i++) {
+    if (itemKind(itemsBank[i]) === 'section') break;
+    out.push(itemsBank[i]);
+  }
+  return out;
+}
 const covLabelEl       = document.getElementById('cov-label')      as HTMLInputElement;
 const covTitleEl       = document.getElementById('cov-title')      as HTMLInputElement;
 const covSubtitleEl    = document.getElementById('cov-subtitle')   as HTMLInputElement;
@@ -406,17 +432,58 @@ function computeDisplayNums(): Map<string, string> {
 function renderList() {
   const displayNums = computeDisplayNums();
   listRows.innerHTML = '';
-  const activeCount = itemsBank.filter(i => i.active).length;
-  listMeta.textContent = `${activeCount} aktive · ${itemsBank.length} total`;
+  const realItems = itemsBank.filter(i => itemKind(i) !== 'section');
+  const activeCount = realItems.filter(i => i.active).length;
+  listMeta.textContent = `${activeCount} aktive · ${realItems.length} total`;
+  let currentSectionId: string | null = null;
   for (const item of itemsBank) {
+    const kind = itemKind(item);
+    if (kind === 'section') {
+      currentSectionId = item.id;
+      const collapsed = collapsedSections.has(item.id);
+      const row = document.createElement('div');
+      row.className = 'gen-row kind-section';
+      row.dataset.id = item.id;
+      row.draggable = true;
+      if (item.id === selectedId) row.classList.add('selected');
+      if (collapsed) row.classList.add('collapsed');
+      const count = sectionItems(item.id).length;
+      row.innerHTML = `
+        <button class="sec-caret" title="${collapsed ? 'Fold ud' : 'Fold sammen'}">${collapsed ? '▸' : '▾'}</button>
+        <span class="gen-row-title">${escapeHtml((item as SectionItem).label || 'Sektion')}</span>
+        <span class="gen-row-badge">${count} item${count === 1 ? '' : 's'}</span>
+        <button class="sec-add" title="Indsæt nyt lot sidst i denne sektion">+ lot</button>
+      `;
+      row.querySelector('.sec-caret')!.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (collapsedSections.has(item.id)) collapsedSections.delete(item.id);
+        else collapsedSections.add(item.id);
+        saveCollapsed();
+        renderList();
+      });
+      row.querySelector('.sec-add')!.addEventListener('click', (e) => {
+        e.stopPropagation();
+        insertLotInSection(item.id);
+      });
+      row.addEventListener('click', () => selectLot(item.id));
+      row.addEventListener('dragstart', onDragStart);
+      row.addEventListener('dragover', onDragOver);
+      row.addEventListener('drop', onDrop);
+      row.addEventListener('dragend', onDragEnd);
+      listRows.appendChild(row);
+      continue;
+    }
+    // Items inside a collapsed section stay in the data, just not in the DOM —
+    // the whole block still moves with its header when dragged.
+    if (currentSectionId && collapsedSections.has(currentSectionId)) continue;
     const row = document.createElement('div');
     row.className = 'gen-row';
     row.dataset.id = item.id;
     row.draggable = true;
     if (item.id === selectedId) row.classList.add('selected');
     if (!item.active) row.classList.add('inactive');
-    const kind = itemKind(item);
     row.classList.add(`kind-${kind}`);
+    if (currentSectionId) row.classList.add('in-section');
     let dn = '—';
     let title = '';
     let badge = !item.active ? 'INACTIVE' : '';
@@ -514,18 +581,34 @@ async function onDrop(e: DragEvent) {
   e.preventDefault();
   if (!draggingId) return;
   const target = e.currentTarget as HTMLElement;
-  if (target.dataset.id !== draggingId) {
-    // Move source row in DOM to drop position before computing order
-    const before = target.classList.contains('drop-above');
-    const dragRow = listRows.querySelector(`[data-id="${draggingId}"]`);
-    if (dragRow) {
-      if (before) target.parentElement!.insertBefore(dragRow, target);
-      else target.parentElement!.insertBefore(dragRow, target.nextSibling);
-    }
-  }
+  const targetId = target.dataset.id!;
+  const before = target.classList.contains('drop-above');
   clearDropMarkers();
-  const order = Array.from(listRows.querySelectorAll<HTMLElement>('.gen-row'))
-    .map(el => el.dataset.id!);
+  if (targetId === draggingId) return;
+  const src = itemsBank.find(i => i.id === draggingId);
+  if (!src) return;
+  // A section drags as a block: the divider plus everything under it. Compute
+  // the new order from data (not the DOM) — collapsed blocks have no item rows.
+  const block = itemKind(src) === 'section' ? [src, ...sectionItems(src.id)] : [src];
+  const blockIds = new Set(block.map(b => b.id));
+  if (blockIds.has(targetId)) return;           // can't drop a block into itself
+  const rest = itemsBank.filter(i => !blockIds.has(i.id));
+  let idx = rest.findIndex(i => i.id === targetId);
+  if (idx < 0) return;
+  if (!before) {
+    // Dropping a section below another section bar means after that whole
+    // block (it may be collapsed) — not between the bar and its items.
+    if (itemKind(src) === 'section' && itemKind(rest[idx]) === 'section') {
+      while (idx + 1 < rest.length && itemKind(rest[idx + 1]) !== 'section') idx++;
+    }
+    idx += 1;
+  }
+  rest.splice(idx, 0, ...block);
+  await applyOrder(rest.map(i => i.id));
+}
+
+// Apply a full id order locally + persist it to the server.
+async function applyOrder(order: string[]) {
   const byId = new Map(itemsBank.map(i => [i.id, i]));
   itemsBank = order.map(id => byId.get(id)!).filter(Boolean);
   lotsBank = itemsBank.filter(i => itemKind(i) === 'lot') as Lot[];
@@ -539,6 +622,34 @@ async function onDrop(e: DragEvent) {
     refreshPreview();
   } catch (e: any) {
     statusEl.textContent = 'Reorder failed: ' + e.message;
+  }
+}
+
+// "+ lot" on a section bar: create a lot and slot it in at the END of that
+// section instead of the bottom of the whole deck — last-minute lots land
+// directly in the right block.
+async function insertLotInSection(sectionId: string) {
+  try {
+    const created = await api('/api/lots', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        title: 'Nyt lot', subtitle: '', sponsor: '', bullets: [],
+        active: false, extra: false, layout: 'horizon', focal: '50% 50%',
+      }),
+    });
+    itemsBank.push(created);                    // server appended it last
+    const ids = itemsBank.filter(i => i.id !== created.id).map(i => i.id);
+    let insertAt = ids.indexOf(sectionId) + 1;
+    while (insertAt < ids.length && itemKind(itemsBank.find(i => i.id === ids[insertAt])) !== 'section') insertAt++;
+    ids.splice(insertAt, 0, created.id);
+    collapsedSections.delete(sectionId);
+    saveCollapsed();
+    await applyOrder(ids);
+    selectLot(created.id);
+    statusEl.textContent = 'Lot oprettet i sektionen';
+  } catch (e: any) {
+    statusEl.textContent = 'Create failed: ' + e.message;
   }
 }
 function onDragEnd(e: DragEvent) {
@@ -567,7 +678,11 @@ function selectLot(id: string) {
   formAuctionDisplay.style.display = 'none';
   formContest.style.display = 'none';
   formCarousel.style.display = 'none';
-  if (kind === 'carousel') {
+  formSection.style.display = 'none';
+  if (kind === 'section') {
+    formSection.style.display = 'flex';
+    populateSectionForm(item as SectionItem);
+  } else if (kind === 'carousel') {
     formCarousel.style.display = 'flex';
     populateCarouselForm(item as any);
   } else if (kind === 'contest') {
@@ -835,6 +950,10 @@ function refreshPreview() {
   const wrap = document.createElement('div');
   wrap.className = 'slide-frame';
   previewFrame.appendChild(wrap);
+  if (itemKind(item) === 'section') {
+    previewMeta.textContent = 'sektion · ingen slide — navngiver blokken af items under den';
+    return;
+  }
   if (isBordplanItem(item)) {
     const merged: BordplanItem = { ...item, ...readBordplanForm() };
     const slideEl = document.createElement('div');
@@ -2041,6 +2160,57 @@ wlSaveBtn.addEventListener('click', async () => {
 loadApplePool();
 
 // ---- Sponsor-index form ----
+// ---- Section form ----
+function populateSectionForm(item: SectionItem) {
+  editIdEl.textContent = item.id;
+  editDisplayNumEl.textContent = 'SEK';
+  deleteBtn.style.display = 'inline-flex';
+  duplicateBtn.style.display = 'none';
+  resetFocalBtn.style.display = 'none';
+  secLabelEl.value = item.label ?? '';
+}
+function readSectionForm(): Partial<SectionItem> {
+  return { label: secLabelEl.value };
+}
+secLabelEl.addEventListener('input', () => setDirty(true));
+secSaveBtn.addEventListener('click', async () => {
+  if (!selectedId) return;
+  try {
+    statusEl.textContent = 'Gemmer sektion…';
+    const updated = await api(`/api/lots/${encodeURIComponent(selectedId)}`, {
+      method: 'PUT',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(readSectionForm()),
+    });
+    const idx = itemsBank.findIndex(i => i.id === selectedId);
+    if (idx >= 0) itemsBank[idx] = updated;
+    setDirty(false);
+    renderList();
+    statusEl.textContent = 'Gemt';
+  } catch (e: any) {
+    statusEl.textContent = 'Save failed: ' + e.message;
+  }
+});
+newSectionBtn.addEventListener('click', async () => {
+  try {
+    const created = await api('/api/lots', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        kind: 'section',
+        label: `Sektion ${itemsBank.filter(i => itemKind(i) === 'section').length + 1}`,
+      } as any),
+    });
+    itemsBank.push(created);
+    selectedId = created.id;
+    renderList();
+    selectLot(created.id);
+    statusEl.textContent = 'Sektion oprettet — træk den på plads i listen';
+  } catch (e: any) {
+    statusEl.textContent = 'Create failed: ' + e.message;
+  }
+});
+
 function populateSponsorIndexForm(item: SponsorIndexItem) {
   editIdEl.textContent = item.id;
   editDisplayNumEl.textContent = 'SI';
@@ -2645,12 +2815,16 @@ resetFocalBtn.addEventListener('click', () => {
 
 deleteBtn.addEventListener('click', async () => {
   if (!selectedId) return;
-  const lot = lotsBank.find(l => l.id === selectedId);
-  if (!confirm(`Slet "${lot?.title || selectedId}"? Kan ikke fortrydes.`)) return;
+  const item = itemsBank.find(i => i.id === selectedId);
+  const name = (item as any)?.title || (item as any)?.label || selectedId;
+  const secNote = itemKind(item) === 'section'
+    ? ' Items i sektionen slettes ikke — de glider op i sektionen ovenfor.' : '';
+  if (!confirm(`Slet "${name}"? Kan ikke fortrydes.${secNote}`)) return;
   try {
     await api(`/api/lots/${encodeURIComponent(selectedId)}`, { method: 'DELETE' });
-    lotsBank = lotsBank.filter(l => l.id !== selectedId);
-    selectedId = lotsBank[0]?.id ?? null;
+    itemsBank = itemsBank.filter(i => i.id !== selectedId);
+    lotsBank = itemsBank.filter(i => itemKind(i) === 'lot') as Lot[];
+    selectedId = itemsBank[0]?.id ?? null;
     renderList();
     if (selectedId) selectLot(selectedId);
     else { editIdEl.textContent = '—'; previewFrame.innerHTML = ''; deleteBtn.style.display = 'none'; }

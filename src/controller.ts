@@ -6,7 +6,7 @@
 import QRCode from 'qrcode';
 import { SyncClient } from './ws-client';
 import { renderSlide, fitToViewport } from './render';
-import { SLIDES, LOTS, lotById, carouselById, displayNumFor, refreshLotsFromServer, EVENT_META, type Slide } from './slides';
+import { SLIDES, LOTS, ALL_ITEMS, lotById, carouselById, displayNumFor, refreshLotsFromServer, EVENT_META, type Slide } from './slides';
 
 const sync = new SyncClient();
 
@@ -506,25 +506,70 @@ function maybeFireHammer(state: any) {
 }
 
 function renderHistoryDrawer(state: any) {
-  const rows: string[] = [];
-  let total = 0;
-  for (const lot of LOTS) {
-    const ls = state.lots?.[lot.id];
+  // Group sold lots under their section (block) — the nearest divider above
+  // them in the deck. Sections split the accounting so e.g. an H2H day and a
+  // regular auction day each show their own subtotal without any reset.
+  type Sec = { id: string | null; name: string; rows: string[]; lotSum: number; bonusSum: number; bonusRows: string[] };
+  const sections: Sec[] = [];
+  let cur: Sec | null = null;
+  const secOfLot = new Map<string, Sec>();
+  const ensure = (): Sec => cur ?? (cur = { id: null, name: 'Uden sektion', rows: [], lotSum: 0, bonusSum: 0, bonusRows: [] });
+  for (const item of ALL_ITEMS) {
+    const kind = (item as any).kind;
+    if (kind === 'section') {
+      if (cur) sections.push(cur);
+      cur = { id: item.id, name: (item as any).label || 'Sektion', rows: [], lotSum: 0, bonusSum: 0, bonusRows: [] };
+      continue;
+    }
+    if (kind && kind !== 'lot') continue;
+    const sec = ensure();
+    secOfLot.set(item.id, sec);
+    const ls = state.lots?.[item.id];
     if (ls?.status === 'sold' && typeof ls.finalPrice === 'number') {
-      total += ls.finalPrice;
-      rows.push(`
-        <li data-lot="${lot.id}">
-          <span class="h-num">${displayNumFor(lot.id)}</span>
-          <span class="h-title">${lot.title}</span>
+      sec.lotSum += ls.finalPrice;
+      sec.rows.push(`
+        <li data-lot="${item.id}">
+          <span class="h-num">${displayNumFor(item.id)}</span>
+          <span class="h-title">${(item as any).title || ''}</span>
           <span class="h-amount">${fmtKr(ls.finalPrice)} kr</span>
         </li>
       `);
     }
   }
-  if (rows.length === 0) {
+  if (cur) sections.push(cur);
+  // Floor pledges (team bonus) are booked in the block holding the team's
+  // bound lots — H2H pledges land in the H2H block's subtotal.
+  for (const t of EVENT_META.teams || []) {
+    const bonus = Number(t.bonusAmount) || 0;
+    if (!bonus) continue;
+    const firstLotId = (t.lotIds && t.lotIds[0]) || t.lotId;
+    const sec = (firstLotId && secOfLot.get(firstLotId)) || sections[0];
+    if (!sec) continue;
+    sec.bonusSum += bonus;
+    sec.bonusRows.push(`
+      <li class="h-bonus">
+        <span class="h-num">+</span>
+        <span class="h-title">Bonus · ${t.name || t.id}</span>
+        <span class="h-amount">${fmtKr(bonus)} kr</span>
+      </li>
+    `);
+  }
+  const hasSections = sections.some(s => s.id !== null);
+  let total = 0;
+  const html: string[] = [];
+  for (const sec of sections) {
+    const secTotal = sec.lotSum + sec.bonusSum;
+    total += secTotal;
+    if (sec.id === null && !sec.rows.length && !sec.bonusRows.length) continue;
+    if (hasSections) {
+      html.push(`<li class="h-section"><span class="h-title">${sec.name}</span><span class="h-amount">${fmtKr(secTotal)} kr</span></li>`);
+    }
+    html.push(...sec.rows, ...sec.bonusRows);
+  }
+  if (html.length === 0) {
     historySoldListEl.innerHTML = `<li class="h-empty">Ingen hammerslag endnu</li>`;
   } else {
-    historySoldListEl.innerHTML = rows.join('');
+    historySoldListEl.innerHTML = html.join('');
     // Clicking a row navigates to that lot
     historySoldListEl.querySelectorAll<HTMLElement>('li[data-lot]').forEach(li => {
       li.addEventListener('click', () => {

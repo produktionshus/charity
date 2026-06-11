@@ -113,6 +113,7 @@ function rebuildAuctionState() {
   // Rebuild slide list
   serverSlides.length = 0;
   for (const s of buildServerSlides()) serverSlides.push(s);
+  persistAuctionState();
 }
 
 const initialLots = {};
@@ -123,6 +124,36 @@ for (const l of lots()) {
 }
 const initialSoundDefaults = (lotsFile.meta && lotsFile.meta.soundDefaults) ? { ...lotsFile.meta.soundDefaults } : {};
 const state = { slideIdx: 0, buildStep: 0, lots: initialLots, sounds: initialSounds, soundDefaults: initialSoundDefaults };
+
+// ---- Auction-state persistence ----
+// Bids / hammer prices / statuses used to live only in memory, so a restart
+// (or Railway redeploy) mid-event wiped the night's results. Persist them next
+// to lots.json (on the volume in prod) and merge back at boot so results can
+// be pulled out days after the event via /api/results.
+const auctionStatePath = process.env.AUCTION_STATE_PATH || resolve(dirname(lotsPath), 'auction-state.json');
+(function restoreAuctionState() {
+  try {
+    const saved = JSON.parse(readFileSync(auctionStatePath, 'utf8'));
+    for (const [id, ls] of Object.entries(saved.lots || {})) {
+      if (!state.lots[id]) continue;            // lot no longer exists
+      state.lots[id] = {
+        bids: Array.isArray(ls.bids) ? ls.bids : [],
+        finalPrice: typeof ls.finalPrice === 'number' ? ls.finalPrice : null,
+        status: ls.status || 'pending',
+      };
+    }
+    console.log(`restored auction state from ${auctionStatePath}`);
+  } catch { /* first boot or unreadable — start fresh */ }
+})();
+let auctionStateTimer = null;
+function persistAuctionState() {
+  if (auctionStateTimer) return;                // debounce burst of bids
+  auctionStateTimer = setTimeout(() => {
+    auctionStateTimer = null;
+    try { writeFileSync(auctionStatePath, JSON.stringify({ lots: state.lots }), 'utf8'); }
+    catch (e) { console.warn('auction-state save failed:', e?.message || e); }
+  }, 400);
+}
 
 function buildServerSlides() {
   // Mirror client's buildSlides — items emit in array order. Auto-emit
@@ -279,6 +310,45 @@ app.get('/api/apples', (_req, res) => {
 
 app.get('/api/lots', (_req, res) => {
   res.json(lotsFile);
+});
+
+// Per-block results — walk the deck in order, grouping lots under the nearest
+// preceding section divider. Team bonus donations (floor pledges) are
+// attributed to the block containing the team's first bound lot, so H2H
+// pledges land in the H2H block. Sold lots count even if later deactivated:
+// money raised is money raised.
+app.get('/api/results', (_req, res) => {
+  const sections = [];
+  let cur = null;
+  const ensureCur = () => cur || (cur = { id: null, name: 'Uden sektion', lots: [], bonuses: [], lotSum: 0, bonusSum: 0 });
+  const lotSection = new Map();
+  for (const item of lots()) {
+    if (item.kind === 'section') {
+      if (cur) sections.push(cur);
+      cur = { id: item.id, name: item.label || 'Sektion', lots: [], bonuses: [], lotSum: 0, bonusSum: 0 };
+      continue;
+    }
+    if (item.kind && item.kind !== 'lot') continue;
+    const sec = ensureCur();
+    lotSection.set(item.id, sec);
+    const ls = state.lots[item.id];
+    if (ls && ls.status === 'sold' && typeof ls.finalPrice === 'number') {
+      sec.lots.push({ id: item.id, title: item.title || '', amount: ls.finalPrice });
+      sec.lotSum += ls.finalPrice;
+    }
+  }
+  if (cur) sections.push(cur);
+  for (const t of (lotsFile.meta && lotsFile.meta.teams) || []) {
+    const bonus = Number(t.bonusAmount) || 0;
+    if (!bonus) continue;
+    const firstLotId = (Array.isArray(t.lotIds) && t.lotIds[0]) || t.lotId;
+    const sec = (firstLotId && lotSection.get(firstLotId)) || sections[0];
+    if (!sec) continue;
+    sec.bonuses.push({ teamId: t.id, teamName: t.name || t.id, amount: bonus });
+    sec.bonusSum += bonus;
+  }
+  const out = sections.map(s => ({ ...s, total: s.lotSum + s.bonusSum }));
+  res.json({ sections: out, grandTotal: out.reduce((sum, s) => sum + s.total, 0) });
 });
 
 // Quick bonus-donation endpoint — adds DKK to a specific team's bonusAmount
@@ -447,6 +517,13 @@ app.post('/api/lots', (req, res) => {
       title: req.body.title || '',
       subtitle: req.body.subtitle || '',
       blocks: Array.isArray(req.body.blocks) ? req.body.blocks : [],
+    };
+  } else if (kind === 'section') {
+    newItem = {
+      id: uuidv4(),
+      kind: 'section',
+      active: true,
+      label: req.body.label || 'Sektion',
     };
   } else if (kind === 'wish-loop') {
     newItem = {
@@ -766,14 +843,17 @@ wss.on('connection', (ws) => {
     } else if (msg.type === 'bid' && state.lots[msg.lotNum]) {
       state.lots[msg.lotNum].bids.push(msg.amount);
       state.lots[msg.lotNum].status = 'live';
+      persistAuctionState();
     } else if (msg.type === 'hammerslag' && state.lots[msg.lotNum]) {
       state.lots[msg.lotNum].finalPrice = msg.finalPrice;
       state.lots[msg.lotNum].status = 'sold';
+      persistAuctionState();
       broadcast();
       emitPlay(msg.lotNum, 'hammer');
       return;
     } else if (msg.type === 'lotStatus' && state.lots[msg.lotNum]) {
       state.lots[msg.lotNum].status = msg.status;
+      persistAuctionState();
     } else if (msg.type === 'undo-bid' && state.lots[msg.lotNum]) {
       const ls = state.lots[msg.lotNum];
       if (ls.status === 'sold') {
@@ -783,8 +863,10 @@ wss.on('connection', (ws) => {
         ls.bids.pop();
         if (ls.bids.length === 0) ls.status = 'pending';
       }
+      persistAuctionState();
     } else if (msg.type === 'reset-auctions') {
       state.lots = freshLots();
+      persistAuctionState();
       // Zero out per-team bonus donations alongside the lot/bid reset so
       // a fresh head-to-head round starts from 0 across the board.
       if (lotsFile.meta && Array.isArray(lotsFile.meta.teams)) {

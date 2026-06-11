@@ -24,6 +24,7 @@
       <div class="gen-topbar-spacer"></div>
       <button class="link-btn" id="open-controller">Controller ↗</button>
       <button class="nav-btn primary" id="new-lot">+ Nyt lot</button>
+      <button class="nav-btn" id="new-section">+ Ny sektion</button>
       <button class="nav-btn" id="new-bordplan">+ Nyt bordplan</button>
       <button class="nav-btn" id="new-cover">+ Nyt cover</button>
       <button class="nav-btn" id="new-closing">+ Nyt closing</button>
@@ -480,6 +481,17 @@
           </div>
           <div class="row gen-save-row">
             <button class="nav-btn primary" id="wl-save">Gem ønske-loop</button>
+          </div>
+        </div>
+
+        <!-- Section form -->
+        <div class="gen-form" id="gen-form-section" style="display:none">
+          <label>Sektionsnavn
+            <input type="text" id="sec-label" placeholder="fx H2H dag 1 · Auktion del 2 · Pause-loop" />
+          </label>
+          <p class="drawer-hint">En sektion vises ikke som slide. Den navngiver blokken af items under den (indtil næste sektion), kan foldes sammen og trækkes samlet i listen — og opdeler regnskabet pr. blok i controllerens historik og /api/results.</p>
+          <div class="row gen-save-row">
+            <button class="nav-btn primary" id="sec-save">Gem sektion</button>
           </div>
         </div>
 

@@ -151,6 +151,17 @@ export interface CarouselItem {
   showTicker?: boolean;      // per-instance ticker visibility (default false)
 }
 
+// Section divider — names the block of items that follow it (until the next
+// divider). Emits NO slide: the generator uses it for grouping + block
+// drag-reordering, and the controller / /api/results use it to split the
+// auction accounting per block (e.g. "H2H dag 1" vs "Auktion del 2").
+export interface SectionItem {
+  id: string;
+  kind: 'section';
+  active: boolean;
+  label?: string;
+}
+
 export interface Lot {
   id: string;
   kind?: 'lot';                     // optional discriminator (default 'lot')
@@ -210,7 +221,7 @@ export interface SoundConfig {
   hammerVolume?: number;   // 0..1.5
 }
 
-export type DeckItem = Lot | BordplanItem | CoverItem | ClosingItem | SponsorIndexItem | WishLoopItem | MediaItem | AuctionDisplayItem | ContestItem | CarouselItem;
+export type DeckItem = Lot | BordplanItem | CoverItem | ClosingItem | SponsorIndexItem | WishLoopItem | MediaItem | AuctionDisplayItem | ContestItem | CarouselItem | SectionItem;
 function isLot(item: DeckItem): item is Lot {
   return (item as any).kind === undefined || (item as any).kind === 'lot';
 }

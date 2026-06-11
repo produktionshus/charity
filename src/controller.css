@@ -1045,6 +1045,25 @@ body.controller.show-lot-num .lot-slide-frame::after {
   padding: 24px 8px;
   font-style: italic;
 }
+/* Section (block) header rows — name + per-block subtotal */
+.history-sold-list li.h-section {
+  grid-template-columns: 1fr auto;
+  background: rgba(16,185,129,0.08);
+  border-color: rgba(52,211,153,0.28);
+  margin-top: 8px;
+  padding: 6px 10px;
+}
+.history-sold-list li.h-section .h-title {
+  font-family: var(--font-mono);
+  font-size: 9.5px; letter-spacing: 0.14em; text-transform: uppercase;
+  font-weight: 700;
+  color: var(--green-300);
+  -webkit-line-clamp: 1;
+}
+.history-sold-list li.h-section .h-amount { font-size: 12px; }
+/* Floor-pledge (team bonus) rows booked under their block */
+.history-sold-list li.h-bonus { opacity: 0.85; }
+.history-sold-list li.h-bonus .h-title { font-style: italic; }
 .history-foot {
   margin-top: 10px;
   padding-top: 10px;
