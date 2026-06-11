@@ -471,8 +471,6 @@ function renderList() {
       });
       row.addEventListener('click', () => selectLot(item.id));
       row.addEventListener('dragstart', onDragStart);
-      row.addEventListener('dragover', onDragOver);
-      row.addEventListener('drop', onDrop);
       row.addEventListener('dragend', onDragEnd);
       listRows.appendChild(row);
       continue;
@@ -545,8 +543,6 @@ function renderList() {
     `;
     row.addEventListener('click', () => selectLot(item.id));
     row.addEventListener('dragstart', onDragStart);
-    row.addEventListener('dragover', onDragOver);
-    row.addEventListener('drop', onDrop);
     row.addEventListener('dragend', onDragEnd);
     listRows.appendChild(row);
   }
@@ -565,51 +561,76 @@ function onDragStart(e: DragEvent) {
   e.dataTransfer!.effectAllowed = 'move';
   e.dataTransfer!.setData('text/plain', draggingId);
 }
-function onDragOver(e: DragEvent) {
+// Drag-over/drop live on the LIST CONTAINER, not the individual rows. Rows
+// have margins/padding gaps between them (section bars especially), and a
+// drop released over a gap that no row-level handler covers is rejected by
+// the browser — the drag "fails" with a snap-back and no marker ever shows.
+// Delegating to the container makes the entire list surface droppable: the
+// nearest row midpoint decides the insertion point.
+function dropPosition(e: DragEvent): { row: HTMLElement; before: boolean } | null {
+  const rows = Array.from(listRows.querySelectorAll<HTMLElement>('.gen-row'));
+  if (!rows.length) return null;
+  for (const row of rows) {
+    const r = row.getBoundingClientRect();
+    if (e.clientY < r.top + r.height / 2) return { row, before: true };
+  }
+  return { row: rows[rows.length - 1], before: false };
+}
+// Map a visual drop position to an index in itemsBank. "After row R" is the
+// same as "before the next visible row" — which lands after a collapsed
+// section's hidden items instead of inside them.
+function dataIndexFor(pos: { row: HTMLElement; before: boolean }): number {
+  if (pos.before) {
+    const idx = itemsBank.findIndex(i => i.id === pos.row.dataset.id);
+    return idx >= 0 ? idx : itemsBank.length;
+  }
+  const next = pos.row.nextElementSibling as HTMLElement | null;
+  if (next?.dataset.id) {
+    const nIdx = itemsBank.findIndex(i => i.id === next.dataset.id);
+    if (nIdx >= 0) return nIdx;
+  }
+  return itemsBank.length;
+}
+function onListDragOver(e: DragEvent) {
+  if (!draggingId) return;
   e.preventDefault();
   e.dataTransfer!.dropEffect = 'move';
-  const target = e.currentTarget as HTMLElement;
-  if (!draggingId || target.dataset.id === draggingId) return;
-  const rect = target.getBoundingClientRect();
-  const before = e.clientY < rect.top + rect.height / 2;
+  const pos = dropPosition(e);
   clearDropMarkers();
-  target.classList.add(before ? 'drop-above' : 'drop-below');
+  if (pos) pos.row.classList.add(pos.before ? 'drop-above' : 'drop-below');
   // Auto-scroll the list when dragging near top/bottom edges
-  const scroller = listRows;
-  const sRect = scroller.getBoundingClientRect();
+  const sRect = listRows.getBoundingClientRect();
   const margin = 36;
-  if (e.clientY < sRect.top + margin) scroller.scrollBy({ top: -10 });
-  else if (e.clientY > sRect.bottom - margin) scroller.scrollBy({ top: 10 });
+  if (e.clientY < sRect.top + margin) listRows.scrollBy({ top: -10 });
+  else if (e.clientY > sRect.bottom - margin) listRows.scrollBy({ top: 10 });
 }
-async function onDrop(e: DragEvent) {
+async function onListDrop(e: DragEvent) {
   e.preventDefault();
-  if (!draggingId) return;
-  const target = e.currentTarget as HTMLElement;
-  const targetId = target.dataset.id!;
-  const before = target.classList.contains('drop-above');
+  const pos = dropPosition(e);
   clearDropMarkers();
-  if (targetId === draggingId) return;
+  if (!draggingId || !pos) return;
   const src = itemsBank.find(i => i.id === draggingId);
   if (!src) return;
   // A section drags as a block: the divider plus everything under it. Compute
   // the new order from data (not the DOM) — collapsed blocks have no item rows.
   const block = itemKind(src) === 'section' ? [src, ...sectionItems(src.id)] : [src];
   const blockIds = new Set(block.map(b => b.id));
-  if (blockIds.has(targetId)) return;           // can't drop a block into itself
+  const insertIdx = dataIndexFor(pos);
+  // Re-base the insertion index onto the array without the block: dropping a
+  // block onto/into itself then reproduces the current order and no-ops.
+  let target = 0;
+  for (let i = 0; i < insertIdx; i++) if (!blockIds.has(itemsBank[i].id)) target++;
   const rest = itemsBank.filter(i => !blockIds.has(i.id));
-  let idx = rest.findIndex(i => i.id === targetId);
-  if (idx < 0) return;
-  if (!before) {
-    // Dropping a section below another section bar means after that whole
-    // block (it may be collapsed) — not between the bar and its items.
-    if (itemKind(src) === 'section' && itemKind(rest[idx]) === 'section') {
-      while (idx + 1 < rest.length && itemKind(rest[idx + 1]) !== 'section') idx++;
-    }
-    idx += 1;
-  }
-  rest.splice(idx, 0, ...block);
-  await applyOrder(rest.map(i => i.id));
+  rest.splice(target, 0, ...block);
+  const order = rest.map(i => i.id);
+  if (order.join('\n') === itemsBank.map(i => i.id).join('\n')) return;   // unchanged
+  await applyOrder(order);
 }
+listRows.addEventListener('dragover', onListDragOver);
+listRows.addEventListener('drop', onListDrop);
+listRows.addEventListener('dragleave', (e) => {
+  if (e.target === listRows) clearDropMarkers();
+});
 
 // Apply a full id order locally + persist it to the server.
 async function applyOrder(order: string[]) {

@@ -491,6 +491,10 @@ body.generator {
   background: transparent;
   margin-bottom: 3px;
   transition: 120ms;
+  /* Text selection hijacks the drag gesture into a text-drag (no dragstart,
+     no markers, drop snaps back) — rows are drag handles, never text. */
+  user-select: none;
+  -webkit-user-select: none;
 }
 .gen-row:hover { background: var(--bg-card); border-color: var(--line-c2); }
 .gen-row.selected {
