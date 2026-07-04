@@ -1748,6 +1748,15 @@
         "Living Flowers"
       ],
       "speedSec": 60
+    },
+    "slideTheme": {
+      "numColor": "#1F4A28",
+      "gradB": "#EFE6CD",
+      "accentColor": "#B8893A",
+      "gradA": "#F4ECD8",
+      "font": "jakarta",
+      "gradType": "linear",
+      "gradAngle": 180
     }
   }
 }

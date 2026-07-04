@@ -6,7 +6,7 @@
 import lotsJson from './lots.json';
 import type { FloorPlanConfig } from './bordplan-engine';
 
-export type SlideKind = 'cover' | 'sponsor-index' | 'lot' | 'closing' | 'bordplan' | 'wish-loop' | 'media' | 'auction-display';
+export type SlideKind = 'cover' | 'sponsor-index' | 'lot' | 'closing' | 'bordplan' | 'wish-loop' | 'media' | 'auction-display' | 'carousel' | 'contest';
 
 export interface Slide {
   id: string;
@@ -114,6 +114,38 @@ export interface WishLoopItem {
   showTicker?: boolean;            // per-instance ticker visibility (default true)
 }
 
+// Section header — names a block of items in the generator deck list.
+// Never emitted as a slide; controller uses it to group the live order.
+export interface SectionItem {
+  id: string;
+  kind: 'section';
+  label: string;
+  active?: boolean;          // ignored — sections are list chrome, not slides
+}
+
+// Cross-fading image carousel (fullscreen 16:9).
+export interface CarouselItem {
+  id: string;
+  kind: 'carousel';
+  active: boolean;
+  label?: string;
+  images: Array<{ src: string; seconds?: number }>;
+  fadeMs?: number;           // cross-fade duration, default 2000
+  defaultSeconds?: number;   // per-image hold when seconds unset, default 10
+  showTicker?: boolean;
+}
+
+// Competition slide — 1-4 blocks with image + heading + info lines.
+export interface ContestItem {
+  id: string;
+  kind: 'contest';
+  active: boolean;
+  label?: string;
+  title?: string;            // default "KONKURRENCE"
+  subtitle?: string;
+  blocks: Array<{ src?: string; heading?: string; lines?: string[] }>;
+}
+
 export interface Lot {
   id: string;
   kind?: 'lot';                     // optional discriminator (default 'lot')
@@ -141,6 +173,10 @@ export interface Lot {
   // length === 1 + heroImages.length. Absent -> equal split.
   heroSplit?: number[];
   sound?: SoundConfig;              // per-lot sound config (persisted to lots.json)
+  // Primary sponsor-logo list (v2 editor). When set, these render side by
+  // side on the slide and the text sponsor name is only a fallback for an
+  // empty list. Superseeds sponsorLogoSrc/extraSponsorLogos below.
+  sponsorLogos?: string[];
   // Optional override path for the main sponsor logo (e.g. when using an
   // .svg instead of the default logo-lot-<id>.png).
   sponsorLogoSrc?: string;
@@ -169,7 +205,7 @@ export interface SoundConfig {
   hammerVolume?: number;   // 0..1.5
 }
 
-export type DeckItem = Lot | BordplanItem | CoverItem | ClosingItem | SponsorIndexItem | WishLoopItem | MediaItem | AuctionDisplayItem;
+export type DeckItem = Lot | BordplanItem | CoverItem | ClosingItem | SponsorIndexItem | WishLoopItem | MediaItem | AuctionDisplayItem | SectionItem | CarouselItem | ContestItem;
 function isLot(item: DeckItem): item is Lot {
   return (item as any).kind === undefined || (item as any).kind === 'lot';
 }
@@ -193,6 +229,15 @@ function isMedia(item: DeckItem): item is MediaItem {
 }
 function isAuctionDisplay(item: DeckItem): item is AuctionDisplayItem {
   return (item as any).kind === 'auction-display';
+}
+function isSection(item: DeckItem): item is SectionItem {
+  return (item as any).kind === 'section';
+}
+function isCarousel(item: DeckItem): item is CarouselItem {
+  return (item as any).kind === 'carousel';
+}
+function isContest(item: DeckItem): item is ContestItem {
+  return (item as any).kind === 'contest';
 }
 
 // All items from the bank (active + inactive). Generator edits this list.
@@ -232,6 +277,28 @@ export interface AuctionDisplayState {
   showBaseLabel: boolean;
 }
 
+// Slide look — applied live to every lot render (preview, konsol,
+// launchpad, viewer). Persisted in lots.json meta, broadcast on save.
+export interface SlideTheme {
+  numColor?: string;                       // lot number + bold title segments
+  accentColor?: string;                    // "DONERET AF" + bullet separators
+  font?: 'jakarta' | 'serif' | 'system';
+  gradType?: 'linear' | 'radial';
+  gradAngle?: number;                      // degrees, linear only
+  gradA?: string;
+  gradB?: string;
+  customColors?: Record<string, string[]>; // last 3 custom picks per swatch key
+}
+export const DEFAULT_SLIDE_THEME: Required<Omit<SlideTheme, 'customColors'>> = {
+  numColor: '#1F4A28',
+  accentColor: '#B8893A',
+  font: 'jakarta',
+  gradType: 'linear',
+  gradAngle: 180,
+  gradA: '#F4ECD8',
+  gradB: '#EFE6CD',
+};
+
 // Event-wide meta (bid presets etc.). Mutated by refreshLotsFromServer.
 export interface EventMeta {
   bidPresets?: number[];
@@ -240,6 +307,7 @@ export interface EventMeta {
   eventSubtitle?: string;
   eventDate?: string;        // ISO YYYY-MM-DD
   theme?: 'forest' | 'marine' | 'dark' | 'kidsaid';
+  slideTheme?: SlideTheme;
   soundDefaults?: SoundConfig;
   teams?: AuctionTeam[];
   sponsorTicker?: {
@@ -312,8 +380,13 @@ function buildSlides(): Slide[] {
     }
   };
   for (const item of ALL_ITEMS) {
+    if (isSection(item)) continue;         // list chrome, never a slide
     if (!item.active) continue;
-    if (isBordplan(item)) {
+    if (isCarousel(item)) {
+      slides.push({ id: `carousel-${item.id}`, kind: 'carousel', itemId: item.id });
+    } else if (isContest(item)) {
+      slides.push({ id: `contest-${item.id}`, kind: 'contest', itemId: item.id });
+    } else if (isBordplan(item)) {
       slides.push({ id: `bordplan-${item.id}`, kind: 'bordplan', itemId: item.id });
     } else if (isCover(item)) {
       slides.push({ id: `cover-${item.id}`, kind: 'cover', itemId: item.id });
@@ -374,6 +447,14 @@ export function mediaById(id: string): MediaItem | undefined {
 export function auctionDisplayById(id: string): AuctionDisplayItem | undefined {
   const item = ALL_ITEMS.find(i => i.id === id && isAuctionDisplay(i));
   return item as AuctionDisplayItem | undefined;
+}
+export function carouselById(id: string): CarouselItem | undefined {
+  const item = ALL_ITEMS.find(i => i.id === id && isCarousel(i));
+  return item as CarouselItem | undefined;
+}
+export function contestById(id: string): ContestItem | undefined {
+  const item = ALL_ITEMS.find(i => i.id === id && isContest(i));
+  return item as ContestItem | undefined;
 }
 
 export const SLIDES: Slide[] = buildSlides();

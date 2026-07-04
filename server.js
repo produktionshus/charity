@@ -133,8 +133,13 @@ function buildServerSlides() {
   let hasSponsorIndex = lots().some(i => i.active && i.kind === 'sponsor-index');
   let lotsEmitted = false;
   for (const item of lots()) {
+    if (item.kind === 'section') continue;   // list chrome, never a slide
     if (!item.active) continue;
-    if (item.kind === 'bordplan') {
+    if (item.kind === 'carousel') {
+      out.push({ kind: 'carousel', itemId: item.id });
+    } else if (item.kind === 'contest') {
+      out.push({ kind: 'contest', itemId: item.id });
+    } else if (item.kind === 'bordplan') {
       out.push({ kind: 'bordplan', itemId: item.id });
     } else if (item.kind === 'cover') {
       out.push({ kind: 'cover', itemId: item.id });
@@ -206,6 +211,8 @@ const upload = multer({
       if (kind === 'apple')     return cb(null, applesDir);
       if (kind === 'wish-bg')   return cb(null, wishLoopDir);
       if (kind === 'media')     return cb(null, mediaDir);
+      if (kind === 'carousel')  return cb(null, mediaDir);
+      if (kind === 'contest')   return cb(null, mediaDir);
       if (kind === 'extra-logo') return cb(null, logoDir);
       if (kind === 'sound')     return cb(null, soundsDir);
       cb(new Error('Unknown upload kind: ' + kind), '');
@@ -226,6 +233,8 @@ const upload = multer({
       if (kind === 'apple')      return cb(null, file.originalname);
       if (kind === 'wish-bg')    return cb(null, file.originalname);
       if (kind === 'media')      return cb(null, file.originalname);
+      if (kind === 'carousel')   return cb(null, `car-${Date.now()}-${file.originalname}`);
+      if (kind === 'contest')    return cb(null, `contest-${Date.now()}-${file.originalname}`);
       if (kind === 'extra-logo') return cb(null, `extra-${lotId || Date.now()}-${file.originalname}`);
       if (kind === 'sound') {
         const which = req.body.which || req.query.which;
@@ -301,6 +310,26 @@ app.put('/api/meta', (req, res) => {
   for (const k of ['eventName', 'eventSubtitle', 'eventDate', 'theme']) {
     if (typeof b[k] === 'string') m[k] = b[k];
     else if (b[k] === null) delete m[k];
+  }
+  // Slide look (v2 generator/controller theme drawer) — shallow-validated
+  // passthrough; null clears back to the built-in default theme.
+  if (b.slideTheme && typeof b.slideTheme === 'object') {
+    const t = {};
+    for (const k of ['numColor', 'accentColor', 'gradA', 'gradB']) {
+      if (typeof b.slideTheme[k] === 'string') t[k] = b.slideTheme[k];
+    }
+    if (['jakarta', 'serif', 'system'].includes(b.slideTheme.font)) t.font = b.slideTheme.font;
+    if (['linear', 'radial'].includes(b.slideTheme.gradType)) t.gradType = b.slideTheme.gradType;
+    if (Number.isFinite(b.slideTheme.gradAngle)) t.gradAngle = Math.max(0, Math.min(360, Number(b.slideTheme.gradAngle)));
+    if (b.slideTheme.customColors && typeof b.slideTheme.customColors === 'object') {
+      t.customColors = {};
+      for (const [k, arr] of Object.entries(b.slideTheme.customColors)) {
+        if (Array.isArray(arr)) t.customColors[k] = arr.filter(c => typeof c === 'string').slice(-3);
+      }
+    }
+    m.slideTheme = { ...(m.slideTheme || {}), ...t };
+  } else if (b.slideTheme === null) {
+    delete m.slideTheme;
   }
   if (b.sponsorTicker && typeof b.sponsorTicker === 'object') {
     m.sponsorTicker = m.sponsorTicker || {};
@@ -384,6 +413,33 @@ app.post('/api/lots', (req, res) => {
       namesVisible: req.body.namesVisible ?? true,
       showBaseLabel: req.body.showBaseLabel ?? true,
     };
+  } else if (kind === 'section') {
+    newItem = {
+      id: uuidv4(),
+      kind: 'section',
+      label: req.body.label || 'Ny sektion',
+    };
+  } else if (kind === 'carousel') {
+    newItem = {
+      id: uuidv4(),
+      kind: 'carousel',
+      active: req.body.active ?? true,
+      label: req.body.label || 'Billedkarrusel',
+      images: Array.isArray(req.body.images) ? req.body.images : [],
+      fadeMs: req.body.fadeMs ?? 2000,
+      defaultSeconds: req.body.defaultSeconds ?? 10,
+      showTicker: req.body.showTicker ?? false,
+    };
+  } else if (kind === 'contest') {
+    newItem = {
+      id: uuidv4(),
+      kind: 'contest',
+      active: req.body.active ?? true,
+      label: req.body.label || 'Konkurrence',
+      title: req.body.title || 'KONKURRENCE',
+      subtitle: req.body.subtitle || '',
+      blocks: Array.isArray(req.body.blocks) ? req.body.blocks : [],
+    };
   } else if (kind === 'media') {
     newItem = {
       id: uuidv4(),
@@ -462,6 +518,12 @@ app.put('/api/lots/:id', (req, res) => {
   if (!lot) return res.status(404).json({ error: 'Not found' });
   Object.assign(lot, req.body);   // shallow merge of provided fields
   lot.id = req.params.id;          // never let the id be overwritten by body
+  // Per-lot sound override edited in the generator: mirror into the live
+  // auction state (rebuildAuctionState only seeds missing entries).
+  if (req.body && 'sound' in req.body) {
+    state.sounds[lot.id] = { ...(lot.sound || {}) };
+    broadcast();
+  }
   // Propagate shared wish-loop config to every other wish-loop item so the
   // operator only has to tweak look-and-feel once.
   if (lot.kind === 'wish-loop') {
