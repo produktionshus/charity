@@ -590,85 +590,172 @@
 }
 .ctl-sound-countdown .fill { height: 100%; width: 0%; background: var(--pp-green); }
 
-/* ---- Hammer overlay (ceremonial) ---- */
-.hammer-overlay {
+/* ---- Hammer overlay (ceremonial) ----
+   Same markup + look as viewer/auctioneer (.hammer-overlay-c under the
+   KidsAid theme): solid green card, white text, gold rays + particles.
+   Self-contained copy — the controller does not load chrome.css. */
+.hammer-overlay-c {
   position: absolute;
   inset: 0;
   z-index: 8;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  opacity: 1;
-  transition: opacity 320ms ease;
+  pointer-events: none;
+  overflow: hidden;
 }
-.hammer-overlay.fading { opacity: 0; }
-.hammer-overlay .hammer-scrim {
-  position: absolute;
-  inset: 0;
-  background: rgba(10, 8, 4, 0.6);
-}
-.hammer-overlay .hammer-card {
-  position: relative;
-  background: linear-gradient(180deg, var(--pp-cream-hi), var(--pp-cream));
-  border-radius: 16px;
-  padding: 24px 42px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
-  box-shadow: 0 30px 60px -20px rgba(0, 0, 0, 0.7);
-  animation: hammer-pop 500ms var(--pp-ease);
-}
-@keyframes hammer-pop {
-  0% { transform: scale(0.85); opacity: 0; }
-  100% { transform: scale(1); opacity: 1; }
-}
-.hammer-overlay .hammer-top {
-  display: flex;
-  gap: 8px;
-  font-family: var(--pp-mono);
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.3em;
-  text-transform: uppercase;
-  color: var(--pp-green-dark);
-}
-.hammer-overlay .hammer-lot {
-  font-size: 15px;
-  font-weight: 700;
-  color: var(--pp-ink);
-  text-align: center;
-  max-width: 420px;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-.hammer-overlay .hammer-lot .lot-no {
-  font-family: var(--pp-mono);
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0.2em;
-  color: var(--pp-ink-muted);
-}
-.hammer-overlay .hammer-bid {
-  font-family: var(--pp-mono);
-  font-size: 38px;
-  font-weight: 700;
-  color: var(--pp-gold-deep);
-  font-variant-numeric: tabular-nums;
-}
-.hammer-overlay .hammer-bid .kr { font-size: 16px; }
-.hammer-overlay .particle {
-  position: absolute;
-  width: 6px;
-  height: 6px;
-  border-radius: 999px;
-  background: var(--pp-gold-soft);
+.hammer-overlay-c.fading { animation: hammer-c-out 320ms ease forwards; }
+@keyframes hammer-c-out { to { opacity: 0; } }
+.hammer-overlay-c .scrim {
+  position: absolute; inset: 0;
+  background:
+    radial-gradient(60% 50% at 50% 50%, rgba(217, 191, 140, 0.10), transparent 60%),
+    radial-gradient(80% 80% at 50% 50%, rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.88) 80%);
   opacity: 0;
-  animation: particle-float 1400ms ease-out forwards;
+  animation: scrim-c-in 600ms ease forwards;
 }
-@keyframes particle-float {
-  0% { opacity: 0; transform: translate(0, 0) scale(0.6); }
-  20% { opacity: 1; }
-  100% { opacity: 0; transform: translate(var(--dx), var(--dy)) scale(1); }
+@keyframes scrim-c-in { to { opacity: 1; } }
+.hammer-overlay-c .rays {
+  position: absolute;
+  top: 50%; left: 50%;
+  width: 2200px; height: 2200px;
+  transform: translate(-50%, -50%);
+  opacity: 0;
+  animation: rays-c-in 1400ms ease forwards 200ms, rays-c-spin 30s linear infinite 200ms;
+  background:
+    conic-gradient(from 0deg,
+      transparent 0deg, rgba(217, 191, 140, 0.06) 4deg, transparent 8deg,
+      transparent 60deg, rgba(217, 191, 140, 0.05) 64deg, transparent 68deg,
+      transparent 120deg, rgba(217, 191, 140, 0.06) 124deg, transparent 128deg,
+      transparent 180deg, rgba(217, 191, 140, 0.07) 184deg, transparent 188deg,
+      transparent 240deg, rgba(217, 191, 140, 0.05) 244deg, transparent 248deg,
+      transparent 300deg, rgba(217, 191, 140, 0.06) 304deg, transparent 308deg,
+      transparent 360deg
+    );
+  filter: blur(1px);
+}
+@keyframes rays-c-in {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(0.5) rotate(-30deg); }
+  100% { opacity: 1; transform: translate(-50%, -50%) scale(1) rotate(0deg); }
+}
+@keyframes rays-c-spin { to { transform: translate(-50%, -50%) rotate(360deg); } }
+.hammer-overlay-c .flash {
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  width: 70%; aspect-ratio: 1;
+  border-radius: 50%;
+  background: radial-gradient(50% 50% at 50% 50%, rgba(242, 221, 177, 0.7), transparent 60%);
+  opacity: 0;
+  animation: flash-c 700ms ease-out forwards;
+}
+@keyframes flash-c {
+  0%   { opacity: 0; transform: translate(-50%, -50%) scale(0.3); }
+  18%  { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(1.5); }
+}
+.hammer-overlay-c .card {
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%) scale(0.85);
+  width: min(88%, 960px);
+  padding: 36px 56px 32px;
+  border-radius: 6px;
+  background: linear-gradient(180deg, #3FA34D 0%, #2F7A39 100%);
+  border: 1px solid #fff;
+  box-shadow:
+    0 40px 80px -20px rgba(0, 0, 0, 0.8),
+    0 0 100px -20px rgba(63, 163, 77, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  text-align: center;
+  opacity: 0;
+  animation: card-c-in 700ms cubic-bezier(0.16, 1, 0.3, 1) forwards 200ms;
+  font-family: var(--pp-sans);
+  color: #fff;
+}
+@keyframes card-c-in {
+  0%   { opacity: 0; transform: translate(-50%, -50%) scale(0.85) rotate(-1deg); }
+  60%  { opacity: 1; transform: translate(-50%, -50%) scale(1.03) rotate(0.4deg); }
+  100% { opacity: 1; transform: translate(-50%, -50%) scale(1) rotate(0deg); }
+}
+.hammer-overlay-c .card::before,
+.hammer-overlay-c .card::after {
+  content: "";
+  position: absolute;
+  left: 22%; width: 56%; height: 1px;
+  background: linear-gradient(90deg, transparent, #fff 30%, #fff 70%, transparent);
+}
+.hammer-overlay-c .card::before { top: 14px; }
+.hammer-overlay-c .card::after  { bottom: 14px; }
+.hammer-overlay-c .top {
+  font-family: var(--pp-mono);
+  font-size: 13px;
+  letter-spacing: 0.36em;
+  text-transform: uppercase;
+  color: #fff;
+  margin-bottom: 6px;
+  display: flex; justify-content: center; align-items: center; gap: 14px;
+}
+.hammer-overlay-c .icon {
+  display: inline-block; font-size: 18px;
+  transform-origin: 70% 70%;
+  animation: hammer-c-strike 700ms cubic-bezier(0.4, 0, 0.2, 1) 100ms;
+}
+@keyframes hammer-c-strike {
+  0%   { transform: rotate(-50deg) translateY(-32px); opacity: 0; }
+  60%  { transform: rotate(15deg) translateY(0); opacity: 1; }
+  80%  { transform: rotate(-5deg) translateY(0); }
+  100% { transform: rotate(0deg) translateY(0); }
+}
+.hammer-overlay-c .lot-line {
+  font-family: Georgia, 'Iowan Old Style', serif;
+  font-size: 22px; font-style: italic;
+  color: #fff;
+  margin: 6px 0 18px;
+  font-weight: 500;
+  opacity: 0;
+  animation: fade-c-up 600ms ease forwards 400ms;
+  text-wrap: pretty;
+}
+.hammer-overlay-c .lot-line .lot-no {
+  font-style: normal; font-weight: 600;
+  color: #fff;
+  margin-left: 12px;
+  font-family: var(--pp-sans);
+  font-size: 15px;
+  letter-spacing: 0.04em;
+}
+@keyframes fade-c-up {
+  0% { opacity: 0; transform: translateY(10px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+.hammer-overlay-c .bid {
+  font-weight: 700;
+  line-height: 0.9;
+  letter-spacing: -0.04em;
+  font-feature-settings: 'tnum';
+  color: #fff;
+  display: inline-flex; align-items: baseline; gap: 10px;
+  justify-content: center;
+  margin: 0 auto;
+  text-shadow: 0 0 80px rgba(217, 191, 140, 0.5);
+  opacity: 0;
+  animation: bid-reveal-c 800ms cubic-bezier(0.16, 1, 0.3, 1) forwards 500ms;
+}
+.hammer-overlay-c .bid .kr { font-size: 0.3em; font-weight: 600; color: #fff; }
+@keyframes bid-reveal-c {
+  0%   { opacity: 0; transform: translateY(20px) scale(0.95); letter-spacing: -0.06em; }
+  60%  { opacity: 1; transform: translateY(0) scale(1.03); }
+  100% { opacity: 1; transform: translateY(0) scale(1); letter-spacing: -0.04em; }
+}
+.hammer-overlay-c .particle {
+  position: absolute;
+  width: 5px; height: 5px;
+  border-radius: 50%;
+  background: #F2DDB1;
+  box-shadow: 0 0 12px rgba(242, 221, 177, 0.9);
+  opacity: 0;
+  animation: particle-c-float 4s linear forwards 500ms;
+}
+@keyframes particle-c-float {
+  0%   { opacity: 0; transform: translate(0, 0); }
+  10%  { opacity: 1; }
+  100% { opacity: 0; transform: translate(var(--dx), var(--dy)); }
 }

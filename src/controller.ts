@@ -395,13 +395,22 @@ function updateSoldOverlays(slide: Slide | null) {
 
 // ---- Hammer overlay (ceremonial) ----
 let hammerTimer = 0;
+// Ceremonial hammer overlay — identical markup/classes to viewer +
+// auctioneer (.hammer-overlay-c, KidsAid green card) so all screens
+// celebrate the same way. Styles live in controller.css.
+function hammerBidFontPx(amount: number): number {
+  const len = (fmtKr(amount) || '').length + 3;
+  if (len <= 8)  return 120;
+  if (len <= 11) return 96;
+  return 72;
+}
 function buildHammerOverlay(lotNum: string, finalPrice: number): HTMLElement {
   const lot = lotById(lotNum)!;
   const wrap = document.createElement('div');
-  wrap.className = 'hammer-overlay';
-  const particlesHtml = Array.from({ length: 18 }).map(() => {
+  wrap.className = 'hammer-overlay-c';
+  const particles = Array.from({ length: 22 }).map(() => {
     const angle = Math.random() * Math.PI * 2;
-    const dist = 140 + Math.random() * 220;
+    const dist = 200 + Math.random() * 320;
     const dx = Math.cos(angle) * dist;
     const dy = Math.sin(angle) * dist;
     const left = 30 + Math.random() * 40;
@@ -409,19 +418,22 @@ function buildHammerOverlay(lotNum: string, finalPrice: number): HTMLElement {
     const delay = Math.random() * 600;
     return `<span class="particle" style="left:${left}%;top:${top}%;--dx:${dx}px;--dy:${dy}px;animation-delay:${500 + delay}ms"></span>`;
   }).join('');
+  const dn = displayNumFor(lot.id);
   wrap.innerHTML = `
-    <div class="hammer-scrim"></div>
-    <div class="hammer-card">
-      <div class="hammer-top"><span>🔨</span><span>Solgt</span></div>
-      <div class="hammer-lot">${lot.title}<span class="lot-no">Lot ${displayNumFor(lot.id)}</span></div>
-      <div class="hammer-bid">${fmtKr(finalPrice)}<span class="kr"> kr</span></div>
+    <div class="scrim"></div>
+    <div class="rays"></div>
+    <div class="flash"></div>
+    <div class="card">
+      <div class="top"><span class="icon">🔨</span><span>Solgt</span></div>
+      <div class="lot-line">${lot.title}${dn ? `<span class="lot-no">Lot ${dn}</span>` : ''}</div>
+      <div class="bid" style="font-size:${hammerBidFontPx(finalPrice)}px">${fmtKr(finalPrice)}<span class="kr">kr</span></div>
     </div>
-    ${particlesHtml}
+    ${particles}
   `;
   return wrap;
 }
 function clearHammerOverlays() {
-  document.querySelectorAll<HTMLElement>('.hammer-overlay').forEach(el => {
+  document.querySelectorAll<HTMLElement>('.hammer-overlay-c').forEach(el => {
     if (el.classList.contains('fading')) return;
     el.classList.add('fading');
     setTimeout(() => el.remove(), 340);
