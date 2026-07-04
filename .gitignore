@@ -9,3 +9,6 @@ dist/
 # Large source videos (kept locally as backup; only the encoded mp4 ships)
 public/assets/wish-loop/_*.mov
 public/assets/wish-loop/*.mov
+
+# Live auction state (persisted next to lots.json by server.js)
+src/auction-state.json
