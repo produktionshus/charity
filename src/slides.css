@@ -3,262 +3,107 @@
   /* internal coords: 13.333in x 7.5in */
 }
 
-/* ---- Horizon layout ---- */
-.layout-horizon {
-  --horizon-caption-h: 2.25in;
+/* ---- Lot slide v2 (design_handoff_generator_v2) ----
+   Canvas is 13.333in x 7.5in (1280x720 css px); the 1920-space spec values
+   are divided by 1.5. Theme custom props (--th-bg/--th-num/--th-accent/
+   --th-font) are set inline on the slide root by render.ts from
+   meta.slideTheme, so preview / konsol / launchpad / viewer share pixels. */
+.slide-lot {
+  background: var(--th-bg, linear-gradient(180deg, #F4ECD8 0%, #EFE6CD 100%));
+  font-family: var(--th-font, var(--font-body));
 }
-.layout-horizon .hero-area {
-  position: absolute;
-  inset: -1px -1px var(--horizon-caption-h) -1px;   /* tiny bleed avoids sub-pixel cream gaps at scaled previews */
+.layout-horizon { --horizon-caption-h: 2.25in; }
+.layout-profile { --profile-photo-w: 5.8in; }
+
+.lotv2 { position: absolute; inset: 0; display: flex; }
+.lotv2--horizon { flex-direction: column; }
+.lotv2--profile { flex-direction: row; }
+.lotv2--profile.lotv2--mirrored { flex-direction: row-reverse; }
+
+.lotv2-hero { display: flex; gap: 5.33px; overflow: hidden; flex-shrink: 0; width: 100%; height: 100%; }
+.lotv2--horizon > .lotv2-hero {
+  height: calc(100% - var(--horizon-caption-h, 2.25in));
+  flex-direction: row;
+}
+.lotv2--profile .lotv2-photo {
+  width: var(--profile-photo-w, 5.8in);
+  height: 100%;
+  flex-shrink: 0;
   overflow: hidden;
 }
-.layout-horizon .hero-img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-}
-.layout-horizon .lot-num {
-  position: absolute;
-  top: 0.20in;
-  left: 0.30in;
-  font-family: var(--font-title);
-  font-weight: 700;
-  font-size: 96pt;
-  letter-spacing: -2px;
-  color: var(--green);  /* override per-lot via data-attribute later */
-  line-height: 1;
-}
-.layout-horizon .caption-strip {
-  position: absolute;
-  inset: calc(7.5in - var(--horizon-caption-h)) 0 0 0;
-  background: var(--cream);
-  padding: 0.15in 0.5in 0 0.5in;  /* title sits close to photo edge */
-}
-.layout-horizon .caption-rule {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 1px;
-  background: var(--green);
-}
-.layout-horizon .lot-title {
-  font-family: var(--font-title);
-  font-weight: 300;  /* light by default; <b> spans flip to 700 */
-  color: var(--ink);
-  letter-spacing: 0.04em;
-  line-height: 1.1;
-}
-.layout-horizon .lot-title b { font-weight: 700; }
-.layout-horizon .lot-subtitle {
-  margin-top: 0.10in;
-  font-style: italic;
-  font-size: 10pt;
-  color: var(--green-dark);
-}
-.layout-horizon .bullets, .layout-horizon .bullets-2col { margin-top: 0.12in; }
-
-/* ---- Profile layout ---- */
-.layout-profile {
-  --profile-photo-w: 5.8in;
-}
-.layout-profile .profile {
-  display: grid;
-  grid-template-columns: var(--profile-photo-w) 1fr;
-  height: 100%;
-}
-.layout-profile .profile.mirrored {
-  grid-template-columns: 1fr var(--profile-photo-w);
-}
-.layout-profile .profile.mirrored .photo-side { order: 2; }
-.layout-profile .profile.mirrored .text-side { order: 1; }
-.layout-profile .photo-side {
-  position: relative;
-  overflow: hidden;
-  margin-left: -1px;          /* sub-pixel bleed */
-}
-.layout-profile .hero-img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-}
-.layout-profile .text-side {
-  padding: 0.45in 0.5in 0.5in 0.55in;
-  position: relative;
-  background: var(--cream);
-}
-.layout-profile .text-side::before {
-  /* green divider line between photo + cream column */
-  content: '';
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  left: 0;
-  width: 1px;
-  background: var(--green);
-}
-.layout-profile .lot-num {
-  font-family: var(--font-title);
-  font-weight: 700;
-  font-size: 96pt;
-  color: var(--green);
-  line-height: 1;
-  letter-spacing: -2px;
-  margin-bottom: 0.4in;
-}
-.layout-profile .lot-title {
-  font-family: var(--font-title);
-  font-weight: 300;
-  color: var(--ink);
-  letter-spacing: 0.04em;
-  line-height: 1.15;
-}
-.layout-profile .lot-title b { font-weight: 700; }
-.layout-profile .lot-subtitle {
-  margin-top: 0.15in;
-  font-style: italic;
-  font-size: 13pt;
-  color: var(--green-dark);
-}
-
-/* ---- Multi-image hero split ----
-   row = horizon (side-by-side), column = profile (stacked).
-   Each .hero-panel clips its own .hero-img (which keeps the bg + scale
-   zoom), and adjacent panels are divided by a thin green line. */
-.hero-split {
-  position: absolute;
-  inset: 0;
-  display: flex;
-}
-.hero-split--row { flex-direction: row; }
-.hero-split--column { flex-direction: column; }
-.hero-split .hero-panel {
+.lotv2--profile .lotv2-hero { flex-direction: column; }
+.lotv2-pane {
   position: relative;
   overflow: hidden;
   min-width: 0;
   min-height: 0;
+  /* hatched cream placeholder behind missing / still-loading photos */
+  background: repeating-linear-gradient(45deg, #EFE6CD 0px, #EFE6CD 14.7px, #E7DCBC 14.7px, #E7DCBC 16px);
 }
-.hero-split .hero-panel .hero-img {
-  width: 100%;
-  height: 100%;
-}
-.hero-split--row .hero-panel + .hero-panel { border-left: 2px solid var(--green); }
-.hero-split--column .hero-panel + .hero-panel { border-top: 2px solid var(--green); }
-
-/* ---- Bullets (shared) ---- */
-.bullets {
-  list-style: none;
-  margin-top: 0.2in;
-}
-.bullets li {
-  font-size: 10pt;
-  line-height: 1.4;
-  padding: 0.02in 0;
-}
-.layout-profile .bullets li { font-size: 13pt; }
-.bullets-2col {
-  display: grid;
-  grid-template-columns: auto auto;
-  justify-content: start;
-  column-gap: 0.45in;
-  margin-top: 0.2in;
-}
-.bullets-2col .bullets { margin-top: 0; }
-
-/* ---- Sponsor block ---- */
-.sponsor-block {
+.lotv2-pane .hero-img {
   position: absolute;
-  right: 0.5in;
-  bottom: 0.4in;          /* matches private-donor placement for a consistent baseline */
-  text-align: right;
+  inset: 0;
+  background-repeat: no-repeat;
+}
+
+.lotv2-caption {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
   display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 0.1in;
+  padding: 34.7px 50.7px;
+  overflow: hidden;
 }
-.layout-profile .sponsor-block { right: 0.5in; }
-.layout-profile.layout-mirrored .sponsor-block { right: auto; left: 0.5in; align-items: flex-start; text-align: left; }
-.doneret-af {
-  font-family: var(--font-body);
-  font-size: 9pt;
+.lotv2--horizon .lotv2-caption { flex-direction: row; align-items: center; gap: 37.3px; }
+.lotv2--profile .lotv2-caption { flex-direction: column; align-items: flex-start; gap: 17.3px; }
+
+.lotv2-num {
+  font-weight: 800;
+  line-height: 0.9;
+  letter-spacing: -0.02em;
+  color: var(--th-num, #1F4A28);
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
+}
+.lotv2--horizon .lotv2-num { font-size: 100px; }
+.lotv2--profile .lotv2-num { font-size: 73.3px; }
+
+.lotv2-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 12px; }
+.lotv2-title {
   font-weight: 700;
-  color: var(--green);
-  letter-spacing: 0.6em;
+  line-height: 1.12;
+  letter-spacing: -0.01em;
+  color: #1A1815;
+  text-wrap: pretty;
+  hyphens: none;
 }
-.sponsor-logo {
-  max-width: 2.5in;
-  max-height: 0.9in;
-  height: auto;
-  width: auto;
-  display: block;
+.lotv2-title .seg-bold { color: var(--th-num, #1F4A28); font-weight: 800; }
+.lotv2-subtitle { font-weight: 500; font-size: 20px; color: #5C544A; }
+.lotv2-bullets { display: flex; flex-direction: column; gap: 5.3px; }
+.lotv2-bullet { display: flex; gap: 8px; align-items: baseline; font-weight: 500; font-size: 15.3px; color: #5C544A; }
+.lotv2-bullet-dot { color: var(--th-accent, #B8893A); }
+
+.lotv2-sponsor { flex-shrink: 0; display: flex; flex-direction: column; gap: 9.3px; max-width: 346.7px; }
+.lotv2--horizon .lotv2-sponsor { align-items: flex-end; align-self: flex-end; }
+.lotv2--profile .lotv2-sponsor { align-items: flex-start; margin-top: auto; }
+.lotv2-donated {
+  font-family: 'JetBrains Mono', ui-monospace, Consolas, monospace;
+  font-size: 11.3px;
+  font-weight: 600;
+  letter-spacing: 0.24em;
+  color: var(--th-accent, #B8893A);
 }
-/* Per-lot caps for visually-heavy wordmarks that overpower at the default cap. */
-.sponsor-logo[src*="logo-lot-05"] {  /* CUE — chunky wordmark */
-  max-width: 1.6in;
-  max-height: 0.55in;
+.lotv2-logos { display: flex; gap: 17.3px; align-items: center; flex-wrap: wrap; }
+.lotv2--horizon .lotv2-logos { justify-content: flex-end; }
+.lotv2-logo {
+  height: 73.3px;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
 }
-.sponsor-logo[src*="logo-lot-06"] {  /* Kim Due — wordmark + icon + tagline */
-  max-width: 2in;
-  max-height: 0.7in;
-}
-.sponsor-logo[src*="logo-lot-08"] {  /* Bravo Tours — square logo, needs more room */
-  max-width: 1.6in;
-  max-height: 1.3in;
-}
-.sponsor-logo[src*="logo-lot-21"] {  /* Otto Suenson + kin + Møntergade — wide composite */
-  max-width: 3.8in;
-  max-height: 0.95in;
-}
-.sponsor-private {
-  position: absolute;
-  right: 0.5in;
-  bottom: 0.5in;
-  font-style: italic;
-  color: var(--muted);
-  font-size: 10pt;
-  letter-spacing: 0.05em;
-}
-.sponsor-block.sponsor-names,
-.sponsor-block.sponsor-block--multi {
-  flex-direction: row;
-  align-items: center;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  gap: 0.18in 0.35in;
-}
-.sponsor-block--multi .donor-name--inline {
-  font-family: var(--font-body);
-  font-weight: 700;
-  color: var(--green);
-  font-size: 12pt;
-  letter-spacing: 0.32em;
-  white-space: nowrap;
-  text-transform: uppercase;
-}
-.layout-profile.layout-mirrored .sponsor-block.sponsor-block--multi { justify-content: flex-start; }
-.sponsor-block--multi .sponsor-logo {
-  max-width: 1.8in;
-  max-height: 0.7in;
-}
-.layout-profile.layout-mirrored .sponsor-block.sponsor-names { justify-content: flex-start; }
-.sponsor-names .donor-name {
-  font-family: var(--font-body);
-  font-weight: 700;
-  color: var(--green);
-  font-size: 14pt;
-  letter-spacing: 0.4em;
-  white-space: nowrap;
-}
-.sponsor-names .donor-name + .donor-name::before {
-  content: "·";
-  display: inline-block;
-  margin-right: 0.35em;
-  color: var(--muted);
-  font-weight: 400;
-  letter-spacing: 0;
-}
+.lotv2-sponsor-text { font-weight: 700; font-size: 22.7px; color: #1A1815; }
+.lotv2--horizon .lotv2-sponsor-text { text-align: right; }
+.lotv2-sponsor-text--inline { font-size: 16px; }
 
 /* ---- Closing / sponsor-index placeholders ---- */
 .closing-title {

@@ -2,7 +2,7 @@
 // Each animated element carries class="build-item" and an inline
 // transition-delay derived from its build group + in-group index.
 
-import { LOTS, SLIDES, EVENT_META, lotById, bordplanById, coverById, closingById, sponsorIndexById, wishLoopById, mediaById, auctionDisplayById, contestById, carouselById, displayNumFor, type Slide, type Lot, type CoverItem, type ClosingItem, type SponsorIndexItem, type WishLoopItem, type MediaItem, type AuctionDisplayItem, type ContestItem, type CarouselItem } from './slides';
+import { LOTS, SLIDES, EVENT_META, DEFAULT_SLIDE_THEME, lotById, bordplanById, coverById, closingById, sponsorIndexById, wishLoopById, mediaById, auctionDisplayById, contestById, carouselById, displayNumFor, type Slide, type Lot, type CoverItem, type ClosingItem, type SponsorIndexItem, type WishLoopItem, type MediaItem, type AuctionDisplayItem, type ContestItem, type CarouselItem, type SlideTheme } from './slides';
 import { lotLayout, isMirrored, photoFocal, HORIZON_TITLE_SIZE_OVERRIDE } from './layout';
 import { renderBordplanSlide } from './render-bordplan';
 
@@ -13,6 +13,31 @@ const INGROUP_STAGGER = 60;
 
 function delay(group: number, index = 0): number {
   return group * GROUP_STAGGER + index * INGROUP_STAGGER;
+}
+
+// ---- Slide theme (meta.slideTheme) ----
+// Resolved theme + the CSS custom properties consumed by slides.css lot
+// rules. Applied on every lot slide root so preview/konsol/launchpad/viewer
+// all render identical pixels from the same data.
+export function resolvedSlideTheme(override?: SlideTheme) {
+  return { ...DEFAULT_SLIDE_THEME, ...(EVENT_META.slideTheme || {}), ...(override || {}) };
+}
+export function slideThemeFontStack(font: string | undefined): string {
+  if (font === 'serif') return "Georgia, 'Iowan Old Style', 'Times New Roman', serif";
+  if (font === 'system') return 'system-ui, -apple-system, sans-serif';
+  return "'Plus Jakarta Sans', system-ui, sans-serif";
+}
+export function slideThemeGradient(th: ReturnType<typeof resolvedSlideTheme>): string {
+  return th.gradType === 'radial'
+    ? `radial-gradient(120% 110% at 50% 0%, ${th.gradA} 0%, ${th.gradB} 100%)`
+    : `linear-gradient(${th.gradAngle}deg, ${th.gradA} 0%, ${th.gradB} 100%)`;
+}
+export function applySlideTheme(root: HTMLElement, override?: SlideTheme) {
+  const th = resolvedSlideTheme(override);
+  root.style.setProperty('--th-num', th.numColor);
+  root.style.setProperty('--th-accent', th.accentColor);
+  root.style.setProperty('--th-bg', slideThemeGradient(th));
+  root.style.setProperty('--th-font', slideThemeFontStack(th.font));
 }
 
 // Hero transform: combine object-position (cover-fit pan) with a scale+translate
@@ -46,131 +71,133 @@ function collectHeroImages(lot: Lot): Array<{ url: string; focal: string; scale:
   return [primary, ...extras];
 }
 
-// Build the hero markup for a lot. One image -> a bare .hero-img (identical to
-// the legacy single-image output). Multiple -> a .hero-split flex container of
-// .hero-panel cells (each clips its own .hero-img), divided by green lines.
-// `direction` is 'row' for horizon (side-by-side) and 'column' for profile.
+// Build the hero markup for a lot. A flex container of panes (row for
+// horizon, column for profile); each pane clips its own .hero-img and shows
+// a hatched cream placeholder while the image loads / is missing (v2 spec).
 function heroPanelsHtml(lot: Lot, direction: 'row' | 'column'): string {
   const imgs = collectHeroImages(lot);
-  if (imgs.length <= 1) {
-    const im = imgs[0];
-    return `<div class="hero-img build-item" style="${heroBgStyle(im.url, im.focal, im.scale)} transition-delay:${delay(0, 0)}ms"></div>`;
-  }
   const weights = lot.heroSplit && lot.heroSplit.length === imgs.length
     ? lot.heroSplit
     : imgs.map(() => 1);
   const panels = imgs.map((im, i) => `
-      <div class="hero-panel" style="flex:${weights[i]} 1 0">
+      <div class="lotv2-pane" data-pane="${i}" style="flex:${weights[i]} 1 0">
         <div class="hero-img build-item" style="${heroBgStyle(im.url, im.focal, im.scale)} transition-delay:${delay(0, i)}ms"></div>
       </div>`).join('');
-  return `<div class="hero-split hero-split--${direction}">${panels}</div>`;
+  return `<div class="lotv2-hero lotv2-hero--${direction}">${panels}</div>`;
 }
 
-function titleHtml(lot: Lot): string {
+// Title segments: **bold** parts (titleParts.bold) render in the theme's
+// num color at weight 800. NBSP-protect spaces at segment boundaries so
+// wrapping never eats the gap between a bold and regular run.
+function titleSegsHtml(lot: Lot): string {
   const parts = lot.titleParts && lot.titleParts.length
     ? lot.titleParts
     : [{ text: lot.title, bold: true } as { text: string; bold?: boolean; break?: boolean }];
   return parts.map(p => {
-    const text = p.text.toUpperCase().replace(/\n/g, '<br />');
-    const wrap = p.bold ? `<b>${text}</b>` : text;
-    return p.break ? wrap + '<br />' : wrap;
+    const text = p.text
+      .replace(/^ /, ' ').replace(/ $/, ' ')
+      .replace(/\n/g, '<br />');
+    const span = p.bold ? `<span class="seg-bold">${text}</span>` : `<span>${text}</span>`;
+    return p.break ? span + '<br />' : span;
   }).join('');
 }
 
-function titleSizePt(lot: Lot, layout: 'profile' | 'horizon'): number {
-  const len = lot.title.length;
-  if (layout === 'horizon') {
-    const override = HORIZON_TITLE_SIZE_OVERRIDE[lot.id];
-    if (override) return override;
-    return len > 56 ? 18 : len > 42 ? 20 : 22;
-  }
-  return len > 56 ? 24 : len > 42 ? 26 : 28;
+// Title size in canvas px (1280-wide canvas = 1920-spec px / 1.5).
+// titleSizePt override maps like the prototype: pt x 1.9 in 1920-space.
+function titleSizePx(lot: Lot, layout: 'profile' | 'horizon'): number {
+  const override = lot.titleSizePt ?? HORIZON_TITLE_SIZE_OVERRIDE[lot.id];
+  if (override) return (override * 1.9) / 1.5;
+  return (layout === 'horizon' ? 52 : 46) / 1.5;
 }
 
-// ---- Horizon (Type A) builds ----
-function renderHorizonLot(lot: Lot, displayNum: string): string {
-  const twoCol = lot.bullets.length >= 5;
-  const titleSize = titleSizePt(lot, 'horizon');
+// Ordered sponsor-logo list. sponsorLogos (v2) wins when the field exists —
+// an explicit empty list means "text fallback". Legacy lots resolve the old
+// sponsorLogoSrc / default-path / extraSponsorLogos chain.
+export function effectiveSponsorLogos(lot: Lot): string[] {
+  if (lot.sponsorLogos) return lot.sponsorLogos;
+  const isPrivate = /^doneret/i.test(lot.sponsor || '');
+  const hasNames = !!(lot.donorNames && lot.donorNames.length);
+  const out: string[] = [];
+  if (lot.sponsorLogoSrc) out.push(lot.sponsorLogoSrc);
+  else if (!hasNames && !isPrivate) out.push(`/assets/logo/logo-lot-${lot.id}.png`);
+  out.push(...(lot.extraSponsorLogos || []));
+  return out;
+}
 
-  const bulletsInner = twoCol
-    ? (() => {
-        const half = Math.ceil(lot.bullets.length / 2);
-        const left = lot.bullets.slice(0, half).map(b => `<li>${b}</li>`).join('');
-        const right = lot.bullets.slice(half).map(b => `<li>${b}</li>`).join('');
-        return `
-          <div class="bullets-2col">
-            <ul class="bullets build-item" style="transition-delay:${delay(4, 0)}ms">${left}</ul>
-            <ul class="bullets build-item" style="transition-delay:${delay(4, 1)}ms">${right}</ul>
-          </div>
-        `;
-      })()
-    : `<ul class="bullets build-item" style="transition-delay:${delay(4, 0)}ms">${lot.bullets.map(b => `<li>${b}</li>`).join('')}</ul>`;
-
+// Sponsor block (v2): "DONERET AF" eyebrow in the theme accent, then either
+// the logo row (logos are primary, side by side) or the text fallback
+// (donor names / sponsor string) when no logos are configured.
+function sponsorBlockHtml(lot: Lot, group: number): string {
+  const logos = effectiveSponsorLogos(lot);
+  let inner: string;
+  if (logos.length) {
+    const w = ((logos.length > 1 ? 260 : 380) / 1.5).toFixed(1);
+    // Legacy lots (no v2 sponsorLogos field) keep their interleaved text
+    // names after the logos; v2 lots use names only as the no-logo fallback.
+    const legacyNames = (!lot.sponsorLogos && lot.donorNames && lot.donorNames.length)
+      ? lot.donorNames.map((n, i) =>
+          `<span class="lotv2-sponsor-text lotv2-sponsor-text--inline build-item" style="transition-delay:${delay(group, logos.length + i + 1)}ms">${n}</span>`
+        ).join('')
+      : '';
+    inner = `<div class="lotv2-logos">${logos.map((src, i) =>
+      `<div class="lotv2-logo build-item" style="width:${w}px; background-image:url('${src}'); transition-delay:${delay(group, i + 1)}ms"></div>`
+    ).join('')}${legacyNames}</div>`;
+  } else {
+    const isPrivate = /^doneret/i.test(lot.sponsor || '');
+    const names = (lot.donorNames && lot.donorNames.length)
+      ? lot.donorNames
+      : [isPrivate ? (lot.sponsor.replace(/^doneret af\s*/i, '').trim() || 'Privat person') : (lot.sponsor || '')];
+    inner = names.filter(Boolean).map((n, i) =>
+      `<span class="lotv2-sponsor-text build-item" style="transition-delay:${delay(group, i + 1)}ms">${n}</span>`
+    ).join('');
+  }
   return `
-    <div class="hero-area">
-      ${heroPanelsHtml(lot, 'row')}
-      <div class="lot-num build-item" style="transition-delay:${delay(1, 0)}ms">${displayNum}</div>
-    </div>
-    <div class="caption-strip">
-      <div class="caption-rule build-item" style="transition-delay:${delay(0, 1)}ms"></div>
-      <h2 class="lot-title build-item" style="font-size:${titleSize}pt; transition-delay:${delay(2, 0)}ms">${titleHtml(lot)}</h2>
-      <p class="lot-subtitle build-item" style="transition-delay:${delay(3, 0)}ms">${lot.subtitle}</p>
-      ${bulletsInner}
-      ${sponsorBlockHtml(lot, 5)}
+    <div class="lotv2-sponsor">
+      <span class="lotv2-donated build-item" style="transition-delay:${delay(group, 0)}ms">DONERET AF</span>
+      ${inner}
     </div>
   `;
 }
 
-// ---- Profile / mirrored (Type B) builds ----
+function bulletsHtml(lot: Lot): string {
+  return lot.bullets.map(b =>
+    `<div class="lotv2-bullet"><span class="lotv2-bullet-dot">·</span><span>${b}</span></div>`
+  ).join('');
+}
+
+// ---- Horizon (Type A): hero across the top, caption row along the bottom ----
+function renderHorizonLot(lot: Lot, displayNum: string): string {
+  return `
+    <div class="lotv2 lotv2--horizon">
+      ${heroPanelsHtml(lot, 'row')}
+      <div class="lotv2-caption">
+        <div class="lotv2-num build-item" style="transition-delay:${delay(1, 0)}ms">${displayNum}</div>
+        <div class="lotv2-body">
+          <div class="lotv2-title build-item" style="font-size:${titleSizePx(lot, 'horizon').toFixed(2)}px; transition-delay:${delay(2, 0)}ms">${titleSegsHtml(lot)}</div>
+          ${lot.subtitle ? `<div class="lotv2-subtitle build-item" style="transition-delay:${delay(3, 0)}ms">${lot.subtitle}</div>` : ''}
+          <div class="lotv2-bullets build-item" style="transition-delay:${delay(4, 0)}ms">${bulletsHtml(lot)}</div>
+        </div>
+        ${sponsorBlockHtml(lot, 5)}
+      </div>
+    </div>
+  `;
+}
+
+// ---- Profile (Type B): photo fills one side, caption column beside it ----
 function renderProfileLot(lot: Lot, displayNum: string): string {
   const mirrored = lot.mirrored ?? isMirrored(lot.id);
-  const titleSize = titleSizePt(lot, 'profile');
   return `
-    <div class="profile ${mirrored ? 'mirrored' : ''}">
-      <div class="photo-side">
+    <div class="lotv2 lotv2--profile${mirrored ? ' lotv2--mirrored' : ''}">
+      <div class="lotv2-photo">
         ${heroPanelsHtml(lot, 'column')}
       </div>
-      <div class="text-side">
-        <div class="lot-num build-item" style="transition-delay:${delay(0, 1)}ms">${displayNum}</div>
-        <h2 class="lot-title build-item" style="font-size:${titleSize}pt; transition-delay:${delay(1, 0)}ms">${titleHtml(lot)}</h2>
-        <p class="lot-subtitle build-item" style="transition-delay:${delay(2, 0)}ms">${lot.subtitle}</p>
-        <ul class="bullets build-item" style="transition-delay:${delay(3, 0)}ms">${lot.bullets.map(b => `<li>${b}</li>`).join('')}</ul>
-        ${sponsorBlockHtml(lot, 4, true)}
+      <div class="lotv2-caption">
+        <div class="lotv2-num build-item" style="transition-delay:${delay(0, 1)}ms">${displayNum}</div>
+        <div class="lotv2-title build-item" style="font-size:${titleSizePx(lot, 'profile').toFixed(2)}px; transition-delay:${delay(1, 0)}ms">${titleSegsHtml(lot)}</div>
+        ${lot.subtitle ? `<div class="lotv2-subtitle build-item" style="transition-delay:${delay(2, 0)}ms">${lot.subtitle}</div>` : ''}
+        <div class="lotv2-bullets build-item" style="transition-delay:${delay(3, 0)}ms">${bulletsHtml(lot)}</div>
+        ${sponsorBlockHtml(lot, 4)}
       </div>
-    </div>
-  `;
-}
-
-function sponsorBlockHtml(lot: Lot, donorLabelGroup: number, _profile = false): string {
-  const isPrivate = /^doneret/i.test(lot.sponsor);
-  if (isPrivate) {
-    return `<div class="sponsor-block sponsor-private build-item" style="transition-delay:${delay(donorLabelGroup, 0)}ms">Doneret af privat person</div>`;
-  }
-  const hasLogos = !!(lot.sponsorLogoSrc || lot.extraSponsorLogos?.length) || !lot.donorNames?.length;
-  const hasNames = !!(lot.donorNames && lot.donorNames.length);
-  // Names-only fallback when no logos present (legacy behavior).
-  if (hasNames && !hasLogos) {
-    const names = lot.donorNames!
-      .map((n, i) => `<div class="donor-name build-item" style="transition-delay:${delay(donorLabelGroup + i, 0)}ms">${n.toUpperCase()}</div>`)
-      .join('');
-    return `
-      <div class="sponsor-block sponsor-names">
-        ${names}
-      </div>
-    `;
-  }
-  const mainSrc = lot.sponsorLogoSrc || `/assets/logo/logo-lot-${lot.id}.png`;
-  const extras = (lot.extraSponsorLogos || []).map((src, i) => `<img class="sponsor-logo sponsor-logo--extra build-item" style="transition-delay:${delay(donorLabelGroup, i + 1)}ms" src="${src}" alt="" />`).join('');
-  // Optional text-name entries appended after the logos (interleave logos + text)
-  const nameTags = hasNames
-    ? lot.donorNames!.map((n, i) => `<span class="donor-name donor-name--inline build-item" style="transition-delay:${delay(donorLabelGroup, (lot.extraSponsorLogos?.length || 0) + i + 1)}ms">${n.toUpperCase()}</span>`).join('')
-    : '';
-  const multi = !!(lot.extraSponsorLogos?.length || hasNames);
-  return `
-    <div class="sponsor-block${multi ? ' sponsor-block--multi' : ''}">
-      <img class="sponsor-logo build-item" style="transition-delay:${delay(donorLabelGroup, 0)}ms" src="${mainSrc}" alt="${lot.sponsor}" />
-      ${extras}
-      ${nameTags}
     </div>
   `;
 }
@@ -234,7 +261,7 @@ export function renderSponsorIndex(item?: SponsorIndexItem): string {
     // below, defaults mainSrc to the conventional logo path, and renders
     // a broken-image icon when that file doesn't exist.
     const isPrivate = /^doneret/i.test(l.sponsor || '');
-    const hasLogos = !isPrivate && (!!(l.sponsorLogoSrc || l.extraSponsorLogos?.length) || !l.donorNames?.length);
+    const hasLogos = !isPrivate && (Array.isArray(l.sponsorLogos) ? l.sponsorLogos.length > 0 : (!!(l.sponsorLogoSrc || l.extraSponsorLogos?.length) || !l.donorNames?.length));
     const hasNames = !isPrivate && !!(l.donorNames && l.donorNames.length);
     const items: string[] = [];
     if (isPrivate) {
@@ -243,13 +270,12 @@ export function renderSponsorIndex(item?: SponsorIndexItem): string {
       items.push(`<span class="sponsor-cell-name sponsor-cell-name--private">Doneret af privat person</span>`);
     } else {
       if (hasLogos) {
-        const mainSrc = l.sponsorLogoSrc || `/assets/logo/logo-lot-${l.id}.png`;
-        items.push(`<img class="sponsor-cell-logo" src="${mainSrc}" alt="" />`);
-        for (const src of (l.extraSponsorLogos || [])) {
+        for (const src of effectiveSponsorLogos(l)) {
           items.push(`<img class="sponsor-cell-logo" src="${src}" alt="" />`);
         }
       }
-      if (hasNames) {
+      // v2 lots treat donor names purely as the no-logo fallback.
+      if (hasNames && (!l.sponsorLogos || !hasLogos)) {
         for (const n of l.donorNames!) {
           items.push(`<span class="sponsor-cell-name">${n.toUpperCase()}</span>`);
         }
@@ -562,6 +588,8 @@ export function renderSlide(slide: Slide, lotOverride?: Lot, displayNumOverride?
     root.classList.add(layout === 'horizon' ? 'layout-horizon' : 'layout-profile');
     const mirrored = lot.mirrored ?? isMirrored(lot.id);
     if (mirrored) root.classList.add('layout-mirrored');
+    // Event slide theme — gradient bg, accents, font (meta.slideTheme).
+    applySlideTheme(root);
     // Per-lot layout tweaks
     if (layout === 'horizon' && typeof lot.horizonCaptionIn === 'number') {
       root.style.setProperty('--horizon-caption-h', `${lot.horizonCaptionIn}in`);

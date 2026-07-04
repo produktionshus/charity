@@ -6,632 +6,845 @@
   <title>Lot Generator — StjerneGolf 2026</title>
   <link rel="stylesheet" href="/src/styles.css" />
   <link rel="stylesheet" href="/src/slides.css" />
-  <link rel="stylesheet" href="/src/chrome.css" />
+  <link rel="stylesheet" href="/src/paper.css" />
   <link rel="stylesheet" href="/src/generator.css" />
 </head>
-<body class="generator">
+<body class="paper generator">
   <div class="gen-app">
-    <header class="gen-topbar">
-      <div class="brand">
-        <div class="brand-mark">K</div>
-        <div class="brand-text">
+
+    <!-- ============ TOPBAR (58px, delt IA) ============ -->
+    <header class="pp-topbar">
+      <div class="pp-brand">
+        <img src="/assets/Logo-firkant-gron-med-farve.png" alt="KidsAid" />
+        <div class="pp-brand-text">
           <strong>Lot Generator</strong>
-          <small>STJERNEGOLF 2026</small>
+          <span>STJERNEGOLF 2026</span>
         </div>
       </div>
-      <span class="gen-status" id="gen-status">Indlæser…</span>
-      <span class="gen-save-pill" id="gen-save-pill"></span>
-      <div class="gen-topbar-spacer"></div>
-      <button class="link-btn" id="open-controller">Controller ↗</button>
-      <button class="nav-btn primary" id="new-lot">+ Nyt lot</button>
-      <button class="nav-btn" id="new-section">+ Ny sektion</button>
-      <button class="nav-btn" id="new-bordplan">+ Nyt bordplan</button>
-      <button class="nav-btn" id="new-cover">+ Nyt cover</button>
-      <button class="nav-btn" id="new-closing">+ Nyt closing</button>
-      <button class="nav-btn" id="new-sponsorindex">+ Nyt sponsor-indeks</button>
-      <button class="nav-btn" id="new-wishloop">+ Nyt ønske-loop</button>
-      <button class="nav-btn" id="new-media">+ Nyt media</button>
-      <button class="nav-btn" id="new-auctiondisplay">+ Nyt auktion-display</button>
-      <button class="nav-btn" id="new-contest">+ Ny konkurrence</button>
-      <button class="nav-btn" id="new-carousel">+ Ny billedkarrusel</button>
+      <nav class="pp-tabs">
+        <button class="pp-tab" id="tab-controller">Controller</button>
+        <button class="pp-tab" id="tab-output">Output</button>
+        <button class="pp-tab" id="tab-auctioneer">Auktionarius</button>
+        <div class="pp-tab-divider"></div>
+        <button class="pp-tab active" id="tab-generator">Generator</button>
+      </nav>
+      <div class="pp-flex-spacer"></div>
+      <span class="pp-topbar-status" id="gen-status">Indlæser…</span>
+      <span class="pp-topbar-status" id="gen-item-count"></span>
+      <span class="pp-save-pill" id="gen-save-pill" style="display:none"></span>
     </header>
 
-    <aside class="gen-list">
-      <div class="gen-list-head">
-        <span class="gen-list-title">LOT BANK</span>
-        <span class="gen-list-meta" id="gen-list-meta">0 lots</span>
-      </div>
-      <div class="gen-list-rows" id="gen-list-rows"></div>
-    </aside>
+    <!-- ============ 3-KOLONNE GRID ============ -->
+    <main class="gen-main">
 
-    <main class="gen-edit">
-      <div class="gen-edit-pane">
-        <div class="gen-edit-head">
-          <span class="gen-edit-id">ID: <code id="edit-id">—</code></span>
-          <span class="gen-edit-display">Vises som <b id="edit-display-num">—</b></span>
-          <button class="link-btn" id="duplicate-lot" style="margin-left:auto;display:none">Duplicate</button>
-          <button class="link-btn" id="reset-focal" style="display:none">Reset focal</button>
-          <button class="drawer-danger" id="delete-lot" style="display:none">Slet</button>
+      <!-- ===== VENSTRE: DECK ===== -->
+      <aside class="pp-panel gen-deck">
+        <div class="gen-deck-head">
+          <span class="pp-eyebrow pp-eyebrow--muted">DECK</span>
+          <span class="gen-deck-count" id="gen-list-meta"></span>
+          <div class="pp-flex-spacer"></div>
+          <button class="pp-btn pp-btn--green" id="open-picker">+ Ny</button>
+        </div>
+        <div class="gen-deck-search">
+          <input type="text" class="pp-input" id="gen-search" placeholder="Søg i deck…" />
+        </div>
+        <div class="gen-deck-rows" id="gen-list-rows"></div>
+        <div class="gen-deck-foot">
+          <span class="pp-hint" id="gen-list-footer"></span>
+        </div>
+      </aside>
+
+      <!-- ===== MIDTE: LIVE PREVIEW ===== -->
+      <section class="gen-preview">
+        <div class="gen-preview-head">
+          <span class="pp-eyebrow pp-eyebrow--muted">LIVE PREVIEW</span>
+          <span class="gen-preview-meta" id="preview-meta"></span>
+          <div class="pp-flex-spacer"></div>
+          <span class="pp-hint">1920 × 1080</span>
+        </div>
+        <div class="gen-preview-stage" id="gen-preview-frame"></div>
+        <div class="gen-preview-hint" id="preview-hint"></div>
+      </section>
+
+      <!-- ===== HØJRE: INSPECTOR ===== -->
+      <aside class="pp-panel gen-inspector">
+        <div class="gen-insp-head">
+          <span class="pp-dot" id="insp-dot"></span>
+          <strong id="insp-type">—</strong>
+          <span class="gen-insp-num" id="edit-display-num"></span>
+          <span class="gen-insp-id" id="edit-id" title="Internt id"></span>
+          <div class="pp-flex-spacer"></div>
+          <button class="pp-btn" id="duplicate-lot" style="display:none">⧉ Duplikér</button>
+          <button class="pp-btn pp-btn--danger" id="delete-lot" style="display:none">Slet</button>
         </div>
 
-        <div class="gen-form" id="gen-form">
-          <div class="row">
-            <label class="setting-toggle"><input type="checkbox" id="f-active" /><span>Active (med i deck)</span></label>
-            <label class="setting-toggle"><input type="checkbox" id="f-extra" /><span>Ekstra-lot (bryder med nummerering)</span></label>
-          </div>
-          <div class="row" id="row-extra-suffix" style="display:none">
-            <label>Ekstra-suffix (fx 07A eller EXT)
-              <input type="text" id="f-extra-suffix" />
-            </label>
-          </div>
+        <div class="gen-insp-body">
 
-          <label>Titel <span class="field-hint">— omslut <code>**ord**</code> for bold, brug linjeskift for break</span>
-            <textarea id="f-title" rows="2" placeholder="4 VIP-billetter til **Smukfest** og overnatning"></textarea>
-          </label>
-          <label>Subtitle
-            <input type="text" id="f-subtitle" placeholder="Pakken inkluderer …" />
-          </label>
-          <label>Sponsor / donor
-            <input type="text" id="f-sponsor" placeholder="Sponsor navn (eller 'Doneret af privat person')" />
-          </label>
+          <!-- ======== LOT ======== -->
+          <div class="gen-form" id="gen-form">
+            <div class="pp-card gen-active-card">
+              <label class="pp-switch-row">
+                <input type="checkbox" id="f-active" />
+                <span class="pp-switch"></span>
+                <span class="txt">Med i deck</span>
+                <span class="sub" id="f-active-hint"></span>
+              </label>
+            </div>
 
-          <label>Bullets (én per linje)
-            <textarea id="f-bullets" rows="6"></textarea>
-          </label>
-          <label>Donor names (én per linje — overskriver sponsor-logo hvis udfyldt)
-            <textarea id="f-donor-names" rows="2"></textarea>
-          </label>
+            <div class="pp-card">
+              <span class="pp-eyebrow">INDHOLD</span>
+              <label class="pp-label">Titel · **ord** = accent bold
+                <textarea class="pp-input" id="f-title" rows="2" placeholder="4 VIP-billetter til **Smukfest** og overnatning"></textarea>
+              </label>
+              <label class="pp-label">Subtitle
+                <input type="text" class="pp-input" id="f-subtitle" placeholder="Pakken inkluderer …" />
+              </label>
+              <label class="pp-label">Sponsor / donor
+                <input type="text" class="pp-input" id="f-sponsor" placeholder="Sponsor navn (eller 'Doneret af privat person')" />
+              </label>
+              <label class="pp-label">Bullets · én pr. linje
+                <textarea class="pp-input" id="f-bullets" rows="4"></textarea>
+              </label>
+            </div>
 
-          <div class="row">
-            <label>Layout
-              <select id="f-layout">
-                <option value="horizon">Horizon (foto top, tekst bund)</option>
-                <option value="profile">Profile (foto venstre, tekst højre)</option>
+            <div class="pp-card">
+              <span class="pp-eyebrow">SPONSOR-LOGOER</span>
+              <p class="pp-note">Transparente PNG/SVG — logoerne er det primære og vises side om side på slidet. Tekst-navnet ovenfor er kun fallback, når der ingen logoer er.</p>
+              <div class="gen-splogo-list" id="sp-logo-list"></div>
+              <label class="pp-upload">⇧ Upload logo(er) — PNG/SVG
+                <input type="file" id="f-sponsor-logos-upload" accept="image/png,image/svg+xml,image/webp,image/jpeg" multiple />
+              </label>
+              <!-- Legacy single-logo controls kept for compatibility (hidden) -->
+              <div style="display:none">
+                <img id="logo-preview" alt="" />
+                <input type="file" id="f-logo" accept="image/png,image/jpeg,image/webp,image/svg+xml" />
+                <ul id="extra-logo-list"></ul>
+                <input type="file" id="f-extra-logo-upload" accept="image/png,image/jpeg,image/webp,image/svg+xml" multiple />
+              </div>
+            </div>
+
+            <div class="pp-card">
+              <span class="pp-eyebrow">LAYOUT</span>
+              <div class="pp-seg" id="seg-layout">
+                <button type="button" data-val="horizon">Horizon<small>foto top · tekst bund</small></button>
+                <button type="button" data-val="profile">Profile<small>foto side · tekst side</small></button>
+              </div>
+              <select id="f-layout" style="display:none">
+                <option value="horizon">horizon</option>
+                <option value="profile">profile</option>
               </select>
-            </label>
-            <label class="setting-toggle"><input type="checkbox" id="f-mirrored" /><span>Mirrored (profile only)</span></label>
-          </div>
-
-          <label>Antal hero-billeder
-            <select id="f-img-count">
-              <option value="1">1 billede</option>
-              <option value="2">2 billeder</option>
-              <option value="3">3 billeder</option>
-            </select>
-            <span class="range-val" id="f-img-count-hint"></span>
-          </label>
-
-          <!-- Image 1 (primary) -->
-          <div class="hero-img-editor" id="hero-img-1">
-            <div class="hero-img-editor-head">Billede 1 (primær)</div>
-            <div class="upload-cell">
-              <img id="hero-preview" class="upload-preview" />
-              <input type="file" id="f-hero" accept="image/*" />
-            </div>
-            <div class="row">
-              <label>Fokus X %
-                <input type="range" id="f-focal-x" min="0" max="100" step="1" value="50" />
-                <span class="range-val" id="f-focal-x-val">50%</span>
+              <label class="pp-switch-row" id="row-mirrored">
+                <input type="checkbox" id="f-mirrored" />
+                <span class="pp-switch"></span>
+                <span class="txt">Mirrored — foto til højre</span>
               </label>
-              <label>Fokus Y %
-                <input type="range" id="f-focal-y" min="0" max="100" step="1" value="50" />
-                <span class="range-val" id="f-focal-y-val">50%</span>
-              </label>
-            </div>
-            <label>Scale % (zoom)
-              <input type="range" id="f-scale" min="40" max="220" step="5" value="100" />
-              <span class="range-val" id="f-scale-val">100%</span>
-            </label>
-            <label class="hero-split-row">Andel / vægt
-              <input type="range" id="f-split-1" min="1" max="100" step="1" value="50" />
-              <span class="range-val" id="f-split-1-val">50</span>
-            </label>
-          </div>
-
-          <!-- Image 2 -->
-          <div class="hero-img-editor" id="hero-img-2" style="display:none">
-            <div class="hero-img-editor-head">Billede 2</div>
-            <div class="upload-cell">
-              <img id="hero-preview-2" class="upload-preview" />
-              <input type="file" id="f-hero-2" accept="image/*" />
-            </div>
-            <div class="row">
-              <label>Fokus X %
-                <input type="range" id="f-focal-x-2" min="0" max="100" step="1" value="50" />
-                <span class="range-val" id="f-focal-x-2-val">50%</span>
-              </label>
-              <label>Fokus Y %
-                <input type="range" id="f-focal-y-2" min="0" max="100" step="1" value="50" />
-                <span class="range-val" id="f-focal-y-2-val">50%</span>
-              </label>
-            </div>
-            <label>Scale % (zoom)
-              <input type="range" id="f-scale-2" min="40" max="220" step="5" value="100" />
-              <span class="range-val" id="f-scale-2-val">100%</span>
-            </label>
-            <label class="hero-split-row">Andel / vægt
-              <input type="range" id="f-split-2" min="1" max="100" step="1" value="50" />
-              <span class="range-val" id="f-split-2-val">50</span>
-            </label>
-          </div>
-
-          <!-- Image 3 -->
-          <div class="hero-img-editor" id="hero-img-3" style="display:none">
-            <div class="hero-img-editor-head">Billede 3</div>
-            <div class="upload-cell">
-              <img id="hero-preview-3" class="upload-preview" />
-              <input type="file" id="f-hero-3" accept="image/*" />
-            </div>
-            <div class="row">
-              <label>Fokus X %
-                <input type="range" id="f-focal-x-3" min="0" max="100" step="1" value="50" />
-                <span class="range-val" id="f-focal-x-3-val">50%</span>
-              </label>
-              <label>Fokus Y %
-                <input type="range" id="f-focal-y-3" min="0" max="100" step="1" value="50" />
-                <span class="range-val" id="f-focal-y-3-val">50%</span>
-              </label>
-            </div>
-            <label>Scale % (zoom)
-              <input type="range" id="f-scale-3" min="40" max="220" step="5" value="100" />
-              <span class="range-val" id="f-scale-3-val">100%</span>
-            </label>
-            <label class="hero-split-row">Andel / vægt
-              <input type="range" id="f-split-3" min="1" max="100" step="1" value="50" />
-              <span class="range-val" id="f-split-3-val">50</span>
-            </label>
-          </div>
-
-          <label id="row-horizon-caption">Horizon — caption-stribe højde (inches)
-            <input type="range" id="f-horizon-caption" min="1.2" max="4" step="0.05" value="2.25" />
-            <span class="range-val" id="f-horizon-caption-val">2.25in</span>
-          </label>
-          <label id="row-profile-photo">Profile — foto-felt bredde (inches)
-            <input type="range" id="f-profile-photo" min="3.5" max="9" step="0.1" value="5.8" />
-            <span class="range-val" id="f-profile-photo-val">5.8in</span>
-          </label>
-
-          <label>Titel-størrelse override (pt, valgfrit)
-            <input type="number" id="f-title-size" min="10" max="40" step="1" placeholder="auto" />
-          </label>
-
-          <div class="upload-grid">
-            <div class="upload-cell">
-              <label>Sponsor-logo (PNG transparent)</label>
-              <img id="logo-preview" class="upload-preview logo" />
-              <input type="file" id="f-logo" accept="image/png,image/jpeg,image/webp,image/svg+xml" />
-            </div>
-          </div>
-          <div class="setting-section">
-            <span class="setting-section-label">Ekstra sponsor-logos (vises horisontalt ved siden af main)</span>
-            <ul class="extra-logo-list" id="extra-logo-list"></ul>
-            <label class="closing-add-row">
-              <input type="file" id="f-extra-logo-upload" accept="image/png,image/jpeg,image/webp,image/svg+xml" multiple />
-              <span>+ Upload ekstra logo(er)</span>
-            </label>
-            <label>Sponsor-index opstilling (ved 2+ logoer)
-              <select id="f-sponsor-stack">
-                <option value="auto">Auto (vurder bredde)</option>
-                <option value="horizontal">Vandret (side om side)</option>
-                <option value="vertical">Lodret (stablet)</option>
+              <div class="pp-label">Hero-billeder
+                <div class="pp-seg" id="seg-imgcount">
+                  <button type="button" data-val="1">1</button>
+                  <button type="button" data-val="2">2</button>
+                  <button type="button" data-val="3">3</button>
+                </div>
+              </div>
+              <select id="f-img-count" style="display:none">
+                <option value="1">1</option>
+                <option value="2">2</option>
+                <option value="3">3</option>
               </select>
-            </label>
+              <span class="pp-hint" id="f-img-count-hint"></span>
+            </div>
+
+            <!-- Billede 1 (primær) -->
+            <div class="pp-card gen-img-card" id="hero-img-1">
+              <div class="gen-img-card-head">
+                <span class="pp-eyebrow">BILLEDE 1 · PRIMÆR</span>
+                <div class="pp-flex-spacer"></div>
+                <button type="button" class="pp-btn pp-btn--ghost gen-reset-focal" id="reset-focal">Nulstil fokus</button>
+              </div>
+              <div class="gen-img-row">
+                <div class="gen-img-thumb"><img id="hero-preview" alt="" /></div>
+                <div class="gen-img-actions">
+                  <label class="pp-upload">⇧ Upload/Skift billede
+                    <input type="file" id="f-hero" accept="image/*" />
+                  </label>
+                  <span class="pp-hint">JPG/PNG · fylder hele fotofeltet</span>
+                </div>
+              </div>
+              <p class="pp-note">Træk fokuspunktet direkte i previewet · scroll på billedet for zoom. Sliders herunder er til fintuning.</p>
+              <div class="gen-slider-grid">
+                <label class="pp-label pp-label--slider">Fokus X · <span id="f-focal-x-val">50%</span>
+                  <input type="range" id="f-focal-x" min="0" max="100" step="1" value="50" />
+                </label>
+                <label class="pp-label pp-label--slider">Fokus Y · <span id="f-focal-y-val">50%</span>
+                  <input type="range" id="f-focal-y" min="0" max="100" step="1" value="50" />
+                </label>
+                <label class="pp-label pp-label--slider">Zoom · <span id="f-scale-val">100%</span>
+                  <input type="range" id="f-scale" min="40" max="220" step="5" value="100" />
+                </label>
+                <label class="pp-label pp-label--slider hero-split-row">Vægt · <span id="f-split-1-val">50</span>
+                  <input type="range" id="f-split-1" min="1" max="100" step="1" value="50" />
+                </label>
+              </div>
+            </div>
+
+            <!-- Billede 2 -->
+            <div class="pp-card gen-img-card" id="hero-img-2" style="display:none">
+              <div class="gen-img-card-head"><span class="pp-eyebrow">BILLEDE 2</span></div>
+              <div class="gen-img-row">
+                <div class="gen-img-thumb"><img id="hero-preview-2" alt="" /></div>
+                <div class="gen-img-actions">
+                  <label class="pp-upload">⇧ Upload/Skift billede
+                    <input type="file" id="f-hero-2" accept="image/*" />
+                  </label>
+                </div>
+              </div>
+              <div class="gen-slider-grid">
+                <label class="pp-label pp-label--slider">Fokus X · <span id="f-focal-x-2-val">50%</span>
+                  <input type="range" id="f-focal-x-2" min="0" max="100" step="1" value="50" />
+                </label>
+                <label class="pp-label pp-label--slider">Fokus Y · <span id="f-focal-y-2-val">50%</span>
+                  <input type="range" id="f-focal-y-2" min="0" max="100" step="1" value="50" />
+                </label>
+                <label class="pp-label pp-label--slider">Zoom · <span id="f-scale-2-val">100%</span>
+                  <input type="range" id="f-scale-2" min="40" max="220" step="5" value="100" />
+                </label>
+                <label class="pp-label pp-label--slider hero-split-row">Vægt · <span id="f-split-2-val">50</span>
+                  <input type="range" id="f-split-2" min="1" max="100" step="1" value="50" />
+                </label>
+              </div>
+            </div>
+
+            <!-- Billede 3 -->
+            <div class="pp-card gen-img-card" id="hero-img-3" style="display:none">
+              <div class="gen-img-card-head"><span class="pp-eyebrow">BILLEDE 3</span></div>
+              <div class="gen-img-row">
+                <div class="gen-img-thumb"><img id="hero-preview-3" alt="" /></div>
+                <div class="gen-img-actions">
+                  <label class="pp-upload">⇧ Upload/Skift billede
+                    <input type="file" id="f-hero-3" accept="image/*" />
+                  </label>
+                </div>
+              </div>
+              <div class="gen-slider-grid">
+                <label class="pp-label pp-label--slider">Fokus X · <span id="f-focal-x-3-val">50%</span>
+                  <input type="range" id="f-focal-x-3" min="0" max="100" step="1" value="50" />
+                </label>
+                <label class="pp-label pp-label--slider">Fokus Y · <span id="f-focal-y-3-val">50%</span>
+                  <input type="range" id="f-focal-y-3" min="0" max="100" step="1" value="50" />
+                </label>
+                <label class="pp-label pp-label--slider">Zoom · <span id="f-scale-3-val">100%</span>
+                  <input type="range" id="f-scale-3" min="40" max="220" step="5" value="100" />
+                </label>
+                <label class="pp-label pp-label--slider hero-split-row">Vægt · <span id="f-split-3-val">50</span>
+                  <input type="range" id="f-split-3" min="1" max="100" step="1" value="50" />
+                </label>
+              </div>
+            </div>
+
+            <!-- AVANCERET (foldet) -->
+            <div class="pp-card pp-card--dim gen-adv">
+              <button type="button" class="gen-adv-toggle" id="adv-toggle">
+                <span class="pp-eyebrow pp-eyebrow--muted">AVANCERET</span>
+                <span class="pp-hint" id="adv-summary"></span>
+                <div class="pp-flex-spacer"></div>
+                <span class="pp-hint" id="adv-chev">▾ VIS</span>
+              </button>
+              <div class="gen-adv-body" id="adv-body" style="display:none">
+                <label class="pp-switch-row">
+                  <input type="checkbox" id="f-extra" />
+                  <span class="pp-switch"></span>
+                  <span class="txt">Ekstra-lot — bryder nummerering</span>
+                </label>
+                <label class="pp-label" id="row-extra-suffix" style="display:none">Ekstra-suffix · fx 07A
+                  <input type="text" class="pp-input pp-input--mono" id="f-extra-suffix" />
+                </label>
+                <label class="pp-label pp-label--slider" id="row-horizon-caption">Caption-stribe højde · <span id="f-horizon-caption-val">2.25in</span>
+                  <input type="range" id="f-horizon-caption" min="1.2" max="4" step="0.05" value="2.25" />
+                </label>
+                <label class="pp-label pp-label--slider" id="row-profile-photo">Fotofelt-bredde · <span id="f-profile-photo-val">5.8in</span>
+                  <input type="range" id="f-profile-photo" min="3.5" max="9" step="0.1" value="5.8" />
+                </label>
+                <label class="pp-label">Titel-størrelse override · pt · tom = auto
+                  <input type="number" class="pp-input pp-input--mono gen-narrow" id="f-title-size" min="10" max="40" step="1" placeholder="auto" />
+                </label>
+                <label class="pp-label">Donor names · én pr. linje · vises når ingen logoer
+                  <textarea class="pp-input" id="f-donor-names" rows="2"></textarea>
+                </label>
+
+                <div class="gen-sound-sep">
+                  <span class="pp-eyebrow">LYD · OVERRIDE FOR DETTE LOT</span>
+                  <p class="pp-note">Standard-lydene (init + hammerslag) sættes i controllerens Indstillinger og gælder alle lots. Upload kun her, hvis dette lot skal afvige fra normalen.</p>
+                  <div class="gen-sound-row">
+                    <label class="pp-btn gen-sound-upload">♪ Init-lyd
+                      <input type="file" id="snd-init-upload" accept="audio/*" />
+                    </label>
+                    <span class="gen-sound-name" id="snd-init-name">Standard (fra controller)</span>
+                    <button type="button" class="pp-btn pp-btn--ghost gen-sound-clear" id="snd-init-clear" title="Tilbage til standard" style="display:none">✕</button>
+                  </div>
+                  <label class="pp-label pp-label--slider">Init-volume · <span id="snd-init-vol-val">100%</span>
+                    <input type="range" id="snd-init-vol" min="0" max="150" step="1" value="100" />
+                  </label>
+                  <div class="gen-sound-row">
+                    <label class="pp-btn gen-sound-upload">🔨 Hammer-lyd
+                      <input type="file" id="snd-hammer-upload" accept="audio/*" />
+                    </label>
+                    <span class="gen-sound-name" id="snd-hammer-name">Standard (fra controller)</span>
+                    <button type="button" class="pp-btn pp-btn--ghost gen-sound-clear" id="snd-hammer-clear" title="Tilbage til standard" style="display:none">✕</button>
+                  </div>
+                  <label class="pp-label pp-label--slider">Hammer-volume · <span id="snd-hammer-vol-val">100%</span>
+                    <input type="range" id="snd-hammer-vol" min="0" max="150" step="1" value="100" />
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            <div class="gen-validation" id="gen-validation"></div>
           </div>
 
-          <div class="gen-validation" id="gen-validation"></div>
-          <div class="row gen-save-row">
-            <button class="nav-btn primary" id="save-lot">Gem ændringer</button>
-            <span class="gen-save-meta" id="gen-save-meta"></span>
+          <!-- ======== SEKTION ======== -->
+          <div class="gen-form" id="gen-form-section" style="display:none">
+            <div class="pp-card">
+              <span class="pp-eyebrow">SEKTION</span>
+              <label class="pp-label">Sektionsnavn
+                <input type="text" class="pp-input" id="sec-label" placeholder="fx Dag 1: Auktion" />
+              </label>
+              <p class="pp-note">Navngiver blokken af items under den, kan foldes sammen i listen. Vises ikke som slide.</p>
+            </div>
           </div>
-        </div>
 
-        <!-- Bordplan-specific form (mutually exclusive with the lot form) -->
-        <div class="gen-form" id="gen-form-bordplan" style="display:none">
-          <label class="setting-toggle"><input type="checkbox" id="bp-active" /><span>Active (med i deck)</span></label>
-          <label>Label (intern)
-            <input type="text" id="bp-label" placeholder="fx Stjernegolf 2026 bordplan" />
-          </label>
-          <label>Event-titel (vises i header)
-            <input type="text" id="bp-event-name" placeholder="STJERNEGOLF 2026" />
-          </label>
-          <div class="row">
-            <label>Kolonner (cols)
-              <input type="number" id="bp-cols" min="1" max="30" />
-            </label>
-            <label>Rækker (rows)
-              <input type="number" id="bp-rows" min="1" max="40" />
-            </label>
-          </div>
-          <label>Stole per bord
-            <input type="number" id="bp-seats" min="2" max="20" />
-          </label>
-          <div class="row">
-            <label>Aisles efter kolonne (1-indexeret, kommasepareret)
-              <input type="text" id="bp-col-aisles" placeholder="fx 3, 6" />
-            </label>
-            <label>Aisles efter række (1-indexeret, kommasepareret)
-              <input type="text" id="bp-row-aisles" placeholder="fx 3, 6" />
-            </label>
-          </div>
-          <label>Fjernede celler (col,row pairs adskilt af ;)
-            <textarea id="bp-removed" rows="2" placeholder="4,11; 5,11; 6,11"></textarea>
-          </label>
-          <div class="row">
-            <label>Nummerering — mode
-              <select id="bp-num-mode">
-                <option value="across">across (linear)</option>
-                <option value="cluster-continuous">cluster-continuous (default)</option>
-                <option value="cluster-prefix">cluster-prefix (A1, B1…)</option>
-                <option value="cluster-as-table">cluster-as-table (én nr pr cluster)</option>
-              </select>
-            </label>
-            <label>Origin (hjørne for nr 1)
-              <select id="bp-num-origin">
+          <!-- ======== BORDPLAN ======== -->
+          <div class="gen-form" id="gen-form-bordplan" style="display:none">
+            <div class="pp-card gen-active-card">
+              <label class="pp-switch-row">
+                <input type="checkbox" id="bp-active" />
+                <span class="pp-switch"></span>
+                <span class="txt">Med i deck</span>
+              </label>
+            </div>
+            <div class="pp-card">
+              <span class="pp-eyebrow">REDIGÉR I PREVIEWET</span>
+              <div class="pp-seg" id="seg-bpmode">
+                <button type="button" data-val="tables">Borde</button>
+                <button type="button" data-val="aisles">Gange</button>
+                <button type="button" data-val="numbers">Numre</button>
+              </div>
+              <p class="pp-note gen-bpmode-hint" id="bp-mode-hint"></p>
+            </div>
+            <div class="pp-card">
+              <span class="pp-eyebrow">GRID</span>
+              <label class="pp-label">Label · intern
+                <input type="text" class="pp-input" id="bp-label" placeholder="fx Stjernegolf 2026 bordplan" />
+              </label>
+              <label class="pp-label">Event-titel
+                <input type="text" class="pp-input" id="bp-event-name" placeholder="STJERNEGOLF 2026" />
+              </label>
+              <div class="gen-3col">
+                <label class="pp-label">Kolonner
+                  <input type="number" class="pp-input pp-input--mono" id="bp-cols" min="1" max="30" />
+                </label>
+                <label class="pp-label">Rækker
+                  <input type="number" class="pp-input pp-input--mono" id="bp-rows" min="1" max="40" />
+                </label>
+                <label class="pp-label">Stole/bord
+                  <input type="number" class="pp-input pp-input--mono" id="bp-seats" min="2" max="20" />
+                </label>
+              </div>
+            </div>
+            <div class="pp-card" id="bp-aisles-card">
+              <span class="pp-eyebrow">GANGE</span>
+              <div class="gen-2col">
+                <label class="pp-label">Efter kolonne · 1-indekseret
+                  <input type="text" class="pp-input pp-input--mono" id="bp-col-aisles" placeholder="fx 3, 6" />
+                </label>
+                <label class="pp-label">Efter række · 1-indekseret
+                  <input type="text" class="pp-input pp-input--mono" id="bp-row-aisles" placeholder="fx 3, 6" />
+                </label>
+              </div>
+              <label class="pp-label">Fjernede celler · kol,række adskilt af ;
+                <textarea class="pp-input pp-input--mono" id="bp-removed" rows="2" placeholder="4,11; 5,11; 6,11"></textarea>
+              </label>
+            </div>
+            <div class="pp-card" id="bp-numbering-card">
+              <span class="pp-eyebrow">NUMMERERING</span>
+              <div class="pp-label">Nr. 1 starter i hjørnet
+                <div class="gen-origin-grid" id="bp-origin-grid">
+                  <button type="button" data-val="top-left" title="Øverst venstre"><span></span></button>
+                  <button type="button" data-val="top-right" title="Øverst højre"><span></span></button>
+                  <button type="button" data-val="bottom-left" title="Nederst venstre"><span></span></button>
+                  <button type="button" data-val="bottom-right" title="Nederst højre"><span></span></button>
+                </div>
+              </div>
+              <select id="bp-num-origin" style="display:none">
                 <option value="top-left">top-left</option>
                 <option value="top-right">top-right</option>
                 <option value="bottom-left">bottom-left</option>
                 <option value="bottom-right">bottom-right</option>
               </select>
-            </label>
+              <div class="gen-3col">
+                <label class="pp-label">Start
+                  <input type="number" class="pp-input pp-input--mono" id="bp-num-start" min="1" value="1" />
+                </label>
+                <label class="pp-label">Prefix
+                  <input type="text" class="pp-input pp-input--mono" id="bp-num-prefix" placeholder="T" />
+                </label>
+                <label class="pp-label">Spring over
+                  <input type="text" class="pp-input pp-input--mono" id="bp-num-skip" placeholder="13" />
+                </label>
+              </div>
+              <div class="gen-2col">
+                <label class="pp-label">Mode
+                  <select class="pp-input pp-input--mono" id="bp-num-mode">
+                    <option value="across">across</option>
+                    <option value="cluster-continuous">cluster-continuous</option>
+                    <option value="cluster-prefix">cluster-prefix</option>
+                    <option value="cluster-as-table">cluster-as-table</option>
+                  </select>
+                </label>
+                <label class="pp-label">Direction
+                  <select class="pp-input pp-input--mono" id="bp-num-dir">
+                    <option value="row-major">row-major</option>
+                    <option value="col-major">col-major</option>
+                    <option value="snake-row">snake-row</option>
+                    <option value="snake-col">snake-col</option>
+                  </select>
+                </label>
+              </div>
+              <label class="pp-label">Cluster direction
+                <select class="pp-input pp-input--mono" id="bp-num-clusterdir">
+                  <option value="row-major">row-major</option>
+                  <option value="col-major">col-major</option>
+                  <option value="snake-row">snake-row</option>
+                  <option value="snake-col">snake-col</option>
+                </select>
+              </label>
+            </div>
+            <div class="pp-card pp-card--dim">
+              <span class="pp-eyebrow pp-eyebrow--muted">PER-BORD OVERRIDES</span>
+              <p class="pp-note">Klik et bord i previewet for at omdøbe eller deaktivere det.</p>
+              <button type="button" class="pp-btn" id="bp-overrides-reset">Nulstil alle bord-overrides</button>
+              <ul class="bp-overrides-list" id="bp-overrides-list"></ul>
+              <span id="bp-save-meta" style="display:none"></span>
+            </div>
           </div>
-          <div class="row">
-            <label>Direction (inden i cluster)
-              <select id="bp-num-dir">
-                <option value="row-major">row-major</option>
-                <option value="col-major">col-major</option>
-                <option value="snake-row">snake-row</option>
-                <option value="snake-col">snake-col</option>
-              </select>
-            </label>
-            <label>Cluster direction
-              <select id="bp-num-clusterdir">
-                <option value="row-major">row-major</option>
-                <option value="col-major">col-major</option>
-                <option value="snake-row">snake-row</option>
-                <option value="snake-col">snake-col</option>
-              </select>
-            </label>
-          </div>
-          <div class="row">
-            <label>Start nummer
-              <input type="number" id="bp-num-start" min="1" value="1" />
-            </label>
-            <label>Prefix (fx "T")
-              <input type="text" id="bp-num-prefix" />
-            </label>
-          </div>
-          <label>Skip nummre (kommasepareret, fx "13")
-            <input type="text" id="bp-num-skip" />
-          </label>
 
-          <div class="setting-section">
-            <span class="setting-section-label">Admin — per-bord overrides</span>
-            <p class="drawer-hint" id="bp-overrides-hint">Klik et bord i preview for at omdøbe eller deaktivere det. Reset under nedenfor rydder alle overrides for denne plan.</p>
-            <button class="link-btn" id="bp-overrides-reset">Nulstil alle bord-overrides</button>
-            <ul class="bp-overrides-list" id="bp-overrides-list"></ul>
+          <!-- ======== COVER ======== -->
+          <div class="gen-form" id="gen-form-cover" style="display:none">
+            <div class="pp-card gen-active-card">
+              <label class="pp-switch-row">
+                <input type="checkbox" id="cov-active" />
+                <span class="pp-switch"></span>
+                <span class="txt">Med i deck</span>
+              </label>
+            </div>
+            <div class="pp-card">
+              <span class="pp-eyebrow">INDHOLD</span>
+              <label class="pp-label">Label · intern
+                <input type="text" class="pp-input" id="cov-label" placeholder="fx Cover" />
+              </label>
+              <label class="pp-label">Hovedord
+                <input type="text" class="pp-input" id="cov-title" placeholder="AUKTION" />
+              </label>
+              <label class="pp-label">Undertitel
+                <input type="text" class="pp-input" id="cov-subtitle" placeholder="STJERNEGOLF 2026" />
+              </label>
+              <label class="pp-label">Attribution
+                <input type="text" class="pp-input" id="cov-attribution" placeholder="AUKTION VED KASPER NIELSEN" />
+              </label>
+              <label class="pp-label">Logo-fil · relativt til /assets/
+                <input type="text" class="pp-input pp-input--mono" id="cov-logo-file" placeholder="artsolo-logo.png" />
+              </label>
+              <div class="gen-img-row">
+                <div class="gen-img-thumb gen-img-thumb--contain"><img id="cov-logo-preview" alt="" /></div>
+                <div class="gen-img-actions">
+                  <label class="pp-upload">⇧ Upload logo
+                    <input type="file" id="cov-logo-upload" accept="image/png,image/jpeg,image/webp,image/svg+xml" />
+                  </label>
+                </div>
+              </div>
+              <label class="pp-label pp-label--slider">Logo-størrelse · <span id="cov-logo-scale-val">100%</span>
+                <input type="range" id="cov-logo-scale" min="30" max="400" step="5" value="100" />
+              </label>
+            </div>
           </div>
 
-          <div class="row gen-save-row">
-            <button class="nav-btn primary" id="bp-save">Gem bordplan</button>
-            <span class="gen-save-meta" id="bp-save-meta"></span>
+          <!-- ======== CLOSING ======== -->
+          <div class="gen-form" id="gen-form-closing" style="display:none">
+            <div class="pp-card gen-active-card">
+              <label class="pp-switch-row">
+                <input type="checkbox" id="cl-active" />
+                <span class="pp-switch"></span>
+                <span class="txt">Med i deck</span>
+              </label>
+            </div>
+            <div class="pp-card">
+              <span class="pp-eyebrow">INDHOLD</span>
+              <label class="pp-label">Label · intern
+                <input type="text" class="pp-input" id="cl-label" placeholder="fx Closing slide" />
+              </label>
+              <label class="pp-label">Titel
+                <input type="text" class="pp-input" id="cl-title" placeholder="TAK TIL ALLE VORES SPONSORER" />
+              </label>
+              <label class="pp-label">Tagline
+                <input type="text" class="pp-input" id="cl-tagline" placeholder="@KIDSAIDDK · KIDSAID DANMARK" />
+              </label>
+              <label class="pp-label">Kolonner
+                <input type="number" class="pp-input pp-input--mono gen-narrow" id="cl-cols" min="3" max="14" value="8" />
+              </label>
+            </div>
+            <div class="pp-card">
+              <span class="pp-eyebrow">SPONSOR-LOGOS</span>
+              <p class="pp-note">Træk for rækkefølge. <b>W</b> = wordmark, <b>S</b> = stacked (påvirker padding).</p>
+              <ul class="closing-logo-list" id="cl-logo-list"></ul>
+              <label class="pp-upload pp-upload--dashed">+ Upload logo(er)
+                <input type="file" id="cl-logo-upload" accept="image/png,image/jpeg,image/webp,image/svg+xml" multiple />
+              </label>
+            </div>
           </div>
+
+          <!-- ======== SPONSOR-INDEKS ======== -->
+          <div class="gen-form" id="gen-form-sponsorindex" style="display:none">
+            <div class="pp-card gen-active-card">
+              <label class="pp-switch-row">
+                <input type="checkbox" id="si-active" />
+                <span class="pp-switch"></span>
+                <span class="txt">Med i deck</span>
+              </label>
+            </div>
+            <div class="pp-card">
+              <span class="pp-eyebrow">INDHOLD</span>
+              <label class="pp-label">Label · intern
+                <input type="text" class="pp-input" id="si-label" placeholder="fx Sponsor-indeks" />
+              </label>
+              <label class="pp-label">Titel
+                <input type="text" class="pp-input" id="si-title" placeholder="AUKTIONENS SPONSORER" />
+              </label>
+              <p class="pp-note">Cellerne genereres automatisk fra aktive lots — én celle pr. lot med logo eller lotnummer.</p>
+            </div>
+          </div>
+
+          <!-- ======== ØNSKE-LOOP ======== -->
+          <div class="gen-form" id="gen-form-wishloop" style="display:none">
+            <div class="pp-card gen-active-card">
+              <label class="pp-switch-row">
+                <input type="checkbox" id="wl-active" />
+                <span class="pp-switch"></span>
+                <span class="txt">Med i deck</span>
+              </label>
+            </div>
+            <div class="pp-card">
+              <span class="pp-eyebrow">TOP-VENSTRE</span>
+              <label class="pp-label">Label · intern
+                <input type="text" class="pp-input" id="wl-label" placeholder="fx Ønske-loop 1/4" />
+              </label>
+              <label class="pp-label">Pretitle · gold mono
+                <input type="text" class="pp-input" id="wl-eyebrow-pre" placeholder="Stjernegolf 2026 · Auktion" />
+              </label>
+              <label class="pp-label">Titel
+                <input type="text" class="pp-input" id="wl-eyebrow-title" placeholder="Børnenes ønsker" />
+              </label>
+            </div>
+            <div class="pp-card">
+              <span class="pp-eyebrow">PARTNER · TOP-HØJRE</span>
+              <label class="pp-switch-row">
+                <input type="checkbox" id="wl-sponsor-enabled" checked />
+                <span class="pp-switch"></span>
+                <span class="txt">Vis partner-blok</span>
+              </label>
+              <label class="pp-label">Pretitle
+                <input type="text" class="pp-input" id="wl-sponsor-pre" placeholder="Præsenteret af" />
+              </label>
+              <label class="pp-label">Mode
+                <select class="pp-input" id="wl-sponsor-mode">
+                  <option value="text">Tekst</option>
+                  <option value="logo">Transparent PNG logo</option>
+                </select>
+              </label>
+              <label class="pp-label">Tekstnavn · fallback uden logo
+                <input type="text" class="pp-input" id="wl-sponsor" placeholder="Ønskeskyen" />
+              </label>
+              <label class="pp-label">Logo URL
+                <input type="text" class="pp-input pp-input--mono" id="wl-sponsor-logo" placeholder="/assets/wish-loop/onskeskyen-logo.png" />
+              </label>
+              <label class="pp-upload">⇧ Upload partner-logo
+                <input type="file" id="wl-sponsor-logo-upload" accept="image/png,image/jpeg,image/webp,image/svg+xml" />
+              </label>
+            </div>
+            <div class="pp-card">
+              <span class="pp-eyebrow">AFSPILNING</span>
+              <label class="pp-label">Baggrundsvideo
+                <input type="text" class="pp-input pp-input--mono" id="wl-video-src" placeholder="/assets/wish-loop/bg.mp4" />
+              </label>
+              <label class="pp-upload pp-upload--dashed">+ Upload baggrundsvideo
+                <input type="file" id="wl-video-upload" accept="video/*" />
+              </label>
+              <div class="gen-2col">
+                <label class="pp-label">Retning
+                  <select class="pp-input" id="wl-direction">
+                    <option value="stack">Stack</option>
+                    <option value="cinema">Cinema</option>
+                    <option value="drift">Drift</option>
+                  </select>
+                </label>
+                <label class="pp-label">Stack depth
+                  <input type="number" class="pp-input pp-input--mono" id="wl-stack-depth" min="2" max="6" value="3" />
+                </label>
+              </div>
+              <label class="pp-label pp-label--slider">Sekunder pr. kort · <span id="wl-per-card-val">5s</span>
+                <input type="range" id="wl-per-card" min="2" max="12" step="1" value="5" />
+              </label>
+              <label class="pp-label pp-label--slider">Video-blur · <span id="wl-blur-val">36px</span>
+                <input type="range" id="wl-blur" min="0" max="80" step="2" value="36" />
+              </label>
+              <label class="pp-label pp-label--slider">Mørkning · <span id="wl-darken-val">0.50</span>
+                <input type="range" id="wl-darken" min="0" max="0.9" step="0.05" value="0.5" />
+              </label>
+              <label class="pp-switch-row">
+                <input type="checkbox" id="wl-chrome" checked />
+                <span class="pp-switch"></span>
+                <span class="txt">Vis chrome · counter + partner</span>
+              </label>
+              <label class="pp-switch-row">
+                <input type="checkbox" id="wl-pause-hover" checked />
+                <span class="pp-switch"></span>
+                <span class="txt">Pause on hover</span>
+              </label>
+              <label class="pp-switch-row">
+                <input type="checkbox" id="wl-show-ticker" checked />
+                <span class="pp-switch"></span>
+                <span class="txt">Sponsor-ticker</span>
+              </label>
+            </div>
+            <div class="pp-card">
+              <span class="pp-eyebrow">ÆBLER I LOOPET</span>
+              <p class="pp-note">Klik for at tilvælge/fravælge — træk valgte for rækkefølge.</p>
+              <ul class="wl-apple-list" id="wl-apple-list"></ul>
+              <label class="pp-upload pp-upload--dashed">+ Upload æble-PNG(er) til poolen
+                <input type="file" id="wl-apple-upload" accept="image/png,image/jpeg,image/webp,image/svg+xml" multiple />
+              </label>
+            </div>
+          </div>
+
+          <!-- ======== MEDIA ======== -->
+          <div class="gen-form" id="gen-form-media" style="display:none">
+            <div class="pp-card gen-active-card">
+              <label class="pp-switch-row">
+                <input type="checkbox" id="md-active" />
+                <span class="pp-switch"></span>
+                <span class="txt">Med i deck</span>
+              </label>
+            </div>
+            <div class="pp-card">
+              <span class="pp-eyebrow">INDHOLD</span>
+              <label class="pp-label">Label · intern
+                <input type="text" class="pp-input" id="md-label" placeholder="fx Velkomst-billede" />
+              </label>
+              <label class="pp-label">Type
+                <select class="pp-input" id="md-mode">
+                  <option value="image">Billede</option>
+                  <option value="video">Video</option>
+                </select>
+              </label>
+              <label class="pp-label">Source URL
+                <input type="text" class="pp-input pp-input--mono" id="md-src" placeholder="/assets/media/velkomst.jpg" />
+              </label>
+              <label class="pp-upload">⇧ Upload billede/video
+                <input type="file" id="md-upload" accept="image/*,video/*" />
+              </label>
+              <label class="pp-label">Alt-tekst · kun billede
+                <input type="text" class="pp-input" id="md-alt" />
+              </label>
+              <div class="gen-2col">
+                <label class="pp-label">Beskæring
+                  <select class="pp-input" id="md-fit">
+                    <option value="cover">Cover · fyld</option>
+                    <option value="contain">Contain · letterbox</option>
+                  </select>
+                </label>
+                <label class="pp-label">BG-farve · letterbox
+                  <input type="color" class="pp-input" id="md-bg" value="#000000" />
+                </label>
+              </div>
+            </div>
+            <div class="pp-card" id="md-video-opts">
+              <span class="pp-eyebrow">VIDEO</span>
+              <label class="pp-switch-row">
+                <input type="checkbox" id="md-autoplay" checked />
+                <span class="pp-switch"></span>
+                <span class="txt">Autoplay</span>
+              </label>
+              <label class="pp-switch-row">
+                <input type="checkbox" id="md-loop" />
+                <span class="pp-switch"></span>
+                <span class="txt">Loop</span>
+              </label>
+              <label class="pp-switch-row">
+                <input type="checkbox" id="md-muted" checked />
+                <span class="pp-switch"></span>
+                <span class="txt">Muted</span>
+              </label>
+            </div>
+            <div class="pp-card">
+              <span class="pp-eyebrow">ØVRIGT</span>
+              <label class="pp-switch-row">
+                <input type="checkbox" id="md-show-ticker" checked />
+                <span class="pp-switch"></span>
+                <span class="txt">Sponsor-ticker på denne slide</span>
+              </label>
+            </div>
+          </div>
+
+          <!-- ======== BILLEDKARRUSEL ======== -->
+          <div class="gen-form" id="gen-form-carousel" style="display:none">
+            <div class="pp-card gen-active-card">
+              <label class="pp-switch-row">
+                <input type="checkbox" id="car-active" />
+                <span class="pp-switch"></span>
+                <span class="txt">Med i deck</span>
+              </label>
+            </div>
+            <div class="pp-card">
+              <span class="pp-eyebrow">BILLEDER</span>
+              <label class="pp-label">Label · intern
+                <input type="text" class="pp-input" id="car-label" placeholder="fx Billedkarrusel · velkomst" />
+              </label>
+              <div class="gen-gallery" id="car-image-list"></div>
+              <p class="pp-note">Tallet under hvert billede er skærmtid i sekunder — tomt felt bruger standarden herunder.</p>
+              <label class="pp-upload pp-upload--dashed">+ Upload billeder
+                <input type="file" id="car-upload" accept="image/*" multiple />
+              </label>
+            </div>
+            <div class="pp-card">
+              <span class="pp-eyebrow">AFSPILNING</span>
+              <label class="pp-label pp-label--slider">Cross-fade · <span id="car-fade-val">2000 ms</span>
+                <input type="range" id="car-fade" min="200" max="6000" step="100" value="2000" />
+              </label>
+              <label class="pp-label pp-label--slider">Skærmtid pr. billede · <span id="car-default-sec-val">10 s</span>
+                <input type="range" id="car-default-sec" min="2" max="60" step="1" value="10" />
+              </label>
+              <label class="pp-switch-row">
+                <input type="checkbox" id="car-ticker" />
+                <span class="pp-switch"></span>
+                <span class="txt">Sponsor-ticker nederst</span>
+              </label>
+            </div>
+          </div>
+
+          <!-- ======== KONKURRENCE ======== -->
+          <div class="gen-form" id="gen-form-contest" style="display:none">
+            <div class="pp-card gen-active-card">
+              <label class="pp-switch-row">
+                <input type="checkbox" id="ct-active" />
+                <span class="pp-switch"></span>
+                <span class="txt">Med i deck</span>
+              </label>
+            </div>
+            <div class="pp-card">
+              <span class="pp-eyebrow">INDHOLD</span>
+              <label class="pp-label">Label · intern
+                <input type="text" class="pp-input" id="ct-label" placeholder="fx Konkurrence" />
+              </label>
+              <label class="pp-label">Overskrift
+                <input type="text" class="pp-input" id="ct-title" placeholder="KONKURRENCE" />
+              </label>
+              <label class="pp-label">Undertekst · valgfri
+                <input type="text" class="pp-input" id="ct-subtitle" />
+              </label>
+            </div>
+            <div class="pp-card">
+              <span class="pp-eyebrow">BLOKKE · 1-4</span>
+              <div class="gen-blocks" id="ct-block-list"></div>
+              <label class="pp-upload pp-upload--dashed">+ Tilføj blok-billede
+                <input type="file" id="ct-upload" accept="image/*" multiple />
+              </label>
+              <p class="pp-note">Hver blok får billede + kort overskrift og 1-3 linjer info.</p>
+            </div>
+          </div>
+
+          <!-- ======== AUKTION-DISPLAY ======== -->
+          <div class="gen-form" id="gen-form-auctiondisplay" style="display:none">
+            <div class="pp-card gen-active-card">
+              <label class="pp-switch-row">
+                <input type="checkbox" id="ad-active" />
+                <span class="pp-switch"></span>
+                <span class="txt">Med i deck</span>
+              </label>
+            </div>
+            <div class="pp-card">
+              <span class="pp-eyebrow">VISNING</span>
+              <label class="pp-label">Label · intern
+                <input type="text" class="pp-input" id="ad-label" placeholder="fx Auktion intro / pause efter lot 2" />
+              </label>
+              <label class="pp-label">Initial screen
+                <select class="pp-input" id="ad-screen">
+                  <option value="intro">intro · holdkort</option>
+                  <option value="reveal">reveal · bars vokser ind</option>
+                  <option value="total">total · status før auktion</option>
+                  <option value="pause">pause · næste lot</option>
+                  <option value="auction">auction · live</option>
+                  <option value="final">final · vinder</option>
+                </select>
+              </label>
+              <div class="gen-2col">
+                <label class="pp-label">Aktivt lot
+                  <select class="pp-input" id="ad-active-lot">
+                    <option value="0">Hold 1 (A)</option>
+                    <option value="1">Hold 2 (B)</option>
+                    <option value="2">Hold 3 (C)</option>
+                    <option value="3">Hold 4 (D)</option>
+                  </select>
+                </label>
+                <label class="pp-label">Reveal count · 0-4
+                  <input type="number" class="pp-input pp-input--mono" id="ad-reveal-count" min="0" max="4" value="0" />
+                </label>
+              </div>
+              <label class="pp-switch-row">
+                <input type="checkbox" id="ad-ranking" />
+                <span class="pp-switch"></span>
+                <span class="txt">Rang-omrokering</span>
+              </label>
+              <label class="pp-switch-row">
+                <input type="checkbox" id="ad-names-visible" checked />
+                <span class="pp-switch"></span>
+                <span class="txt">Hold-navne synlige · intro</span>
+              </label>
+              <label class="pp-switch-row">
+                <input type="checkbox" id="ad-show-base-label" checked />
+                <span class="pp-switch"></span>
+                <span class="txt">"base · kr X" label ved seam</span>
+              </label>
+            </div>
+            <div class="pp-card">
+              <span class="pp-eyebrow">HOLD · GLOBALT</span>
+              <p class="pp-note">Definér 4 hold med navn, farver, pre-amount + lot-binding. Gælder alle auktion-display slides.</p>
+              <div id="ad-teams-list"></div>
+            </div>
+          </div>
+
         </div>
 
-        <!-- Auction-display form (4-hold team-board) -->
-        <div class="gen-form" id="gen-form-auctiondisplay" style="display:none">
-          <label class="setting-toggle"><input type="checkbox" id="ad-active" /><span>Active (med i deck)</span></label>
-          <label>Label (intern)
-            <input type="text" id="ad-label" placeholder="fx Auktion intro / pause efter lot 2" />
-          </label>
-          <label>Initial screen (når slide vises første gang)
-            <select id="ad-screen">
-              <option value="intro">intro · holdkort</option>
-              <option value="reveal">reveal · bars vokser ind</option>
-              <option value="total">total · status før auktion</option>
-              <option value="pause">pause · næste lot</option>
-              <option value="auction">auction · live</option>
-              <option value="final">final · vinder</option>
-            </select>
-          </label>
-          <div class="setting-section">
-            <span class="setting-section-label">Hold-konfiguration (globalt — påvirker alle auction-display slides)</span>
-            <p class="drawer-hint">Definér 4 hold med id, navn, palette, pre-amount + bind til et lot (live bud opdaterer team's bar).</p>
-            <div id="ad-teams-list"></div>
-          </div>
-          <label>Aktivt lot (kun pause/auction/final modes)
-            <select id="ad-active-lot">
-              <option value="0">Hold 1 (A)</option>
-              <option value="1">Hold 2 (B)</option>
-              <option value="2">Hold 3 (C)</option>
-              <option value="3">Hold 4 (D)</option>
-            </select>
-          </label>
-          <div class="row">
-            <label>Reveal count (0-4)
-              <input type="number" id="ad-reveal-count" min="0" max="4" value="0" />
-            </label>
-            <label class="setting-toggle"><input type="checkbox" id="ad-ranking" /><span>Rang-omrøkkering</span></label>
-          </div>
-          <div class="row">
-            <label class="setting-toggle"><input type="checkbox" id="ad-names-visible" checked /><span>Hold-navne synlige (intro)</span></label>
-            <label class="setting-toggle"><input type="checkbox" id="ad-show-base-label" checked /><span>"base · kr X" label ved seam</span></label>
-          </div>
-          <div class="row gen-save-row">
-            <button class="nav-btn primary" id="ad-save">Gem auktion-display + hold-config</button>
-          </div>
+        <!-- Sticky save footer -->
+        <div class="gen-save-foot" id="gen-save-foot">
+          <button class="pp-btn pp-btn--green gen-save-btn" id="save-lot">Gem ændringer</button>
+          <span class="gen-save-meta" id="gen-save-meta"></span>
         </div>
-
-        <!-- Media form -->
-        <div class="gen-form" id="gen-form-media" style="display:none">
-          <label class="setting-toggle"><input type="checkbox" id="md-active" /><span>Active (med i deck)</span></label>
-          <label>Label (intern)
-            <input type="text" id="md-label" placeholder="fx Velkomst-billede" />
-          </label>
-          <label>Mode
-            <select id="md-mode">
-              <option value="image">Billede</option>
-              <option value="video">Video</option>
-            </select>
-          </label>
-          <label>Source URL (relativ til /assets/media/ eller absolut)
-            <input type="text" id="md-src" placeholder="/assets/media/velkomst.jpg" />
-            <input type="file" id="md-upload" accept="image/*,video/*" style="margin-top:4px" />
-          </label>
-          <label>Alt-tekst (kun billede)
-            <input type="text" id="md-alt" placeholder="Beskrivelse for screen readers" />
-          </label>
-          <div class="row">
-            <label>Fit
-              <select id="md-fit">
-                <option value="cover">cover (fyld + crop)</option>
-                <option value="contain">contain (fuld synlig + letterbox)</option>
-              </select>
-            </label>
-            <label>BG-farve (letterbox)
-              <input type="color" id="md-bg" value="#000000" />
-            </label>
-          </div>
-          <div class="row" id="md-video-opts">
-            <label class="setting-toggle"><input type="checkbox" id="md-autoplay" checked /><span>Autoplay</span></label>
-            <label class="setting-toggle"><input type="checkbox" id="md-loop" /><span>Loop</span></label>
-            <label class="setting-toggle"><input type="checkbox" id="md-muted" checked /><span>Muted</span></label>
-          </div>
-          <label class="setting-toggle"><input type="checkbox" id="md-show-ticker" checked /><span>Vis sponsor-ticker på denne slide</span></label>
-          <div class="row gen-save-row">
-            <button class="nav-btn primary" id="md-save">Gem media</button>
-          </div>
-        </div>
-
-        <!-- Wish-loop form -->
-        <div class="gen-form" id="gen-form-wishloop" style="display:none">
-          <label class="setting-toggle"><input type="checkbox" id="wl-active" /><span>Active (med i deck)</span></label>
-          <label>Label (intern)
-            <input type="text" id="wl-label" placeholder="fx Ønske-loop 1/4" />
-          </label>
-          <div class="setting-section">
-            <span class="setting-section-label">Top-venstre tekst</span>
-            <label>Pretitle (gold mono)
-              <input type="text" id="wl-eyebrow-pre" placeholder="Stjernegolf 2026 · Auktion" />
-            </label>
-            <label>Titel (cream display)
-              <input type="text" id="wl-eyebrow-title" placeholder="Børnenes ønsker" />
-            </label>
-          </div>
-          <div class="setting-section">
-            <span class="setting-section-label">Top-højre (samarbejdspartner)</span>
-            <label class="setting-toggle"><input type="checkbox" id="wl-sponsor-enabled" checked /><span>Vis top-højre block</span></label>
-            <label>Pretitle (fx "Præsenteret af" / "I samarbejde med")
-              <input type="text" id="wl-sponsor-pre" placeholder="Præsenteret af" />
-            </label>
-            <label>Mode
-              <select id="wl-sponsor-mode">
-                <option value="text">Tekst</option>
-                <option value="logo">Transparent PNG logo</option>
-              </select>
-            </label>
-            <label>Tekst (når mode=Tekst)
-              <input type="text" id="wl-sponsor" placeholder="Ønskeskyen" />
-            </label>
-            <label>Logo URL (når mode=Logo, relativt til /assets/wish-loop/)
-              <input type="text" id="wl-sponsor-logo" placeholder="onskeskyen-logo.png" />
-              <input type="file" id="wl-sponsor-logo-upload" accept="image/png,image/jpeg,image/webp,image/svg+xml" style="margin-top:4px" />
-            </label>
-          </div>
-          <label>Baggrundsvideo (URL eller relativ til /assets/wish-loop/)
-            <input type="text" id="wl-video-src" placeholder="/assets/wish-loop/bg.mp4" />
-            <input type="file" id="wl-video-upload" accept="video/*" style="margin-top:4px" />
-          </label>
-          <div class="row">
-            <label>Direction
-              <select id="wl-direction">
-                <option value="stack">stack (polaroid)</option>
-                <option value="cinema">cinema (cross-fade)</option>
-                <option value="drift">drift (lateral glide)</option>
-              </select>
-            </label>
-            <label>Stack depth (kun ved stack)
-              <input type="number" id="wl-stack-depth" min="2" max="6" value="3" />
-            </label>
-          </div>
-          <label>Sekunder per kort
-            <input type="range" id="wl-per-card" min="2" max="12" step="1" value="5" />
-            <span class="range-val" id="wl-per-card-val">5s</span>
-          </label>
-          <label>Video blur (px)
-            <input type="range" id="wl-blur" min="0" max="80" step="2" value="36" />
-            <span class="range-val" id="wl-blur-val">36px</span>
-          </label>
-          <label>Video darken (0–0.9)
-            <input type="range" id="wl-darken" min="0" max="0.9" step="0.05" value="0.5" />
-            <span class="range-val" id="wl-darken-val">0.50</span>
-          </label>
-          <div class="row">
-            <label class="setting-toggle"><input type="checkbox" id="wl-chrome" checked /><span>Vis chrome (counter + sponsor)</span></label>
-            <label class="setting-toggle"><input type="checkbox" id="wl-pause-hover" checked /><span>Pause on hover</span></label>
-          </div>
-          <label class="setting-toggle"><input type="checkbox" id="wl-show-ticker" checked /><span>Vis sponsor-ticker på denne slide</span></label>
-          <div class="setting-section">
-            <span class="setting-section-label">Æbler i denne loop (drag for rækkefølge)</span>
-            <p class="drawer-hint">Klik for at tilvælge/fravælge. Upload-knap nederst lægger nye æbler i poolen.</p>
-            <ul class="wl-apple-list" id="wl-apple-list"></ul>
-            <label class="closing-add-row">
-              <input type="file" id="wl-apple-upload" accept="image/png,image/jpeg,image/webp,image/svg+xml" multiple />
-              <span>+ Upload æble-PNG(er) til poolen</span>
-            </label>
-          </div>
-          <div class="row gen-save-row">
-            <button class="nav-btn primary" id="wl-save">Gem ønske-loop</button>
-          </div>
-        </div>
-
-        <!-- Section form -->
-        <div class="gen-form" id="gen-form-section" style="display:none">
-          <label>Sektionsnavn
-            <input type="text" id="sec-label" placeholder="fx H2H dag 1 · Auktion del 2 · Pause-loop" />
-          </label>
-          <p class="drawer-hint">En sektion vises ikke som slide. Den navngiver blokken af items under den (indtil næste sektion), kan foldes sammen og trækkes samlet i listen — og opdeler regnskabet pr. blok i controllerens historik og /api/results.</p>
-          <p class="drawer-hint">Tip: navngiv med dagspræfiks — fx <b>Dag 1: H2H</b> og <b>Dag 1: Afrunding</b> — så samles blokkene under en dagsoverskrift med dagstotal i historikken og /api/results.</p>
-          <div class="row gen-save-row">
-            <button class="nav-btn primary" id="sec-save">Gem sektion</button>
-          </div>
-        </div>
-
-        <!-- Sponsor-index form -->
-        <div class="gen-form" id="gen-form-sponsorindex" style="display:none">
-          <label class="setting-toggle"><input type="checkbox" id="si-active" /><span>Active (med i deck)</span></label>
-          <label>Label (intern)
-            <input type="text" id="si-label" placeholder="fx Sponsor-indeks" />
-          </label>
-          <label>Titel
-            <input type="text" id="si-title" placeholder="AUKTIONENS SPONSORER" />
-          </label>
-          <p class="drawer-hint">Cellerne genereres automatisk fra aktive lots (1 celle pr. lot).</p>
-          <div class="row gen-save-row">
-            <button class="nav-btn primary" id="si-save">Gem sponsor-indeks</button>
-          </div>
-        </div>
-
-        <!-- Closing form -->
-        <div class="gen-form" id="gen-form-closing" style="display:none">
-          <label class="setting-toggle"><input type="checkbox" id="cl-active" /><span>Active (med i deck)</span></label>
-          <label>Label (intern)
-            <input type="text" id="cl-label" placeholder="fx Closing slide" />
-          </label>
-          <label>Titel
-            <input type="text" id="cl-title" placeholder="TAK TIL ALLE VORES SPONSORER" />
-          </label>
-          <label>Tagline
-            <input type="text" id="cl-tagline" placeholder="@KIDSAIDDK · KIDSAID DANMARK" />
-          </label>
-          <label>Kolonner
-            <input type="number" id="cl-cols" min="3" max="14" value="8" />
-          </label>
-          <div class="setting-section">
-            <span class="setting-section-label">Sponsor-logos (drag for rækkefølge)</span>
-            <p class="drawer-hint">Tilføj logo-fil (upload til /assets/closing/). Klik <code>W</code> for wordmark, <code>S</code> for stacked (påvirker padding).</p>
-            <ul class="closing-logo-list" id="cl-logo-list"></ul>
-            <label class="closing-add-row">
-              <input type="file" id="cl-logo-upload" accept="image/png,image/jpeg,image/webp,image/svg+xml" multiple />
-              <span>+ Upload logo(er)</span>
-            </label>
-          </div>
-          <div class="row gen-save-row">
-            <button class="nav-btn primary" id="cl-save">Gem closing</button>
-          </div>
-        </div>
-
-        <!-- Cover form -->
-        <div class="gen-form" id="gen-form-cover" style="display:none">
-          <label class="setting-toggle"><input type="checkbox" id="cov-active" /><span>Active (med i deck)</span></label>
-          <label>Label (intern)
-            <input type="text" id="cov-label" placeholder="fx Cover" />
-          </label>
-          <label>Hovedord (stort)
-            <input type="text" id="cov-title" placeholder="AUKTION" />
-          </label>
-          <label>Undertitel
-            <input type="text" id="cov-subtitle" placeholder="STJERNEGOLF 2026" />
-          </label>
-          <label>Auktionarius / attribution
-            <input type="text" id="cov-attribution" placeholder="AUKTION VED KASPER NIELSEN" />
-          </label>
-          <label>Logo-fil (relativt til /assets/)
-            <input type="text" id="cov-logo-file" placeholder="artsolo-logo.png" />
-          </label>
-          <label>Skift logo (PNG/SVG transparent)</label>
-          <img id="cov-logo-preview" class="upload-preview logo" />
-          <input type="file" id="cov-logo-upload" accept="image/png,image/jpeg,image/webp,image/svg+xml" />
-          <label>Logo-størrelse
-            <input type="range" id="cov-logo-scale" min="30" max="400" step="5" value="100" />
-            <span class="range-val" id="cov-logo-scale-val">100%</span>
-          </label>
-          <div class="row gen-save-row">
-            <button class="nav-btn primary" id="cov-save">Gem cover</button>
-          </div>
-        </div>
-
-        <!-- Carousel / billedkarrusel form -->
-        <div class="gen-form" id="gen-form-carousel" style="display:none">
-          <label class="setting-toggle"><input type="checkbox" id="cr-active" /><span>Active (med i deck)</span></label>
-          <label>Label (intern)
-            <input type="text" id="cr-label" placeholder="fx Billedkarrusel" />
-          </label>
-          <div class="row" style="gap:18px">
-            <label style="flex:1">Cross-fade (ms)
-              <input type="number" id="cr-fade-ms" min="100" max="6000" step="50" value="2000" />
-            </label>
-            <label style="flex:1">Skærmtid pr billede (sek, default)
-              <input type="number" id="cr-default-seconds" min="1" max="120" step="0.5" value="10" />
-            </label>
-            <label style="flex:1">Baggrundsfarve (letterbox)
-              <input type="color" id="cr-bg-color" value="#000000" />
-            </label>
-          </div>
-          <label class="setting-toggle"><input type="checkbox" id="cr-show-ticker" /><span>Vis sponsor-ticker nederst</span></label>
-          <div class="setting-section">
-            <span class="setting-section-label">Billeder</span>
-            <p class="drawer-hint">Upload billeder ind i banken — træk én eller flere filer på "Upload billeder". Hver række har sin egen skærmtid (sek); tom = default ovenfor. Brug ↑ / ↓ for at omarrangere rækkefølgen.</p>
-            <div class="carousel-image-list" id="cr-image-list" style="display:flex;flex-direction:column;gap:6px"></div>
-            <input type="file" id="cr-image-upload" accept="image/*" multiple style="margin-top:8px" />
-          </div>
-          <div class="row gen-save-row">
-            <button class="nav-btn primary" id="cr-save">Gem billedkarrusel</button>
-          </div>
-        </div>
-
-        <!-- Contest / lodtrækning form -->
-        <div class="gen-form" id="gen-form-contest" style="display:none">
-          <label class="setting-toggle"><input type="checkbox" id="ct-active" /><span>Active (med i deck)</span></label>
-          <label>Label (intern)
-            <input type="text" id="ct-label" placeholder="fx Konkurrence" />
-          </label>
-          <label>Overskrift
-            <input type="text" id="ct-title" placeholder="KONKURRENCE" />
-          </label>
-          <label>Under-tekst (valgfri)
-            <input type="text" id="ct-subtitle" placeholder="valgfri supplerende tekst" />
-          </label>
-          <div class="setting-section">
-            <span class="setting-section-label">Blokke (1–4, vises vandret)</span>
-            <p class="drawer-hint">Hver blok: stort billede/logo, en mindre overskrift og 1–3 linjer info.</p>
-            <div class="contest-block-list" id="ct-block-list"></div>
-            <button class="nav-btn" id="ct-add-block" type="button">+ Tilføj blok</button>
-          </div>
-          <div class="row gen-save-row">
-            <button class="nav-btn primary" id="ct-save">Gem konkurrence</button>
-          </div>
-        </div>
-      </div>
-
-      <div class="gen-preview-pane">
-        <div class="gen-preview-head">
-          <span>Live preview</span>
-          <span class="preview-meta" id="preview-meta"></span>
-        </div>
-        <div class="gen-preview-frame" id="gen-preview-frame"></div>
-      </div>
+      </aside>
     </main>
   </div>
+
+  <!-- ============ SKABELONVÆLGER ============ -->
+  <div class="pp-modal-scrim" id="tpl-scrim">
+    <div class="pp-modal">
+      <div class="gen-tpl-head">
+        <strong>Vælg en skabelon</strong>
+        <span class="pp-hint">Indsættes efter det valgte item</span>
+        <div class="pp-flex-spacer"></div>
+        <button class="pp-btn pp-btn--ghost" id="tpl-close">Esc ✕</button>
+      </div>
+      <div class="gen-tpl-grid" id="tpl-grid"></div>
+    </div>
+  </div>
+
+  <!-- ============ TOAST ============ -->
+  <div class="pp-toast" id="gen-toast"></div>
 
   <script type="module" src="/src/generator.ts"></script>
 </body>

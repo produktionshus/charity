@@ -1,34 +1,61 @@
-// Lot Generator — operator UI for editing the lot bank live.
-// Reads + writes through /api/lots; broadcasts ws 'lots-updated' so the
-// viewer / auctioneer / controller refresh themselves on save.
+// Lot Generator v2 — operator UI for editing the deck live.
+// Design: design_handoff_generator_v2 (cream paper, 3-column editor).
+// Reads + writes through /api/lots; broadcasts ws 'lots-updated' on save so
+// viewer / auctioneer / controller refresh themselves.
 
-import { renderSlide, renderCover, renderClosing, renderSponsorIndex, renderWishLoop, renderMedia, renderAuctionDisplay, renderContest, renderCarousel, fitToViewport } from './render';
+import { renderSlide, renderCover, renderClosing, renderSponsorIndex, renderWishLoop, renderMedia, renderAuctionDisplay, renderCarousel, renderContest, fitToViewport, effectiveSponsorLogos } from './render';
 import { EVENT_META } from './slides';
-import type { Lot, BordplanItem, CoverItem, ClosingItem, SponsorIndexItem, WishLoopItem, MediaItem, AuctionDisplayItem, ContestItem, ContestBlock, AuctionTeam, AuctionDisplayState, DeckItem, SectionItem } from './slides';
+import type { Lot, BordplanItem, CoverItem, ClosingItem, SponsorIndexItem, WishLoopItem, MediaItem, AuctionDisplayItem, SectionItem, CarouselItem, ContestItem, AuctionTeam, DeckItem } from './slides';
 import { renderBordplanSlide } from './render-bordplan';
 import type { FloorPlanConfig } from './bordplan-engine';
 
-// Mirror controller's saved theme for visual consistency.
-const savedTheme = localStorage.getItem('controller.theme') || 'forest';
-document.body.classList.add(`theme-${savedTheme}`);
+// ---- Type metadata (dots + names + picker descriptions) ----
+type Kind = 'lot' | 'bordplan' | 'cover' | 'closing' | 'sponsor-index' | 'wish-loop' | 'media' | 'auction-display' | 'section' | 'carousel' | 'contest';
+const TYPE_META: Record<Kind, { name: string; dot: string; desc: string }> = {
+  lot:               { name: 'Lot',             dot: '#3FA34D', desc: 'Auktionslot — foto, titel, bullets og sponsor.' },
+  cover:             { name: 'Cover',           dot: '#B8893A', desc: 'Forside — stort ord, undertitel og logo.' },
+  section:           { name: 'Sektion',         dot: '#8A8175', desc: 'Navngiver en blok i listen. Vises ikke som slide.' },
+  bordplan:          { name: 'Bordplan',        dot: '#1F4A28', desc: 'Bordopstilling på grøn dug — redigeres visuelt.' },
+  'sponsor-index':   { name: 'Sponsor-indeks',  dot: '#D9B26A', desc: 'Grid af alle auktionens sponsorer, autogenereret.' },
+  closing:           { name: 'Closing',         dot: '#8E6824', desc: 'Tak-til-alle med sponsorvæg.' },
+  'wish-loop':       { name: 'Ønske-loop',      dot: '#7FBF8E', desc: 'Børnenes ønsker som roterende kort over video.' },
+  media:             { name: 'Media',           dot: '#5C544A', desc: 'Fuldskærms billede eller video.' },
+  carousel:          { name: 'Billedkarrusel',  dot: '#A67B33', desc: 'Cross-fadende billeder med individuel skærmtid.' },
+  'auction-display': { name: 'Auktion-display', dot: '#E6C885', desc: 'Hold-baseret live-tavle med bud-bars.' },
+  contest:           { name: 'Konkurrence',     dot: '#C0764F', desc: '1–4 blokke med billede og info.' },
+};
+const PICKER_ORDER: Kind[] = ['lot', 'section', 'cover', 'bordplan', 'sponsor-index', 'closing', 'wish-loop', 'media', 'auction-display', 'contest', 'carousel'];
 
-// ---- DOM ----
-const statusEl   = document.getElementById('gen-status')!;
-const listMeta   = document.getElementById('gen-list-meta')!;
-const listRows   = document.getElementById('gen-list-rows')!;
-const newLotBtn  = document.getElementById('new-lot')!;
-const openCtrlBtn = document.getElementById('open-controller')!;
-const editIdEl   = document.getElementById('edit-id')!;
+// ---- DOM: topbar / chrome ----
+const statusEl    = document.getElementById('gen-status')!;
+const itemCountEl = document.getElementById('gen-item-count')!;
+const savePillEl  = document.getElementById('gen-save-pill')!;
+const listMeta    = document.getElementById('gen-list-meta')!;
+const listRows    = document.getElementById('gen-list-rows')!;
+const listFooter  = document.getElementById('gen-list-footer')!;
+const searchEl    = document.getElementById('gen-search') as HTMLInputElement;
+const openPickerBtn = document.getElementById('open-picker')!;
+const tplScrim    = document.getElementById('tpl-scrim')!;
+const tplGrid     = document.getElementById('tpl-grid')!;
+const tplClose    = document.getElementById('tpl-close')!;
+const toastEl     = document.getElementById('gen-toast')!;
+const inspDot     = document.getElementById('insp-dot')!;
+const inspType    = document.getElementById('insp-type')!;
+const editIdEl    = document.getElementById('edit-id')!;
 const editDisplayNumEl = document.getElementById('edit-display-num')!;
-const deleteBtn  = document.getElementById('delete-lot') as HTMLButtonElement;
+const deleteBtn   = document.getElementById('delete-lot') as HTMLButtonElement;
 const duplicateBtn = document.getElementById('duplicate-lot') as HTMLButtonElement;
 const resetFocalBtn = document.getElementById('reset-focal') as HTMLButtonElement;
-const saveBtn    = document.getElementById('save-lot')!;
-const saveMeta   = document.getElementById('gen-save-meta')!;
+const saveBtn     = document.getElementById('save-lot') as HTMLButtonElement;
+const saveMeta    = document.getElementById('gen-save-meta')!;
 const previewFrame = document.getElementById('gen-preview-frame')!;
 const previewMeta  = document.getElementById('preview-meta')!;
+const previewHint  = document.getElementById('preview-hint')!;
+const validationEl = document.getElementById('gen-validation')!;
 
+// ---- DOM: lot form ----
 const fActive    = document.getElementById('f-active')   as HTMLInputElement;
+const fActiveHint = document.getElementById('f-active-hint')!;
 const fExtra     = document.getElementById('f-extra')    as HTMLInputElement;
 const rowExtraSuffix = document.getElementById('row-extra-suffix')!;
 const fExtraSuffix = document.getElementById('f-extra-suffix') as HTMLInputElement;
@@ -39,6 +66,7 @@ const fBullets   = document.getElementById('f-bullets')  as HTMLTextAreaElement;
 const fDonorNames = document.getElementById('f-donor-names') as HTMLTextAreaElement;
 const fLayout    = document.getElementById('f-layout')   as HTMLSelectElement;
 const fMirrored  = document.getElementById('f-mirrored') as HTMLInputElement;
+const rowMirrored = document.getElementById('row-mirrored')!;
 const fFocalX    = document.getElementById('f-focal-x')  as HTMLInputElement;
 const fFocalY    = document.getElementById('f-focal-y')  as HTMLInputElement;
 const fFocalXVal = document.getElementById('f-focal-x-val')!;
@@ -53,18 +81,27 @@ const fProfilePhotoVal = document.getElementById('f-profile-photo-val')!;
 const rowHorizonCap = document.getElementById('row-horizon-caption')!;
 const rowProfilePhoto = document.getElementById('row-profile-photo')!;
 const fHero      = document.getElementById('f-hero')     as HTMLInputElement;
-const fLogo      = document.getElementById('f-logo')     as HTMLInputElement;
-const fExtraLogoUploadEl = document.getElementById('f-extra-logo-upload') as HTMLInputElement;
-const extraLogoListEl    = document.getElementById('extra-logo-list')!;
-const fSponsorStack      = document.getElementById('f-sponsor-stack') as HTMLSelectElement;
+const fImgCount  = document.getElementById('f-img-count') as HTMLSelectElement;
+const fImgCountHint = document.getElementById('f-img-count-hint')!;
 const heroPreview = document.getElementById('hero-preview') as HTMLImageElement;
-const logoPreview = document.getElementById('logo-preview') as HTMLImageElement;
+const spLogoListEl = document.getElementById('sp-logo-list')!;
+const spLogoUploadEl = document.getElementById('f-sponsor-logos-upload') as HTMLInputElement;
+const advToggle = document.getElementById('adv-toggle')!;
+const advBody   = document.getElementById('adv-body')!;
+const advSummary = document.getElementById('adv-summary')!;
+const advChev   = document.getElementById('adv-chev')!;
+const sndInitUpload = document.getElementById('snd-init-upload') as HTMLInputElement;
+const sndInitName   = document.getElementById('snd-init-name')!;
+const sndInitClear  = document.getElementById('snd-init-clear') as HTMLButtonElement;
+const sndInitVol    = document.getElementById('snd-init-vol') as HTMLInputElement;
+const sndInitVolVal = document.getElementById('snd-init-vol-val')!;
+const sndHammerUpload = document.getElementById('snd-hammer-upload') as HTMLInputElement;
+const sndHammerName   = document.getElementById('snd-hammer-name')!;
+const sndHammerClear  = document.getElementById('snd-hammer-clear') as HTMLButtonElement;
+const sndHammerVol    = document.getElementById('snd-hammer-vol') as HTMLInputElement;
+const sndHammerVolVal = document.getElementById('snd-hammer-vol-val')!;
 
 // ---- Multi-image hero controls (up to 3) ----
-// Index 0 reuses the primary-image element refs above; 2 & 3 are looked up
-// fresh. Driving them through one array lets populate/read/wire loop uniformly.
-const fImgCount = document.getElementById('f-img-count') as HTMLSelectElement;
-const fImgCountHint = document.getElementById('f-img-count-hint')!;
 interface HeroCtl {
   block: HTMLElement;
   upload: HTMLInputElement; preview: HTMLImageElement;
@@ -111,59 +148,79 @@ function applyImgCount(n: number) {
   fImgCountHint.textContent = n > 1
     ? (fLayout.value === 'horizon' ? 'side-om-side' : 'stablet')
     : '';
+  syncSeg(segImgCount, fImgCount.value);
 }
 
 // ---- State ----
-// itemsBank holds the full deck: lots + bordplan items (potentially other
-// types later). Keep lotsBank alias for the existing UI code paths.
 let itemsBank: DeckItem[] = [];
-let lotsBank: Lot[] = [];     // filtered alias = items where kind!=='bordplan'
+let lotsBank: Lot[] = [];
 let selectedId: string | null = sessionStorage.getItem('gen.selectedId');
 let dirty = false;
+let savedAt: string | null = null;
+let searchQ = '';
+let collapsed = new Set<string>(JSON.parse(sessionStorage.getItem('gen.collapsed') || '[]'));
+let bpMode: 'tables' | 'aisles' | 'numbers' = 'tables';
+let spLogos: string[] = [];          // working copy for the selected lot
+let carImages: Array<{ src: string; seconds?: number }> = [];
+let ctBlocks: Array<{ src: string | null; heading?: string; lines?: string[] }> = [];
 
-function itemKind(item: DeckItem | undefined): 'lot' | 'bordplan' | 'cover' | 'closing' | 'sponsor-index' | 'wish-loop' | 'media' | 'auction-display' | 'contest' | 'carousel' | 'section' {
-  if (item && (item as any).kind === 'section') return 'section';
-  if (item && (item as any).kind === 'bordplan') return 'bordplan';
-  if (item && (item as any).kind === 'cover') return 'cover';
-  if (item && (item as any).kind === 'closing') return 'closing';
-  if (item && (item as any).kind === 'sponsor-index') return 'sponsor-index';
-  if (item && (item as any).kind === 'wish-loop') return 'wish-loop';
-  if (item && (item as any).kind === 'media') return 'media';
-  if (item && (item as any).kind === 'auction-display') return 'auction-display';
-  if (item && (item as any).kind === 'contest') return 'contest';
-  if (item && (item as any).kind === 'carousel') return 'carousel';
-  return 'lot';
-}
-function isBordplanItem(item: DeckItem | undefined): item is BordplanItem {
-  return !!item && (item as any).kind === 'bordplan';
-}
-function isCoverItem(item: DeckItem | undefined): item is CoverItem {
-  return !!item && (item as any).kind === 'cover';
-}
-function isClosingItem(item: DeckItem | undefined): item is ClosingItem {
-  return !!item && (item as any).kind === 'closing';
-}
-function isSponsorIndexItem(item: DeckItem | undefined): item is SponsorIndexItem {
-  return !!item && (item as any).kind === 'sponsor-index';
-}
-function isWishLoopItem(item: DeckItem | undefined): item is WishLoopItem {
-  return !!item && (item as any).kind === 'wish-loop';
-}
-function isMediaItem(item: DeckItem | undefined): item is MediaItem {
-  return !!item && (item as any).kind === 'media';
-}
-function isAuctionDisplayItem(item: DeckItem | undefined): item is AuctionDisplayItem {
-  return !!item && (item as any).kind === 'auction-display';
-}
-function isContestItem(item: DeckItem | undefined): item is ContestItem {
-  return !!item && (item as any).kind === 'contest';
+function nowHHMM(): string {
+  return new Date().toLocaleTimeString('da-DK', { hour: '2-digit', minute: '2-digit' });
 }
 
-// ---- Bordplan form DOM ----
+function itemKind(item: DeckItem | undefined): Kind {
+  const k = (item as any)?.kind;
+  if (!k || k === 'lot') return 'lot';
+  return k as Kind;
+}
+function isBordplanItem(item: DeckItem | undefined): item is BordplanItem { return itemKind(item) === 'bordplan'; }
+function isCoverItem(item: DeckItem | undefined): item is CoverItem { return itemKind(item) === 'cover'; }
+function isClosingItem(item: DeckItem | undefined): item is ClosingItem { return itemKind(item) === 'closing'; }
+function isSponsorIndexItem(item: DeckItem | undefined): item is SponsorIndexItem { return itemKind(item) === 'sponsor-index'; }
+function isWishLoopItem(item: DeckItem | undefined): item is WishLoopItem { return itemKind(item) === 'wish-loop'; }
+function isMediaItem(item: DeckItem | undefined): item is MediaItem { return itemKind(item) === 'media'; }
+function isAuctionDisplayItem(item: DeckItem | undefined): item is AuctionDisplayItem { return itemKind(item) === 'auction-display'; }
+function isSectionItem(item: DeckItem | undefined): item is SectionItem { return itemKind(item) === 'section'; }
+function isCarouselItem(item: DeckItem | undefined): item is CarouselItem { return itemKind(item) === 'carousel'; }
+function isContestItem(item: DeckItem | undefined): item is ContestItem { return itemKind(item) === 'contest'; }
+
+// ---- Form containers ----
 const formLot = document.getElementById('gen-form')!;
 const formBordplan = document.getElementById('gen-form-bordplan')!;
 const formCover = document.getElementById('gen-form-cover')!;
 const formClosing = document.getElementById('gen-form-closing')!;
+const formSponsorIndex = document.getElementById('gen-form-sponsorindex')!;
+const formWishLoop = document.getElementById('gen-form-wishloop')!;
+const formMedia = document.getElementById('gen-form-media')!;
+const formAuctionDisplay = document.getElementById('gen-form-auctiondisplay')!;
+const formSection = document.getElementById('gen-form-section')!;
+const formCarousel = document.getElementById('gen-form-carousel')!;
+const formContest = document.getElementById('gen-form-contest')!;
+const ALL_FORMS = [formLot, formBordplan, formCover, formClosing, formSponsorIndex, formWishLoop, formMedia, formAuctionDisplay, formSection, formCarousel, formContest];
+
+// ---- Section form ----
+const secLabelEl = document.getElementById('sec-label') as HTMLInputElement;
+
+// ---- Carousel form ----
+const carActiveEl = document.getElementById('car-active') as HTMLInputElement;
+const carLabelEl  = document.getElementById('car-label') as HTMLInputElement;
+const carListEl   = document.getElementById('car-image-list')!;
+const carUploadEl = document.getElementById('car-upload') as HTMLInputElement;
+const carFadeEl   = document.getElementById('car-fade') as HTMLInputElement;
+const carFadeVal  = document.getElementById('car-fade-val')!;
+const carDefaultSecEl = document.getElementById('car-default-sec') as HTMLInputElement;
+const carDefaultSecVal = document.getElementById('car-default-sec-val')!;
+const carTickerEl = document.getElementById('car-ticker') as HTMLInputElement;
+
+// ---- Contest form ----
+const ctActiveEl = document.getElementById('ct-active') as HTMLInputElement;
+const ctLabelEl  = document.getElementById('ct-label') as HTMLInputElement;
+const ctTitleEl  = document.getElementById('ct-title') as HTMLInputElement;
+const ctSubtitleEl = document.getElementById('ct-subtitle') as HTMLInputElement;
+const ctBlockListEl = document.getElementById('ct-block-list')!;
+const ctUploadEl = document.getElementById('ct-upload') as HTMLInputElement;
+
+// ---- Closing form ----
 const clActiveEl    = document.getElementById('cl-active')   as HTMLInputElement;
 const clLabelEl     = document.getElementById('cl-label')    as HTMLInputElement;
 const clTitleEl     = document.getElementById('cl-title')    as HTMLInputElement;
@@ -171,10 +228,9 @@ const clTaglineEl   = document.getElementById('cl-tagline')  as HTMLInputElement
 const clColsEl      = document.getElementById('cl-cols')     as HTMLInputElement;
 const clLogoListEl  = document.getElementById('cl-logo-list')!;
 const clLogoUploadEl = document.getElementById('cl-logo-upload') as HTMLInputElement;
-const clSaveBtn     = document.getElementById('cl-save')!;
 let clLogos: ClosingItem['logos'] = [];
 
-const formWishLoop = document.getElementById('gen-form-wishloop')!;
+// ---- Wish-loop form ----
 const wlActiveEl     = document.getElementById('wl-active')      as HTMLInputElement;
 const wlLabelEl      = document.getElementById('wl-label')       as HTMLInputElement;
 const wlSponsorEl    = document.getElementById('wl-sponsor')     as HTMLInputElement;
@@ -200,11 +256,10 @@ const wlPauseHoverEl = document.getElementById('wl-pause-hover') as HTMLInputEle
 const wlShowTickerEl = document.getElementById('wl-show-ticker') as HTMLInputElement;
 const wlAppleListEl  = document.getElementById('wl-apple-list')!;
 const wlAppleUploadEl = document.getElementById('wl-apple-upload') as HTMLInputElement;
-const wlSaveBtn      = document.getElementById('wl-save')!;
-let wlApplePool: string[] = [];     // alle filer i /assets/apples/
+let wlApplePool: string[] = [];
 let wlSelectedCards: Array<{ id: number | string; src: string | null; alt?: string }> = [];
 
-const formAuctionDisplay = document.getElementById('gen-form-auctiondisplay')!;
+// ---- Auction-display form ----
 const adActiveEl    = document.getElementById('ad-active')         as HTMLInputElement;
 const adLabelEl     = document.getElementById('ad-label')          as HTMLInputElement;
 const adScreenEl = document.getElementById('ad-screen') as HTMLSelectElement;
@@ -214,9 +269,8 @@ const adRevealCountEl = document.getElementById('ad-reveal-count') as HTMLInputE
 const adRankingEl   = document.getElementById('ad-ranking')        as HTMLInputElement;
 const adNamesVisibleEl = document.getElementById('ad-names-visible') as HTMLInputElement;
 const adShowBaseLabelEl = document.getElementById('ad-show-base-label') as HTMLInputElement;
-const adSaveBtn     = document.getElementById('ad-save')!;
 
-const formMedia = document.getElementById('gen-form-media')!;
+// ---- Media form ----
 const mdActiveEl   = document.getElementById('md-active')   as HTMLInputElement;
 const mdLabelEl    = document.getElementById('md-label')    as HTMLInputElement;
 const mdModeEl     = document.getElementById('md-mode')     as HTMLSelectElement;
@@ -230,52 +284,13 @@ const mdLoopEl     = document.getElementById('md-loop')     as HTMLInputElement;
 const mdMutedEl    = document.getElementById('md-muted')    as HTMLInputElement;
 const mdShowTickerEl = document.getElementById('md-show-ticker') as HTMLInputElement;
 const mdVideoOptsEl = document.getElementById('md-video-opts')!;
-const mdSaveBtn    = document.getElementById('md-save')!;
 
-const formCarousel = document.getElementById('gen-form-carousel')!;
-const crActiveEl         = document.getElementById('cr-active')          as HTMLInputElement;
-const crLabelEl          = document.getElementById('cr-label')           as HTMLInputElement;
-const crFadeMsEl         = document.getElementById('cr-fade-ms')         as HTMLInputElement;
-const crDefaultSecondsEl = document.getElementById('cr-default-seconds') as HTMLInputElement;
-const crBgColorEl        = document.getElementById('cr-bg-color')        as HTMLInputElement;
-const crShowTickerEl     = document.getElementById('cr-show-ticker')     as HTMLInputElement;
-const crImageListEl      = document.getElementById('cr-image-list')!;
-const crImageUploadEl    = document.getElementById('cr-image-upload')    as HTMLInputElement;
-const crSaveBtn          = document.getElementById('cr-save')!;
-// Live edit copy of the carousel's image list. Renders to the list view on
-// every change; readCarouselForm flattens this into the saved payload.
-let crImagesDraft: Array<{ src: string; seconds?: number; alt?: string }> = [];
-
-const formSponsorIndex = document.getElementById('gen-form-sponsorindex')!;
+// ---- Sponsor-index form ----
 const siActiveEl   = document.getElementById('si-active') as HTMLInputElement;
 const siLabelEl    = document.getElementById('si-label')  as HTMLInputElement;
 const siTitleEl    = document.getElementById('si-title')  as HTMLInputElement;
-const siSaveBtn    = document.getElementById('si-save')!;
 
-// ---- Section form DOM ----
-const formSection = document.getElementById('gen-form-section')!;
-const secLabelEl  = document.getElementById('sec-label') as HTMLInputElement;
-const secSaveBtn  = document.getElementById('sec-save')!;
-const newSectionBtn = document.getElementById('new-section')!;
-
-// Collapsed section ids — survives the Vite auto-reload on lots.json writes.
-const collapsedSections = new Set<string>(
-  JSON.parse(sessionStorage.getItem('gen.collapsedSections') || '[]') as string[]
-);
-function saveCollapsed() {
-  sessionStorage.setItem('gen.collapsedSections', JSON.stringify([...collapsedSections]));
-}
-// Items belonging to a section = everything after its divider up to the next divider.
-function sectionItems(sectionId: string): DeckItem[] {
-  const start = itemsBank.findIndex(i => i.id === sectionId);
-  if (start < 0) return [];
-  const out: DeckItem[] = [];
-  for (let i = start + 1; i < itemsBank.length; i++) {
-    if (itemKind(itemsBank[i]) === 'section') break;
-    out.push(itemsBank[i]);
-  }
-  return out;
-}
+// ---- Cover form ----
 const covLabelEl       = document.getElementById('cov-label')      as HTMLInputElement;
 const covTitleEl       = document.getElementById('cov-title')      as HTMLInputElement;
 const covSubtitleEl    = document.getElementById('cov-subtitle')   as HTMLInputElement;
@@ -286,16 +301,8 @@ const covLogoPreviewEl = document.getElementById('cov-logo-preview') as HTMLImag
 const covLogoScaleEl   = document.getElementById('cov-logo-scale') as HTMLInputElement;
 const covLogoScaleVal  = document.getElementById('cov-logo-scale-val')!;
 const covActiveEl      = document.getElementById('cov-active')     as HTMLInputElement;
-const covSaveBtn       = document.getElementById('cov-save')!;
-const formContest    = document.getElementById('gen-form-contest')!;
-const ctActiveEl     = document.getElementById('ct-active')    as HTMLInputElement;
-const ctLabelEl      = document.getElementById('ct-label')     as HTMLInputElement;
-const ctTitleEl      = document.getElementById('ct-title')     as HTMLInputElement;
-const ctSubtitleEl   = document.getElementById('ct-subtitle')  as HTMLInputElement;
-const ctBlockListEl  = document.getElementById('ct-block-list')!;
-const ctAddBlockBtn  = document.getElementById('ct-add-block') as HTMLButtonElement;
-const ctSaveBtn      = document.getElementById('ct-save')!;
-let ctBlocks: ContestBlock[] = [];
+
+// ---- Bordplan form ----
 const bpLabelEl     = document.getElementById('bp-label')      as HTMLInputElement;
 const bpEventNameEl = document.getElementById('bp-event-name') as HTMLInputElement;
 const bpColsEl      = document.getElementById('bp-cols')       as HTMLInputElement;
@@ -314,8 +321,10 @@ const bpNumSkipEl   = document.getElementById('bp-num-skip')   as HTMLInputEleme
 const bpOverridesListEl = document.getElementById('bp-overrides-list')!;
 const bpOverridesResetBtn = document.getElementById('bp-overrides-reset')!;
 const bpActiveEl    = document.getElementById('bp-active')     as HTMLInputElement;
-const bpSaveBtn     = document.getElementById('bp-save')!;
-const bpSaveMetaEl  = document.getElementById('bp-save-meta')!;
+const bpModeHintEl  = document.getElementById('bp-mode-hint')!;
+const bpNumberingCard = document.getElementById('bp-numbering-card')!;
+const bpAislesCard  = document.getElementById('bp-aisles-card')!;
+const bpOriginGrid  = document.getElementById('bp-origin-grid')!;
 
 function parseIntList(str: string): number[] {
   if (!str.trim()) return [];
@@ -374,30 +383,36 @@ function partsToPlainText(parts: NonNullable<Lot['titleParts']>): string {
   return parts.map(p => p.text + (p.break ? '\n' : '')).join('');
 }
 
-// ---- API ----
+// ---- API + toast ----
 async function api(path: string, init?: RequestInit): Promise<any> {
   const res = await fetch(path, init);
   if (!res.ok) throw new Error(`${res.status} ${await res.text()}`);
   return res.json();
 }
+let toastTimer = 0;
+function toast(msg: string) {
+  toastEl.textContent = msg;
+  toastEl.classList.add('open');
+  clearTimeout(toastTimer);
+  toastTimer = window.setTimeout(() => toastEl.classList.remove('open'), 2600);
+}
+function escapeHtml(s: string): string {
+  return s.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]!));
+}
 
+// ---- Load ----
 async function loadBank() {
   statusEl.textContent = 'Henter…';
   try {
     const data = await api('/api/lots');
     itemsBank = data.lots;
     lotsBank = itemsBank.filter(i => itemKind(i) === 'lot') as Lot[];
-    // Refresh EVENT_META mirror so meta-driven editors (auction-display
-    // team config, sponsor ticker, ...) reflect server state instead of
-    // the stale lots.json snapshot imported at boot.
     if (data.meta) {
       for (const k of Object.keys(EVENT_META)) delete (EVENT_META as any)[k];
       Object.assign(EVENT_META, data.meta);
     }
-    statusEl.textContent = `${itemsBank.length} items indlæst (${lotsBank.length} lots)`;
+    statusEl.textContent = '';
     renderList();
-    // Restore selection across reload — sessionStorage survives Vite's
-    // auto-reload triggered by lots.json writes in dev.
     const stillExists = selectedId && itemsBank.some(i => i.id === selectedId);
     if (stillExists) selectLot(selectedId!);
     else if (itemsBank.length) selectLot(itemsBank[0].id);
@@ -427,127 +442,121 @@ function computeDisplayNums(): Map<string, string> {
   }
   return m;
 }
+function itemLabel(item: DeckItem): string {
+  const kind = itemKind(item);
+  if (kind === 'lot') return (item as Lot).title || '(uden titel)';
+  return (item as any).label || TYPE_META[kind].name;
+}
 
-// ---- List rendering + drag-drop ----
+// ---- Deck list ----
 function renderList() {
   const displayNums = computeDisplayNums();
   listRows.innerHTML = '';
-  const realItems = itemsBank.filter(i => itemKind(i) !== 'section');
-  const activeCount = realItems.filter(i => i.active).length;
-  listMeta.textContent = `${activeCount} aktive · ${realItems.length} total`;
-  let currentSectionId: string | null = null;
+  listMeta.textContent = `${lotsBank.length} lots`;
+  itemCountEl.textContent = `FORBUNDET · ${itemsBank.filter(i => itemKind(i) !== 'section').length} ITEMS`;
+  const q = searchQ.trim().toLowerCase();
+  let collapsedNow = false;
   for (const item of itemsBank) {
     const kind = itemKind(item);
-    if (kind === 'section') {
-      currentSectionId = item.id;
-      const collapsed = collapsedSections.has(item.id);
-      const row = document.createElement('div');
-      row.className = 'gen-row kind-section';
-      row.dataset.id = item.id;
-      row.draggable = true;
-      if (item.id === selectedId) row.classList.add('selected');
-      if (collapsed) row.classList.add('collapsed');
-      const count = sectionItems(item.id).length;
-      // Caret + add are <span role="button">, not <button> — a native <button>
-      // swallows the mousedown so dragging the bar from its left edge (where
-      // every other row has its drag handle) never starts the drag.
-      row.innerHTML = `
-        <span class="drag-handle">⋮⋮</span>
-        <span class="sec-caret" role="button" title="${collapsed ? 'Fold ud' : 'Fold sammen'}">${collapsed ? '▸' : '▾'}</span>
-        <span class="gen-row-title">${escapeHtml((item as SectionItem).label || 'Sektion')}</span>
-        <span class="gen-row-badge">${count} item${count === 1 ? '' : 's'}</span>
-        <span class="sec-add" role="button" title="Indsæt nyt lot sidst i denne sektion">+ lot</span>
-      `;
-      row.querySelector('.sec-caret')!.addEventListener('click', (e) => {
-        e.stopPropagation();
-        if (collapsedSections.has(item.id)) collapsedSections.delete(item.id);
-        else collapsedSections.add(item.id);
-        saveCollapsed();
-        renderList();
-      });
-      row.querySelector('.sec-add')!.addEventListener('click', (e) => {
-        e.stopPropagation();
-        insertLotInSection(item.id);
-      });
-      row.addEventListener('click', () => selectLot(item.id));
-      row.addEventListener('dragstart', onDragStart);
-      row.addEventListener('dragend', onDragEnd);
-      listRows.appendChild(row);
+    const meta = TYPE_META[kind];
+    const label = itemLabel(item);
+    if (q && !(label.toLowerCase().includes(q) || meta.name.toLowerCase().includes(q))) {
+      if (kind === 'section') collapsedNow = false;
       continue;
     }
-    // Items inside a collapsed section stay in the data, just not in the DOM —
-    // the whole block still moves with its header when dragged.
-    if (currentSectionId && collapsedSections.has(currentSectionId)) continue;
+    if (kind === 'section') {
+      collapsedNow = !q && collapsed.has(item.id);
+      const head = document.createElement('div');
+      head.className = 'gen-sec-row';
+      head.dataset.id = item.id;
+      head.innerHTML = `
+        <span class="chev">${collapsedNow ? '▸' : '▾'}</span>
+        <span class="sec-title${item.id === selectedId ? ' sel' : ''}">${escapeHtml((item as SectionItem).label || '(uden navn)')}</span>
+        <span class="hairline"></span>
+        <span class="count">${sectionCount(item.id)} items</span>
+        <button type="button" class="sec-edit" data-move="-1" title="Flyt op">↑</button>
+        <button type="button" class="sec-edit" data-move="1" title="Flyt ned">↓</button>
+        <button type="button" class="sec-edit" title="Redigér sektion">✎</button>
+      `;
+      head.addEventListener('click', (e) => {
+        const mv = (e.target as HTMLElement).closest<HTMLButtonElement>('button[data-move]');
+        if (mv) { e.stopPropagation(); moveItem(item.id, parseInt(mv.dataset.move!, 10)); return; }
+        if ((e.target as HTMLElement).closest('.sec-edit')) { selectLot(item.id); return; }
+        if (collapsed.has(item.id)) collapsed.delete(item.id);
+        else collapsed.add(item.id);
+        sessionStorage.setItem('gen.collapsed', JSON.stringify([...collapsed]));
+        renderList();
+      });
+      listRows.appendChild(head);
+      continue;
+    }
+    if (collapsedNow) continue;
     const row = document.createElement('div');
     row.className = 'gen-row';
     row.dataset.id = item.id;
     row.draggable = true;
-    if (item.id === selectedId) row.classList.add('selected');
-    if (!item.active) row.classList.add('inactive');
-    row.classList.add(`kind-${kind}`);
-    if (currentSectionId) row.classList.add('in-section');
-    let dn = '—';
-    let title = '';
-    let badge = !item.active ? 'INACTIVE' : '';
-    if (kind === 'lot') {
-      const lot = item as Lot;
-      if (lot.extra) row.classList.add('extra');
-      dn = displayNums.get(lot.id) ?? '—';
-      title = lot.title || '(uden titel)';
-      badge = !lot.active ? 'INACTIVE' : lot.extra ? 'EXTRA' : '';
-    } else if (isBordplanItem(item)) {
-      dn = 'BP';
-      title = item.label || item.eventName || '(uden navn)';
-      badge = !item.active ? 'INACTIVE' : 'BORDPLAN';
-    } else if (isCoverItem(item)) {
-      dn = 'CV';
-      title = item.label || item.title || '(uden navn)';
-      badge = !item.active ? 'INACTIVE' : 'COVER';
-    } else if (isClosingItem(item)) {
-      dn = 'CL';
-      title = item.label || item.title || '(uden navn)';
-      badge = !item.active ? 'INACTIVE' : 'CLOSING';
-    } else if (isSponsorIndexItem(item)) {
-      dn = 'SP';
-      title = item.label || item.title || '(uden navn)';
-      badge = !item.active ? 'INACTIVE' : 'SPONSOR-INDEKS';
-    } else if (isWishLoopItem(item)) {
-      dn = 'ØT';
-      title = item.label || '(uden navn)';
-      badge = !item.active ? 'INACTIVE' : `ØNSKE-LOOP · ${item.cards.length}`;
-    } else if (isMediaItem(item)) {
-      dn = 'MD';
-      title = item.label || '(uden navn)';
-      badge = !item.active ? 'INACTIVE' : `MEDIA · ${item.mode}`;
-    } else if (isAuctionDisplayItem(item)) {
-      dn = 'AD';
-      title = item.label || '(uden navn)';
-      badge = !item.active ? 'INACTIVE' : `AUKTION-DISPLAY · ${item.screen || 'intro'}`;
-    } else if (kind === 'carousel') {
-      dn = 'CR';
-      const car = item as any;
-      title = car.label || '(uden navn)';
-      const count = Array.isArray(car.images) ? car.images.length : 0;
-      badge = !car.active ? 'INACTIVE' : `BILLEDKARRUSEL · ${count}`;
-    } else if (isContestItem(item)) {
-      dn = 'KO';
-      title = item.label || item.title || '(uden navn)';
-      const count = Array.isArray(item.blocks) ? item.blocks.length : 0;
-      badge = !item.active ? 'INACTIVE' : `KONKURRENCE · ${count}`;
-    }
+    const selected = item.id === selectedId;
+    if (selected) row.classList.add('selected');
+    if ((item as any).active === false) row.classList.add('inactive');
+    const dn = kind === 'lot' ? (displayNums.get(item.id) ?? '—') : '·';
     row.innerHTML = `
-      <span class="drag-handle">⋮⋮</span>
       <span class="gen-row-num">${dn}</span>
-      <span class="gen-row-title">${escapeHtml(title)}</span>
-      <span class="gen-row-badge">${badge}</span>
+      <span class="gen-row-dot" style="background:${meta.dot}"></span>
+      <span class="gen-row-main">
+        <span class="gen-row-type">${meta.name}</span>
+        <span class="gen-row-title">${escapeHtml(label)}</span>
+      </span>
+      <span class="gen-row-actions">
+        <button type="button" data-move="-1" title="Flyt op">↑</button>
+        <button type="button" data-move="1" title="Flyt ned">↓</button>
+      </span>
     `;
-    row.addEventListener('click', () => selectLot(item.id));
+    row.addEventListener('click', (e) => {
+      const mv = (e.target as HTMLElement).closest<HTMLButtonElement>('button[data-move]');
+      if (mv) { e.stopPropagation(); moveItem(item.id, parseInt(mv.dataset.move!, 10)); return; }
+      selectLot(item.id);
+    });
     row.addEventListener('dragstart', onDragStart);
+    row.addEventListener('dragover', onDragOver);
+    row.addEventListener('drop', onDrop);
     row.addEventListener('dragend', onDragEnd);
     listRows.appendChild(row);
   }
+  listFooter.textContent = `${itemsBank.length} items · ${[...collapsed].filter(id => itemsBank.some(i => i.id === id)).length} foldede sektioner`;
+}
+function sectionCount(secId: string): number {
+  let counting = false, n = 0;
+  for (const item of itemsBank) {
+    if (itemKind(item) === 'section') { counting = item.id === secId; continue; }
+    if (counting) n++;
+  }
+  return n;
+}
+searchEl.addEventListener('input', () => { searchQ = searchEl.value; renderList(); });
+
+async function persistOrder() {
+  const order = itemsBank.map(i => i.id);
+  try {
+    await api('/api/lots/reorder', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ order }),
+    });
+    renderList();
+    refreshPreview();
+  } catch (e: any) {
+    statusEl.textContent = 'Reorder failed: ' + e.message;
+  }
+}
+function moveItem(id: string, dir: number) {
+  const i = itemsBank.findIndex(x => x.id === id);
+  const j = i + dir;
+  if (i < 0 || j < 0 || j >= itemsBank.length) return;
+  const tmp = itemsBank[i]; itemsBank[i] = itemsBank[j]; itemsBank[j] = tmp;
+  persistOrder();
 }
 
+// Drag-reorder (kept alongside the ↑/↓ buttons)
 let draggingId: string | null = null;
 function clearDropMarkers() {
   listRows.querySelectorAll('.drop-above, .drop-below').forEach(el => {
@@ -561,121 +570,36 @@ function onDragStart(e: DragEvent) {
   e.dataTransfer!.effectAllowed = 'move';
   e.dataTransfer!.setData('text/plain', draggingId);
 }
-// Drag-over/drop live on the LIST CONTAINER, not the individual rows. Rows
-// have margins/padding gaps between them (section bars especially), and a
-// drop released over a gap that no row-level handler covers is rejected by
-// the browser — the drag "fails" with a snap-back and no marker ever shows.
-// Delegating to the container makes the entire list surface droppable: the
-// nearest row midpoint decides the insertion point.
-function dropPosition(e: DragEvent): { row: HTMLElement; before: boolean } | null {
-  const rows = Array.from(listRows.querySelectorAll<HTMLElement>('.gen-row'));
-  if (!rows.length) return null;
-  for (const row of rows) {
-    const r = row.getBoundingClientRect();
-    if (e.clientY < r.top + r.height / 2) return { row, before: true };
-  }
-  return { row: rows[rows.length - 1], before: false };
-}
-// Map a visual drop position to an index in itemsBank. "After row R" is the
-// same as "before the next visible row" — which lands after a collapsed
-// section's hidden items instead of inside them.
-function dataIndexFor(pos: { row: HTMLElement; before: boolean }): number {
-  if (pos.before) {
-    const idx = itemsBank.findIndex(i => i.id === pos.row.dataset.id);
-    return idx >= 0 ? idx : itemsBank.length;
-  }
-  const next = pos.row.nextElementSibling as HTMLElement | null;
-  if (next?.dataset.id) {
-    const nIdx = itemsBank.findIndex(i => i.id === next.dataset.id);
-    if (nIdx >= 0) return nIdx;
-  }
-  return itemsBank.length;
-}
-function onListDragOver(e: DragEvent) {
-  if (!draggingId) return;
+function onDragOver(e: DragEvent) {
   e.preventDefault();
   e.dataTransfer!.dropEffect = 'move';
-  const pos = dropPosition(e);
+  const target = e.currentTarget as HTMLElement;
+  if (!draggingId || target.dataset.id === draggingId) return;
+  const rect = target.getBoundingClientRect();
+  const before = e.clientY < rect.top + rect.height / 2;
   clearDropMarkers();
-  if (pos) pos.row.classList.add(pos.before ? 'drop-above' : 'drop-below');
-  // Auto-scroll the list when dragging near top/bottom edges
+  target.classList.add(before ? 'drop-above' : 'drop-below');
   const sRect = listRows.getBoundingClientRect();
   const margin = 36;
   if (e.clientY < sRect.top + margin) listRows.scrollBy({ top: -10 });
   else if (e.clientY > sRect.bottom - margin) listRows.scrollBy({ top: 10 });
 }
-async function onListDrop(e: DragEvent) {
+function onDrop(e: DragEvent) {
   e.preventDefault();
-  const pos = dropPosition(e);
+  if (!draggingId) return;
+  const target = e.currentTarget as HTMLElement;
   clearDropMarkers();
-  if (!draggingId || !pos) return;
-  const src = itemsBank.find(i => i.id === draggingId);
-  if (!src) return;
-  // A section drags as a block: the divider plus everything under it. Compute
-  // the new order from data (not the DOM) — collapsed blocks have no item rows.
-  const block = itemKind(src) === 'section' ? [src, ...sectionItems(src.id)] : [src];
-  const blockIds = new Set(block.map(b => b.id));
-  const insertIdx = dataIndexFor(pos);
-  // Re-base the insertion index onto the array without the block: dropping a
-  // block onto/into itself then reproduces the current order and no-ops.
-  let target = 0;
-  for (let i = 0; i < insertIdx; i++) if (!blockIds.has(itemsBank[i].id)) target++;
-  const rest = itemsBank.filter(i => !blockIds.has(i.id));
-  rest.splice(target, 0, ...block);
-  const order = rest.map(i => i.id);
-  if (order.join('\n') === itemsBank.map(i => i.id).join('\n')) return;   // unchanged
-  await applyOrder(order);
-}
-listRows.addEventListener('dragover', onListDragOver);
-listRows.addEventListener('drop', onListDrop);
-listRows.addEventListener('dragleave', (e) => {
-  if (e.target === listRows) clearDropMarkers();
-});
-
-// Apply a full id order locally + persist it to the server.
-async function applyOrder(order: string[]) {
-  const byId = new Map(itemsBank.map(i => [i.id, i]));
-  itemsBank = order.map(id => byId.get(id)!).filter(Boolean);
-  lotsBank = itemsBank.filter(i => itemKind(i) === 'lot') as Lot[];
-  try {
-    await api('/api/lots/reorder', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ order }),
-    });
-    renderList();
-    refreshPreview();
-  } catch (e: any) {
-    statusEl.textContent = 'Reorder failed: ' + e.message;
-  }
-}
-
-// "+ lot" on a section bar: create a lot and slot it in at the END of that
-// section instead of the bottom of the whole deck — last-minute lots land
-// directly in the right block.
-async function insertLotInSection(sectionId: string) {
-  try {
-    const created = await api('/api/lots', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({
-        title: 'Nyt lot', subtitle: '', sponsor: '', bullets: [],
-        active: false, extra: false, layout: 'horizon', focal: '50% 50%',
-      }),
-    });
-    itemsBank.push(created);                    // server appended it last
-    const ids = itemsBank.filter(i => i.id !== created.id).map(i => i.id);
-    let insertAt = ids.indexOf(sectionId) + 1;
-    while (insertAt < ids.length && itemKind(itemsBank.find(i => i.id === ids[insertAt])) !== 'section') insertAt++;
-    ids.splice(insertAt, 0, created.id);
-    collapsedSections.delete(sectionId);
-    saveCollapsed();
-    await applyOrder(ids);
-    selectLot(created.id);
-    statusEl.textContent = 'Lot oprettet i sektionen';
-  } catch (e: any) {
-    statusEl.textContent = 'Create failed: ' + e.message;
-  }
+  if (target.dataset.id === draggingId) { draggingId = null; return; }
+  const from = itemsBank.findIndex(i => i.id === draggingId);
+  let to = itemsBank.findIndex(i => i.id === target.dataset.id);
+  if (from < 0 || to < 0) { draggingId = null; return; }
+  const rect = target.getBoundingClientRect();
+  const before = e.clientY < rect.top + rect.height / 2;
+  const [moved] = itemsBank.splice(from, 1);
+  if (from < to) to -= 1;
+  itemsBank.splice(before ? to : to + 1, 0, moved);
+  draggingId = null;
+  persistOrder();
 }
 function onDragEnd(e: DragEvent) {
   (e.currentTarget as HTMLElement).classList.remove('is-dragging');
@@ -683,7 +607,85 @@ function onDragEnd(e: DragEvent) {
   draggingId = null;
 }
 
-// ---- Select + form binding ----
+// ---- Segmented controls ----
+function wireSeg(container: HTMLElement, onPick: (val: string) => void) {
+  container.querySelectorAll<HTMLButtonElement>('button[data-val]').forEach(btn => {
+    btn.addEventListener('click', () => onPick(btn.dataset.val!));
+  });
+}
+function syncSeg(container: HTMLElement, val: string) {
+  container.querySelectorAll<HTMLButtonElement>('button[data-val]').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.val === val);
+  });
+}
+const segLayout = document.getElementById('seg-layout')!;
+const segImgCount = document.getElementById('seg-imgcount')!;
+const segBpMode = document.getElementById('seg-bpmode')!;
+wireSeg(segLayout, (val) => {
+  fLayout.value = val;
+  syncSeg(segLayout, val);
+  applyLayoutVisibility();
+  onFormChange();
+});
+wireSeg(segImgCount, (val) => {
+  fImgCount.value = val;
+  applyImgCount(parseInt(val, 10) || 1);
+  onFormChange();
+});
+wireSeg(segBpMode, (val) => {
+  bpMode = val as any;
+  applyBpMode();
+  refreshPreview();
+});
+function applyLayoutVisibility() {
+  const isHorizon = fLayout.value === 'horizon';
+  rowHorizonCap.style.display = isHorizon ? '' : 'none';
+  rowProfilePhoto.style.display = isHorizon ? 'none' : '';
+  rowMirrored.style.display = isHorizon ? 'none' : '';
+  syncSeg(segLayout, fLayout.value);
+  applyImgCount(parseInt(fImgCount.value, 10) || 1);
+}
+function applyBpMode() {
+  syncSeg(segBpMode, bpMode);
+  bpModeHintEl.textContent =
+    bpMode === 'tables' ? 'Klik på et bord i previewet for at fjerne det — klik på et fjernet (stiplet) felt for at gendanne det.'
+    : bpMode === 'aisles' ? 'Redigér gange i felterne herunder — 1-indekseret efter kolonne/række.'
+    : 'Vælg hjørne, startnummer, prefix og numre der springes over. Grid-numrene opdateres live.';
+  bpNumberingCard.style.display = bpMode === 'numbers' ? '' : 'none';
+  bpAislesCard.style.display = bpMode === 'aisles' ? '' : 'none';
+}
+// ponytail: klik-i-preview gange (Gange-mode) er udskudt — renderen tegner ikke
+// klikbare gap-celler; felterne i GANGE-kortet dækker behovet indtil videre.
+
+// Origin 2x2 grid → hidden select
+bpOriginGrid.querySelectorAll<HTMLButtonElement>('button[data-val]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    bpNumOriginEl.value = btn.dataset.val!;
+    syncOriginGrid();
+    setDirty(true);
+    refreshPreview();
+  });
+});
+function syncOriginGrid() {
+  bpOriginGrid.querySelectorAll<HTMLButtonElement>('button[data-val]').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.val === bpNumOriginEl.value);
+  });
+}
+
+// ---- Advanced fold ----
+let advOpen = false;
+advToggle.addEventListener('click', () => {
+  advOpen = !advOpen;
+  advBody.style.display = advOpen ? '' : 'none';
+  advChev.textContent = advOpen ? '▴ SKJUL' : '▾ VIS';
+});
+function refreshAdvSummary(lot: Lot | undefined) {
+  if (!lot) { advSummary.textContent = ''; return; }
+  const n = [lot.extra, lot.titleSizePt, (lot.donorNames || []).length, lot.sound?.initSound, lot.sound?.hammerSound].filter(Boolean).length;
+  advSummary.textContent = n ? `${n} i brug` : '';
+}
+
+// ---- Select + inspector header ----
 function selectLot(id: string) {
   if (dirty && id !== selectedId) {
     if (!confirm('Du har ugemte ændringer. Skift item og kassér?')) return;
@@ -693,27 +695,21 @@ function selectLot(id: string) {
   const item = itemsBank.find(i => i.id === id);
   if (!item) return;
   const kind = itemKind(item);
-  formLot.style.display = 'none';
-  formBordplan.style.display = 'none';
-  formCover.style.display = 'none';
-  formClosing.style.display = 'none';
-  formSponsorIndex.style.display = 'none';
-  formWishLoop.style.display = 'none';
-  formMedia.style.display = 'none';
-  formAuctionDisplay.style.display = 'none';
-  formContest.style.display = 'none';
-  formCarousel.style.display = 'none';
-  formSection.style.display = 'none';
-  if (kind === 'section') {
-    formSection.style.display = 'flex';
-    populateSectionForm(item as SectionItem);
-  } else if (kind === 'carousel') {
-    formCarousel.style.display = 'flex';
-    populateCarouselForm(item as any);
-  } else if (kind === 'contest') {
-    formContest.style.display = 'flex';
-    populateContestForm(item as ContestItem);
-  } else if (kind === 'auction-display') {
+  const meta = TYPE_META[kind];
+  ALL_FORMS.forEach(f => f.style.display = 'none');
+  inspDot.setAttribute('style', `background:${meta.dot}`);
+  inspType.textContent = meta.name;
+  editIdEl.textContent = item.id;
+  const dn = kind === 'lot' ? (computeDisplayNums().get(id) ?? '—') : '';
+  if (kind === 'lot') {
+    editDisplayNumEl.textContent = `LOT ${dn}`;
+  } else {
+    const t = (itemLabel(item) || '').toUpperCase();
+    editDisplayNumEl.textContent = t.length > 24 ? t.slice(0, 23).replace(/\s+\S*$/, '') + '…' : t;
+  }
+  deleteBtn.style.display = 'inline-flex';
+  duplicateBtn.style.display = 'inline-flex';
+  if (kind === 'auction-display') {
     formAuctionDisplay.style.display = 'flex';
     populateAuctionDisplayForm(item as AuctionDisplayItem);
   } else if (kind === 'media') {
@@ -722,6 +718,7 @@ function selectLot(id: string) {
   } else if (kind === 'bordplan') {
     formBordplan.style.display = 'flex';
     populateBordplanForm(item as BordplanItem);
+    applyBpMode();
   } else if (kind === 'cover') {
     formCover.style.display = 'flex';
     populateCoverForm(item as CoverItem);
@@ -734,6 +731,15 @@ function selectLot(id: string) {
   } else if (kind === 'wish-loop') {
     formWishLoop.style.display = 'flex';
     populateWishLoopForm(item as WishLoopItem);
+  } else if (kind === 'section') {
+    formSection.style.display = 'flex';
+    secLabelEl.value = (item as SectionItem).label || '';
+  } else if (kind === 'carousel') {
+    formCarousel.style.display = 'flex';
+    populateCarouselForm(item as CarouselItem);
+  } else if (kind === 'contest') {
+    formContest.style.display = 'flex';
+    populateContestForm(item as ContestItem);
   } else {
     formLot.style.display = 'flex';
     populateForm(item as Lot);
@@ -744,13 +750,10 @@ function selectLot(id: string) {
   renderValidation();
 }
 
+// ---- Lot form ----
 function populateForm(lot: Lot) {
-  editIdEl.textContent = lot.id;
-  editDisplayNumEl.textContent = computeDisplayNums().get(lot.id) ?? '—';
-  deleteBtn.style.display = 'inline-flex';
-  duplicateBtn.style.display = 'inline-flex';
-  resetFocalBtn.style.display = 'inline-flex';
   fActive.checked = !!lot.active;
+  fActiveHint.textContent = lot.active ? '' : '— skjult i viewer og controller';
   fExtra.checked  = !!lot.extra;
   rowExtraSuffix.style.display = lot.extra ? '' : 'none';
   fExtraSuffix.value = lot.extraSuffix ?? '';
@@ -762,13 +765,10 @@ function populateForm(lot: Lot) {
   fLayout.value = lot.layout || 'horizon';
   fMirrored.checked = !!lot.mirrored;
   const focal = (lot.focal || '50% 50%').replace(/%/g, '').split(/\s+/).map(s => parseInt(s, 10));
-  // Use Number.isFinite so a legitimate 0% (hard-left / hard-top crop) survives
-  // — `0 || 50` would silently rewrite it to 50 on reload and the next save
-  // would persist the fallback.
-  const fxVal = Number.isFinite(focal[0]) ? focal[0] : 50;
-  const fyVal = Number.isFinite(focal[1]) ? focal[1] : 50;
-  fFocalX.value = String(fxVal); fFocalXVal.textContent = `${fxVal}%`;
-  fFocalY.value = String(fyVal); fFocalYVal.textContent = `${fyVal}%`;
+  const fx0 = Number.isFinite(focal[0]) ? focal[0] : 50;
+  const fy0 = Number.isFinite(focal[1]) ? focal[1] : 50;
+  fFocalX.value = String(fx0); fFocalXVal.textContent = `${fx0}%`;
+  fFocalY.value = String(fy0); fFocalYVal.textContent = `${fy0}%`;
   const scalePct = Math.round((lot.heroScale ?? 1) * 100);
   fScale.value = String(scalePct);
   fScaleVal.textContent = `${scalePct}%`;
@@ -779,16 +779,13 @@ function populateForm(lot: Lot) {
   const profilePhoto = lot.profilePhotoIn ?? 5.8;
   fProfilePhoto.value = String(profilePhoto);
   fProfilePhotoVal.textContent = `${profilePhoto}in`;
-  const isHorizon = (lot.layout || 'horizon') === 'horizon';
-  rowHorizonCap.style.display = isHorizon ? '' : 'none';
-  rowProfilePhoto.style.display = isHorizon ? 'none' : '';
   heroPreview.src = `/assets/hero/lot-${lot.id}_FINAL.${lot.heroExt || 'jpg'}?v=${Date.now()}`;
-  const mainLogoUrl = lot.sponsorLogoSrc || `/assets/logo/logo-lot-${lot.id}.png`;
-  logoPreview.src = `${mainLogoUrl}?v=${Date.now()}`;
-  renderExtraLogoList(lot.extraSponsorLogos || []);
-  fSponsorStack.value = lot.sponsorStack ?? 'auto';
-  // Multi-image: image 1 focal/scale/preview set above. Populate extras 2 & 3,
-  // split weights, count selector, then show/hide blocks.
+  // Sponsor logos working copy — v2 field wins; legacy lots resolve chain.
+  spLogos = lot.sponsorLogos ? [...lot.sponsorLogos] : effectiveSponsorLogos(lot);
+  renderSpLogoList();
+  // Sound override
+  refreshSoundUI(lot);
+  // Multi-image
   const heroImages = lot.heroImages || [];
   const count = Math.min(3, 1 + heroImages.length);
   fImgCount.value = String(count);
@@ -798,11 +795,10 @@ function populateForm(lot: Lot) {
     if (i > 0) {
       const im = heroImages[i - 1];
       const f = ((im?.focal) || '50% 50%').replace(/%/g, '').split(/\s+/).map(s => parseInt(s, 10));
-      // Same 0-vs-missing fix as image 1's focal sliders above.
-      const exFx = Number.isFinite(f[0]) ? f[0] : 50;
-      const exFy = Number.isFinite(f[1]) ? f[1] : 50;
-      c.fx.value = String(exFx); c.fxVal.textContent = `${exFx}%`;
-      c.fy.value = String(exFy); c.fyVal.textContent = `${exFy}%`;
+      const ffx = Number.isFinite(f[0]) ? f[0] : 50;
+      const ffy = Number.isFinite(f[1]) ? f[1] : 50;
+      c.fx.value = String(ffx); c.fxVal.textContent = `${ffx}%`;
+      c.fy.value = String(ffy); c.fyVal.textContent = `${ffy}%`;
       const sp = Math.round(((im?.scale) ?? 1) * 100);
       c.scale.value = String(sp); c.scaleVal.textContent = `${sp}%`;
       c.preview.src = `/assets/hero/lot-${lot.id}_FINAL${i + 1}.${im?.ext || 'jpg'}?v=${v}`;
@@ -810,83 +806,17 @@ function populateForm(lot: Lot) {
     const w = splits ? splits[i] : 50;
     c.split.value = String(w); c.splitVal.textContent = String(w);
   });
+  applyLayoutVisibility();
   applyImgCount(count);
+  refreshAdvSummary(lot);
 }
-
-function renderExtraLogoList(logos: string[]) {
-  extraLogoListEl.innerHTML = '';
-  if (!logos.length) {
-    const empty = document.createElement('li');
-    empty.style.cssText = 'font-style:italic;color:rgba(228,223,200,0.7);padding:4px 8px;background:transparent;border:0';
-    empty.textContent = '(ingen ekstra logos)';
-    extraLogoListEl.appendChild(empty);
-    return;
-  }
-  logos.forEach((src, idx) => {
-    const li = document.createElement('li');
-    const fname = src.split('/').pop() || src;
-    li.innerHTML = `
-      <img src="${src}" alt="" />
-      <span class="extra-fname">${fname}</span>
-      <button type="button" class="extra-del" data-idx="${idx}" title="Fjern">✕</button>
-    `;
-    extraLogoListEl.appendChild(li);
-  });
-}
-async function persistExtraLogos(logos: string[]) {
-  if (!selectedId) return;
-  try {
-    const updated = await api(`/api/lots/${encodeURIComponent(selectedId)}`, {
-      method: 'PUT', headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ extraSponsorLogos: logos }),
-    });
-    const idx = itemsBank.findIndex(i => i.id === selectedId);
-    if (idx >= 0) itemsBank[idx] = updated;
-    const lotIdx = lotsBank.findIndex(l => l.id === selectedId);
-    if (lotIdx >= 0) lotsBank[lotIdx] = updated;
-    renderExtraLogoList(updated.extraSponsorLogos || []);
-    refreshPreview();
-  } catch (e: any) { statusEl.textContent = 'Extra-logo save failed: ' + e.message; }
-}
-extraLogoListEl.addEventListener('click', (e) => {
-  const btn = (e.target as HTMLElement).closest<HTMLButtonElement>('button.extra-del');
-  if (!btn || !selectedId) return;
-  const lot = lotsBank.find(l => l.id === selectedId);
-  if (!lot) return;
-  const idx = parseInt(btn.dataset.idx!, 10);
-  const current = [...(lot.extraSponsorLogos || [])];
-  current.splice(idx, 1);
-  persistExtraLogos(current);
-});
-fExtraLogoUploadEl.addEventListener('change', async () => {
-  const files = Array.from(fExtraLogoUploadEl.files || []);
-  if (!files.length || !selectedId) return;
-  const lot = lotsBank.find(l => l.id === selectedId);
-  const current = [...(lot?.extraSponsorLogos || [])];
-  for (const file of files) {
-    const fd = new FormData();
-    fd.append('kind', 'extra-logo');
-    fd.append('lotId', selectedId);
-    fd.append('file', file);
-    try {
-      const res = await fetch('/api/upload', { method: 'POST', body: fd });
-      const data = await res.json();
-      if (data?.filename) current.push(`/assets/logo/${data.filename}`);
-    } catch (e: any) { statusEl.textContent = 'Extra-logo upload failed: ' + e.message; }
-  }
-  fExtraLogoUploadEl.value = '';
-  persistExtraLogos(current);
-});
 
 function readForm(): Partial<Lot> {
-  // Parse the title field as markdown — **bold** segments + newline for
-  // forced line break. Plain title becomes the concatenated text.
   const titleParts = markdownToParts(fTitle.value);
   const plainTitle = titleParts ? partsToPlainText(titleParts).replace(/\n/g, ' ').trim() : fTitle.value.trim();
-  // Multi-image: collect extras (images 2..N) + split weights. ext is set on
-  // upload and preserved from the in-memory lot here so it survives a save.
   const imgCount = Math.min(3, Math.max(1, parseInt(fImgCount.value, 10) || 1));
-  const curImgs = (lotsBank.find(l => l.id === selectedId)?.heroImages) || [];
+  const cur = lotsBank.find(l => l.id === selectedId);
+  const curImgs = cur?.heroImages || [];
   const heroImages = heroCtls.slice(1, imgCount).map((c, idx) => ({
     ext: curImgs[idx]?.ext,
     focal: `${c.fx.value}% ${c.fy.value}%`,
@@ -895,9 +825,16 @@ function readForm(): Partial<Lot> {
   const heroSplit = imgCount > 1
     ? heroCtls.slice(0, imgCount).map(c => parseInt(c.split.value, 10) || 1)
     : undefined;
+  // Sound: filenames live on the in-memory lot (set by upload/clear); the
+  // volume sliders join them here at save time.
+  const sound: any = { ...(cur?.sound || {}) };
+  sound.initVolume = (parseInt(sndInitVol.value, 10) || 100) / 100;
+  sound.hammerVolume = (parseInt(sndHammerVol.value, 10) || 100) / 100;
   return {
     heroImages,
     heroSplit,
+    sponsorLogos: [...spLogos],
+    sound,
     active: fActive.checked,
     extra:  fExtra.checked,
     extraSuffix: fExtraSuffix.value.trim() || null,
@@ -914,59 +851,150 @@ function readForm(): Partial<Lot> {
     titleSizePt: fTitleSize.value ? parseInt(fTitleSize.value, 10) : undefined,
     horizonCaptionIn: parseFloat(fHorizonCap.value) || undefined,
     profilePhotoIn:   parseFloat(fProfilePhoto.value) || undefined,
-    sponsorStack: fSponsorStack.value === 'auto'
-      ? null
-      : (fSponsorStack.value as 'vertical' | 'horizontal'),
   };
 }
 
-const savePillEl = document.getElementById('gen-save-pill')!;
-const validationEl = document.getElementById('gen-validation')!;
+// ---- Sponsor logos card ----
+function renderSpLogoList() {
+  spLogoListEl.innerHTML = '';
+  if (!spLogos.length) {
+    spLogoListEl.innerHTML = `<div class="gen-splogo-empty"><span>INGEN LOGOER</span></div>`;
+    return;
+  }
+  spLogos.forEach((src, i) => {
+    const card = document.createElement('div');
+    card.className = 'gen-splogo';
+    card.style.backgroundImage = `url('${src}')`;
+    card.innerHTML = `<button type="button" title="Fjern logo" data-i="${i}">✕</button>`;
+    spLogoListEl.appendChild(card);
+  });
+}
+spLogoListEl.addEventListener('click', (e) => {
+  const btn = (e.target as HTMLElement).closest<HTMLButtonElement>('button[data-i]');
+  if (!btn) return;
+  spLogos.splice(parseInt(btn.dataset.i!, 10), 1);
+  renderSpLogoList();
+  onFormChange();
+});
+spLogoUploadEl.addEventListener('change', async () => {
+  const files = Array.from(spLogoUploadEl.files || []);
+  if (!files.length || !selectedId) return;
+  for (const file of files) {
+    const fd = new FormData();
+    fd.append('kind', 'extra-logo');
+    fd.append('lotId', selectedId);
+    fd.append('file', file);
+    try {
+      const res = await fetch('/api/upload', { method: 'POST', body: fd });
+      const data = await res.json();
+      if (data?.filename) spLogos.push(`/assets/logo/${data.filename}`);
+    } catch (e: any) { statusEl.textContent = 'Logo upload failed: ' + e.message; }
+  }
+  spLogoUploadEl.value = '';
+  renderSpLogoList();
+  onFormChange();
+});
 
+// ---- Per-lot sound override ----
+function refreshSoundUI(lot: Lot) {
+  const s = lot.sound || {};
+  sndInitName.textContent = s.initSound || 'Standard (fra controller)';
+  sndInitName.classList.toggle('set', !!s.initSound);
+  sndInitClear.style.display = s.initSound ? '' : 'none';
+  const iv = Math.round((s.initVolume ?? 1) * 100);
+  sndInitVol.value = String(iv); sndInitVolVal.textContent = `${iv}%`;
+  sndHammerName.textContent = s.hammerSound || 'Standard (fra controller)';
+  sndHammerName.classList.toggle('set', !!s.hammerSound);
+  sndHammerClear.style.display = s.hammerSound ? '' : 'none';
+  const hv = Math.round((s.hammerVolume ?? 1) * 100);
+  sndHammerVol.value = String(hv); sndHammerVolVal.textContent = `${hv}%`;
+}
+async function uploadLotSound(which: 'init' | 'hammer', file: File) {
+  if (!selectedId) return;
+  const fd = new FormData();
+  fd.append('kind', 'sound');
+  fd.append('which', which);
+  fd.append('lotId', selectedId);
+  fd.append('file', file);
+  try {
+    statusEl.textContent = `Uploader ${which}-lyd…`;
+    const res = await fetch('/api/upload', { method: 'POST', body: fd });
+    const data = await res.json();
+    const lot = lotsBank.find(l => l.id === selectedId);
+    if (lot && data?.filename) {
+      lot.sound = { ...(lot.sound || {}) };
+      if (which === 'init') lot.sound.initSound = data.filename;
+      else lot.sound.hammerSound = data.filename;
+      refreshSoundUI(lot);
+    }
+    statusEl.textContent = 'Lyd uploadet';
+    toast(`${which === 'init' ? 'Init' : 'Hammer'}-lyd sat for dette lot`);
+  } catch (e: any) { statusEl.textContent = 'Lyd-upload failed: ' + e.message; }
+}
+sndInitUpload.addEventListener('change', () => { if (sndInitUpload.files?.[0]) uploadLotSound('init', sndInitUpload.files[0]); sndInitUpload.value = ''; });
+sndHammerUpload.addEventListener('change', () => { if (sndHammerUpload.files?.[0]) uploadLotSound('hammer', sndHammerUpload.files[0]); sndHammerUpload.value = ''; });
+async function clearLotSound(which: 'init' | 'hammer') {
+  if (!selectedId) return;
+  const lot = lotsBank.find(l => l.id === selectedId);
+  if (!lot) return;
+  const sound: any = { ...(lot.sound || {}) };
+  if (which === 'init') { delete sound.initSound; delete sound.initVolume; }
+  else { delete sound.hammerSound; delete sound.hammerVolume; }
+  try {
+    const updated = await api(`/api/lots/${encodeURIComponent(selectedId)}`, {
+      method: 'PUT', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ sound }),
+    });
+    syncBank(updated);
+    refreshSoundUI(updated);
+    toast('Tilbage til standard-lyd');
+  } catch (e: any) { statusEl.textContent = 'Lyd-reset failed: ' + e.message; }
+}
+sndInitClear.addEventListener('click', () => clearLotSound('init'));
+sndHammerClear.addEventListener('click', () => clearLotSound('hammer'));
+sndInitVol.addEventListener('input', () => { sndInitVolVal.textContent = `${sndInitVol.value}%`; setDirty(true); });
+sndHammerVol.addEventListener('input', () => { sndHammerVolVal.textContent = `${sndHammerVol.value}%`; setDirty(true); });
+
+// ---- Validation ----
 function validateForm(): { errors: string[]; warnings: string[] } {
   const errors: string[] = [];
   const warnings: string[] = [];
   const title = fTitle.value.trim();
-  if (fActive.checked && !title) errors.push('Lot er active men har ingen titel.');
+  if (fActive.checked && !title) errors.push('Titel mangler — slide viser placeholder.');
+  if (!fSponsor.value.trim()) warnings.push('Sponsor/donor er tom.');
   if (fExtra.checked && !fExtraSuffix.value.trim()) {
     warnings.push('Ekstra-lot uden suffix — auto-tildeles (fx 03A).');
   }
-  const bulletCount = fBullets.value.split('\n').map(s => s.trim()).filter(Boolean).length;
-  if (fLayout.value === 'horizon' && bulletCount > 8) {
-    warnings.push(`${bulletCount} bullets passer muligvis ikke i 2-col horizon layout.`);
-  }
   return { errors, warnings };
 }
-
 function renderValidation() {
+  const item = itemsBank.find(i => i.id === selectedId);
+  if (itemKind(item) !== 'lot') { validationEl.innerHTML = ''; return true; }
   const { errors, warnings } = validateForm();
   validationEl.innerHTML = '';
-  validationEl.classList.toggle('warn-only', errors.length === 0 && warnings.length > 0);
-  for (const e of errors) {
-    const el = document.createElement('div'); el.className = 'v-error'; el.textContent = '✗ ' + e;
-    validationEl.appendChild(el);
-  }
-  for (const w of warnings) {
-    const el = document.createElement('div'); el.className = 'v-warn'; el.textContent = '! ' + w;
+  for (const e of [...errors, ...warnings]) {
+    const el = document.createElement('div');
+    el.className = 'gen-problem';
+    el.innerHTML = `<span>!</span><span>${escapeHtml(e)}</span>`;
     validationEl.appendChild(el);
   }
   return errors.length === 0;
 }
+
+// ---- Dirty / save pill ----
 function setDirty(v: boolean) {
   dirty = v;
-  saveMeta.className = 'gen-save-meta' + (v ? ' dirty' : ' saved');
-  saveMeta.textContent = v ? 'UGEMTE ÆNDRINGER' : 'GEMT';
-  if (!v && !selectedId) saveMeta.textContent = '';
-  // Topbar pill mirror
-  savePillEl.className = 'gen-save-pill ' + (selectedId ? (v ? 'dirty' : 'saved') : '');
-  savePillEl.textContent = selectedId ? (v ? '● Ugemt' : '✓ Gemt') : '';
+  saveMeta.textContent = v
+    ? 'Sendes til controller, viewer & auktionarius ved gem'
+    : (savedAt ? `Sidst gemt ${savedAt}` : 'Ingen ændringer');
+  saveBtn.textContent = v ? 'Gem ændringer' : 'Gemt';
+  savePillEl.style.display = selectedId ? '' : 'none';
+  savePillEl.className = 'pp-save-pill' + (v ? ' dirty' : '');
+  savePillEl.textContent = v ? '● Ugemt' : (savedAt ? `✓ Gemt ${savedAt}` : '✓ Gemt');
 }
 
 // ---- Preview ----
-function escapeHtml(s: string): string {
-  return s.replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]!));
-}
-
+let focalDragActive = false;
 function refreshPreview() {
   if (!selectedId) return;
   const item = itemsBank.find(i => i.id === selectedId);
@@ -975,134 +1003,172 @@ function refreshPreview() {
   const wrap = document.createElement('div');
   wrap.className = 'slide-frame';
   previewFrame.appendChild(wrap);
-  if (itemKind(item) === 'section') {
-    previewMeta.textContent = 'sektion · ingen slide — navngiver blokken af items under den';
-    return;
-  }
+  previewHint.textContent = '';
+  const kind = itemKind(item);
+  const mount = (slideEl: HTMLElement) => {
+    slideEl.classList.add('is-visible', 'no-build');
+    slideEl.querySelectorAll<HTMLVideoElement>('video').forEach(v => { v.muted = true; v.volume = 0; });
+    wrap.appendChild(slideEl);
+    requestAnimationFrame(() => fitToViewport(wrap, slideEl));
+    return slideEl;
+  };
+  const shell = (cls: string) => {
+    const el = document.createElement('div');
+    el.className = `slide-canvas ${cls}`;
+    return el;
+  };
   if (isBordplanItem(item)) {
     const merged: BordplanItem = { ...item, ...readBordplanForm() };
-    const slideEl = document.createElement('div');
-    slideEl.className = 'slide-canvas slide-bordplan';
-    slideEl.classList.add('is-visible', 'no-build');
+    const slideEl = shell('slide-bordplan');
     slideEl.innerHTML = renderBordplanSlide(merged.config, {
       eventName: merged.eventName, org: merged.org, overrides: merged.overrides,
     });
-    wrap.appendChild(slideEl);
-    requestAnimationFrame(() => fitToViewport(wrap, slideEl));
-    previewMeta.textContent = `bordplan · ${merged.config.cols}×${merged.config.rows}`;
+    mount(slideEl);
+    previewMeta.textContent = `Bordplan · ${merged.config.cols}×${merged.config.rows}`;
+    previewHint.textContent = bpMode === 'tables'
+      ? 'KLIK PÅ ET BORD FOR AT FJERNE / GENDANNE DET'
+      : bpMode === 'aisles' ? 'GANGE REDIGERES I PANELET TIL HØJRE'
+      : 'NUMMERERING STYRES I PANELET TIL HØJRE';
     wireBordplanTableClicks(slideEl);
     renderOverridesList(merged.overrides || {});
     return;
   }
   if (isCoverItem(item)) {
     const merged: CoverItem = { ...item, ...readCoverForm() };
-    const slideEl = document.createElement('div');
-    slideEl.className = 'slide-canvas slide-cover';
-    slideEl.classList.add('is-visible', 'no-build');
+    const slideEl = shell('slide-cover');
     slideEl.innerHTML = renderCover(merged);
-    wrap.appendChild(slideEl);
-    requestAnimationFrame(() => fitToViewport(wrap, slideEl));
-    previewMeta.textContent = 'cover slide';
+    mount(slideEl);
+    previewMeta.textContent = 'Cover';
     return;
   }
   if (isClosingItem(item)) {
     const merged: ClosingItem = { ...item, ...readClosingForm() };
-    const slideEl = document.createElement('div');
-    slideEl.className = 'slide-canvas slide-closing';
-    slideEl.classList.add('is-visible', 'no-build');
+    const slideEl = shell('slide-closing');
     slideEl.innerHTML = renderClosing(merged);
-    wrap.appendChild(slideEl);
-    requestAnimationFrame(() => fitToViewport(wrap, slideEl));
-    previewMeta.textContent = `closing · ${merged.logos.length} logos`;
+    mount(slideEl);
+    previewMeta.textContent = `Closing · ${merged.logos.length} logos`;
     return;
   }
   if (isSponsorIndexItem(item)) {
     const merged: SponsorIndexItem = { ...item, ...readSponsorIndexForm() };
-    const slideEl = document.createElement('div');
-    slideEl.className = 'slide-canvas slide-sponsor-index';
-    slideEl.classList.add('is-visible', 'no-build');
+    const slideEl = shell('slide-sponsor-index');
     slideEl.innerHTML = renderSponsorIndex(merged);
-    wrap.appendChild(slideEl);
-    requestAnimationFrame(() => fitToViewport(wrap, slideEl));
-    previewMeta.textContent = 'sponsor-index';
-    return;
-  }
-  if (isContestItem(item)) {
-    const merged: ContestItem = { ...item, ...readContestForm() };
-    const slideEl = document.createElement('div');
-    slideEl.className = 'slide-canvas slide-contest';
-    slideEl.classList.add('is-visible', 'no-build');
-    slideEl.innerHTML = renderContest(merged);
-    wrap.appendChild(slideEl);
-    requestAnimationFrame(() => fitToViewport(wrap, slideEl));
-    previewMeta.textContent = `konkurrence · ${merged.blocks.length} blok(ke)`;
-    return;
-  }
-  if (itemKind(item) === 'carousel') {
-    const merged: any = { ...item, ...readCarouselForm() };
-    const slideEl = document.createElement('div');
-    slideEl.className = 'slide-canvas slide-carousel';
-    slideEl.classList.add('is-visible', 'no-build');
-    slideEl.innerHTML = renderCarousel(merged);
-    wrap.appendChild(slideEl);
-    requestAnimationFrame(() => fitToViewport(wrap, slideEl));
-    previewMeta.textContent = `billedkarrusel · ${merged.images.length} billed${merged.images.length === 1 ? '' : 'er'}`;
+    mount(slideEl);
+    previewMeta.textContent = 'Sponsor-indeks';
     return;
   }
   if (isAuctionDisplayItem(item)) {
-    const slideEl = document.createElement('div');
-    slideEl.className = 'slide-canvas slide-auction-display';
-    slideEl.classList.add('is-visible', 'no-build');
+    const slideEl = shell('slide-auction-display');
     slideEl.innerHTML = renderAuctionDisplay(item);
-    wrap.appendChild(slideEl);
-    requestAnimationFrame(() => fitToViewport(wrap, slideEl));
-    previewMeta.textContent = `auktion-display · ${(item as AuctionDisplayItem).screen || 'intro'}`;
+    mount(slideEl);
+    previewMeta.textContent = `Auktion-display · ${item.screen || 'intro'}`;
     return;
   }
   if (isMediaItem(item)) {
     const merged: MediaItem = { ...item, ...readMediaForm() } as MediaItem;
-    const slideEl = document.createElement('div');
-    slideEl.className = 'slide-canvas slide-media';
-    slideEl.classList.add('is-visible', 'no-build');
+    const slideEl = shell('slide-media');
     slideEl.innerHTML = renderMedia(merged);
-    // Generator preview is a preview, never an audio source — mute any
-    // mounted video regardless of the item's videoMuted setting.
-    slideEl.querySelectorAll<HTMLVideoElement>('video').forEach(v => { v.muted = true; v.volume = 0; });
-    wrap.appendChild(slideEl);
-    requestAnimationFrame(() => fitToViewport(wrap, slideEl));
-    previewMeta.textContent = `media · ${merged.mode}`;
+    mount(slideEl);
+    previewMeta.textContent = `Media · ${merged.mode}`;
     return;
   }
   if (isWishLoopItem(item)) {
     const merged: WishLoopItem = { ...item, ...readWishLoopForm() };
-    const slideEl = document.createElement('div');
-    slideEl.className = 'slide-canvas slide-wish-loop';
-    slideEl.classList.add('is-visible', 'no-build');
+    const slideEl = shell('slide-wish-loop');
     slideEl.innerHTML = renderWishLoop(merged);
-    wrap.appendChild(slideEl);
-    requestAnimationFrame(() => fitToViewport(wrap, slideEl));
-    previewMeta.textContent = `wish-loop · ${merged.cards.length}/${wlApplePool.length} kort`;
+    mount(slideEl);
+    previewMeta.textContent = `Ønske-loop · ${merged.cards.length}/${wlApplePool.length} kort`;
     return;
   }
+  if (isSectionItem(item)) {
+    const slideEl = shell('slide-section');
+    slideEl.innerHTML = `
+      <div class="gen-section-slide">
+        <span class="pre">SEKTION — VISES IKKE SOM SLIDE</span>
+        <div class="big">${escapeHtml(secLabelEl.value || item.label || '')}</div>
+        <span class="sub">Navngiver blokken af items under den og kan foldes sammen i listen.</span>
+      </div>`;
+    mount(slideEl);
+    previewMeta.textContent = 'Sektion';
+    return;
+  }
+  if (isCarouselItem(item)) {
+    const merged: CarouselItem = { ...item, ...readCarouselForm() };
+    const slideEl = shell('slide-carousel');
+    slideEl.innerHTML = renderCarousel(merged);
+    mount(slideEl);
+    previewMeta.textContent = `Billedkarrusel · ${merged.images.length} billeder`;
+    return;
+  }
+  if (isContestItem(item)) {
+    const merged: ContestItem = { ...item, ...readContestForm() };
+    const slideEl = shell('slide-contest');
+    slideEl.innerHTML = renderContest(merged);
+    mount(slideEl);
+    previewMeta.textContent = 'Konkurrence';
+    return;
+  }
+  // Lot
   const baseLot = item as Lot;
-  const livePatch = readForm();
-  const merged: Lot = { ...baseLot, ...livePatch } as Lot;
+  const merged: Lot = { ...baseLot, ...readForm() } as Lot;
   const slide = { id: `lot-${merged.id}`, kind: 'lot' as const, lotId: merged.id };
   const dn = computeDisplayNums().get(merged.id) ?? '—';
-  previewMeta.textContent = `${merged.layout || 'horizon'}${merged.mirrored ? ' · mirror' : ''} · vises som ${dn}`;
+  previewMeta.textContent = `Lot · vises som ${dn}${merged.mirrored && merged.layout === 'profile' ? ' · mirrored' : ''}${merged.active ? '' : ' · IKKE I DECK'}`;
+  previewHint.textContent = 'TRÆK FOKUSPUNKTET DIREKTE I BILLEDET · SCROLL FOR ZOOM';
   const slideEl = renderSlide(slide, merged, dn);
-  slideEl.classList.add('is-visible', 'no-build');
-  wrap.appendChild(slideEl);
-  requestAnimationFrame(() => fitToViewport(wrap, slideEl));
+  mount(slideEl);
+  wireHeroInteractions(slideEl);
 }
 
-// ---- Bordplan form ----
+// ---- Direct manipulation: focal drag + wheel zoom on the preview panes ----
+function wireHeroInteractions(slideEl: HTMLElement) {
+  const panes = slideEl.querySelectorAll<HTMLElement>('.lotv2-pane');
+  panes.forEach(pane => {
+    const idx = parseInt(pane.dataset.pane || '0', 10);
+    const ctl = heroCtls[idx];
+    if (!ctl) return;
+    // Crosshair marker (editor-only)
+    const ring = document.createElement('div');
+    ring.className = 'gen-focal-ring';
+    ring.style.left = `${ctl.fx.value}%`;
+    ring.style.top = `${ctl.fy.value}%`;
+    pane.appendChild(ring);
+    pane.classList.add('gen-pane-editable');
+    pane.addEventListener('pointerdown', (e) => {
+      e.preventDefault();
+      focalDragActive = true;
+      const rect = pane.getBoundingClientRect();
+      const apply = (ev: PointerEvent) => {
+        const fx = Math.round(Math.max(0, Math.min(100, ((ev.clientX - rect.left) / rect.width) * 100)));
+        const fy = Math.round(Math.max(0, Math.min(100, ((ev.clientY - rect.top) / rect.height) * 100)));
+        ctl.fx.value = String(fx); ctl.fxVal.textContent = `${fx}%`;
+        ctl.fy.value = String(fy); ctl.fyVal.textContent = `${fy}%`;
+        onFormChange();
+      };
+      apply(e as PointerEvent);
+      const mv = (ev: PointerEvent) => apply(ev);
+      const up = () => {
+        focalDragActive = false;
+        window.removeEventListener('pointermove', mv);
+        window.removeEventListener('pointerup', up);
+        refreshPreview();   // rebind fresh panes after the drag session
+      };
+      window.addEventListener('pointermove', mv);
+      window.addEventListener('pointerup', up);
+    });
+    pane.addEventListener('wheel', (e) => {
+      e.preventDefault();
+      const cur = parseInt(ctl.scale.value, 10) || 100;
+      const next = Math.max(40, Math.min(220, cur + (e.deltaY > 0 ? -5 : 5)));
+      ctl.scale.value = String(next);
+      ctl.scaleVal.textContent = `${next}%`;
+      onFormChange();
+    }, { passive: false });
+  });
+}
+
+// ---- Bordplan ----
 function populateBordplanForm(item: BordplanItem) {
-  editIdEl.textContent = item.id;
-  editDisplayNumEl.textContent = 'BP';
-  deleteBtn.style.display = 'inline-flex';
-  duplicateBtn.style.display = 'inline-flex';
-  resetFocalBtn.style.display = 'none';
   bpActiveEl.checked = !!item.active;
   bpLabelEl.value = item.label ?? '';
   bpEventNameEl.value = item.eventName ?? '';
@@ -1120,8 +1186,8 @@ function populateBordplanForm(item: BordplanItem) {
   bpNumStartEl.value = String(c.numbering.startAt ?? 1);
   bpNumPrefixEl.value = c.numbering.prefix ?? '';
   bpNumSkipEl.value = (c.numbering.skip || []).join(', ');
+  syncOriginGrid();
 }
-
 function readBordplanForm(): Partial<BordplanItem> {
   const baseItem = itemsBank.find(i => i.id === selectedId);
   const existingOverrides = isBordplanItem(baseItem) ? (baseItem.overrides || {}) : {};
@@ -1150,8 +1216,6 @@ function readBordplanForm(): Partial<BordplanItem> {
     overrides: existingOverrides,
   };
 }
-
-// ---- Overrides list + popover ----
 function renderOverridesList(overrides: Record<string, { label?: string; active?: boolean }>) {
   bpOverridesListEl.innerHTML = '';
   const entries = Object.entries(overrides);
@@ -1164,7 +1228,7 @@ function renderOverridesList(overrides: Record<string, { label?: string; active?
     const desc = [];
     if (ov.label != null) desc.push(`omdøbt: "${escapeHtml(ov.label)}"`);
     if (ov.active === false) desc.push('deaktiveret');
-    li.innerHTML = `<span><code>${id}</code> — ${desc.join(', ') || '—'}</span><button class="ov-clear" data-id="${id}">Ryd</button>`;
+    li.innerHTML = `<span><code>${id}</code> — ${desc.join(', ') || '—'}</span><button class="ov-clear pp-btn pp-btn--ghost" data-id="${id}">Ryd</button>`;
     bpOverridesListEl.appendChild(li);
   }
   bpOverridesListEl.querySelectorAll<HTMLButtonElement>('.ov-clear').forEach(btn => {
@@ -1179,7 +1243,6 @@ function renderOverridesList(overrides: Record<string, { label?: string; active?
     });
   });
 }
-
 bpOverridesResetBtn.addEventListener('click', () => {
   const baseItem = itemsBank.find(i => i.id === selectedId);
   if (!isBordplanItem(baseItem)) return;
@@ -1198,17 +1261,47 @@ document.addEventListener('click', (e) => {
     closePopover();
   }
 });
-
 function wireBordplanTableClicks(slideEl: HTMLElement) {
   slideEl.querySelectorAll<HTMLElement>('.bp-table').forEach(cell => {
     cell.addEventListener('click', (e) => {
       e.stopPropagation();
       const tableId = cell.dataset.tableId!;
-      openOverridePopover(cell, tableId);
+      if (bpMode === 'tables') {
+        // Direct toggle: remove / restore the table (v2 spec)
+        toggleBpTable(cell, tableId);
+      } else {
+        openOverridePopover(cell, tableId);
+      }
     });
   });
 }
-
+function toggleBpTable(cell: HTMLElement, tableId: string) {
+  const baseItem = itemsBank.find(i => i.id === selectedId);
+  if (!isBordplanItem(baseItem)) return;
+  const isGhost = cell.classList.contains('bp-ghost');
+  const cellMatch = /^c(\d+)r(\d+)$/.exec(tableId);
+  if (isGhost) {
+    if (cellMatch) {
+      const c = parseInt(cellMatch[1], 10);
+      const r = parseInt(cellMatch[2], 10);
+      baseItem.config.removedCells = (baseItem.config.removedCells || [])
+        .filter(cc => !(cc.col === c && cc.row === r));
+      bpRemovedEl.value = formatCellList1(baseItem.config.removedCells);
+    }
+    const ov = baseItem.overrides?.[tableId];
+    if (ov && ov.active === false) {
+      if (ov.label == null) delete baseItem.overrides![tableId];
+      else delete ov.active;
+    }
+  } else {
+    baseItem.overrides = baseItem.overrides || {};
+    const next = { ...(baseItem.overrides[tableId] || {}) };
+    next.active = false;
+    baseItem.overrides[tableId] = next;
+  }
+  setDirty(true);
+  refreshPreview();
+}
 function openOverridePopover(anchor: HTMLElement, tableId: string) {
   closePopover();
   const baseItem = itemsBank.find(i => i.id === selectedId);
@@ -1216,53 +1309,32 @@ function openOverridePopover(anchor: HTMLElement, tableId: string) {
   const overrides = baseItem.overrides || {};
   const current = overrides[tableId] || {};
   const isGhost = anchor.classList.contains('bp-ghost');
-
   const pop = document.createElement('div');
   pop.className = 'bp-override-pop';
   const rect = anchor.getBoundingClientRect();
-  // Mount on document.body so the preview-frame's overflow:hidden
-  // doesn't clip the popover (and so high z-index is meaningful).
   pop.style.position = 'fixed';
   pop.style.left = `${rect.right + 8}px`;
   pop.style.top  = `${rect.top}px`;
   pop.innerHTML = `
     <span class="pop-id">${tableId}</span>
     ${isGhost
-      ? `<span style="font-size:11px;color:var(--text-c2)">Ghost-celle. Gendan?</span>
-         <div class="pop-actions"><button class="pop-restore">Gendan bord</button></div>`
-      : `<input type="text" placeholder="label-override (fx VIP)" value="${escapeHtml(current.label ?? '')}" />
+      ? `<span class="pop-note">Ghost-celle. Gendan?</span>
+         <div class="pop-actions"><button class="pop-restore pp-btn">Gendan bord</button></div>`
+      : `<input type="text" class="pp-input" placeholder="label-override (fx VIP)" value="${escapeHtml(current.label ?? '')}" />
          <div class="pop-actions">
-           <button class="pop-save">Gem label</button>
-           <button class="pop-del">${current.active === false ? 'Aktiver' : 'Deaktiver'}</button>
+           <button class="pop-save pp-btn pp-btn--green">Gem label</button>
+           <button class="pop-del pp-btn">${current.active === false ? 'Aktiver' : 'Deaktiver'}</button>
          </div>`}
   `;
   document.body.appendChild(pop);
   popoverEl = pop;
-
   if (isGhost) {
     pop.querySelector('.pop-restore')!.addEventListener('click', () => {
-      // A cell can be a ghost two ways: listed in config.removedCells, or
-      // deactivated via an override (active:false). Restore must clear both.
-      const cellMatch = /^c(\d+)r(\d+)$/.exec(tableId);
-      if (cellMatch) {
-        const c = parseInt(cellMatch[1], 10);
-        const r = parseInt(cellMatch[2], 10);
-        baseItem.config.removedCells = (baseItem.config.removedCells || [])
-          .filter(cc => !(cc.col === c && cc.row === r));
-        bpRemovedEl.value = formatCellList1(baseItem.config.removedCells);
-      }
-      const ov = baseItem.overrides?.[tableId];
-      if (ov && ov.active === false) {
-        if (ov.label == null) delete baseItem.overrides![tableId];
-        else delete ov.active;
-      }
+      toggleBpTable(anchor, tableId);
       closePopover();
-      setDirty(true);
-      refreshPreview();
     });
     return;
   }
-
   const input = pop.querySelector<HTMLInputElement>('input')!;
   pop.querySelector('.pop-save')!.addEventListener('click', () => {
     baseItem.overrides = baseItem.overrides || {};
@@ -1285,18 +1357,11 @@ function openOverridePopover(anchor: HTMLElement, tableId: string) {
     refreshPreview();
   });
 }
-
-// Bordplan form change handlers
 [bpActiveEl, bpLabelEl, bpEventNameEl, bpColsEl, bpRowsEl, bpSeatsEl, bpColAislesEl, bpRowAislesEl, bpRemovedEl, bpNumModeEl, bpNumOriginEl, bpNumDirEl, bpNumClusterDirEl, bpNumStartEl, bpNumPrefixEl, bpNumSkipEl]
   .forEach(el => el.addEventListener('input', () => { setDirty(true); refreshPreview(); }));
 
-// ---- Cover form ----
+// ---- Cover ----
 function populateCoverForm(item: CoverItem) {
-  editIdEl.textContent = item.id;
-  editDisplayNumEl.textContent = 'COVER';
-  deleteBtn.style.display = 'inline-flex';
-  duplicateBtn.style.display = 'inline-flex';
-  resetFocalBtn.style.display = 'none';
   covActiveEl.checked = !!item.active;
   covLabelEl.value = item.label ?? '';
   covTitleEl.value = item.title ?? '';
@@ -1345,6 +1410,7 @@ async function uploadCoverLogo(file: File) {
 }
 covLogoUploadEl.addEventListener('change', () => {
   if (covLogoUploadEl.files?.[0]) uploadCoverLogo(covLogoUploadEl.files[0]);
+  covLogoUploadEl.value = '';
 });
 covLogoFileEl.addEventListener('input', updateCoverLogoPreview);
 covLogoScaleEl.addEventListener('input', () => {
@@ -1352,34 +1418,9 @@ covLogoScaleEl.addEventListener('input', () => {
 });
 [covActiveEl, covLabelEl, covTitleEl, covSubtitleEl, covAttributionEl, covLogoFileEl, covLogoScaleEl]
   .forEach(el => el.addEventListener('input', () => { setDirty(true); refreshPreview(); }));
-covSaveBtn.addEventListener('click', async () => {
-  if (!selectedId) return;
-  const patch = readCoverForm();
-  try {
-    statusEl.textContent = 'Gemmer cover…';
-    const updated = await api(`/api/lots/${encodeURIComponent(selectedId)}`, {
-      method: 'PUT',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify(patch),
-    });
-    const idx = itemsBank.findIndex(i => i.id === selectedId);
-    if (idx >= 0) itemsBank[idx] = updated;
-    setDirty(false);
-    renderList();
-    refreshPreview();
-    statusEl.textContent = 'Gemt';
-  } catch (e: any) {
-    statusEl.textContent = 'Save failed: ' + e.message;
-  }
-});
 
-// ---- Closing form ----
+// ---- Closing ----
 function populateClosingForm(item: ClosingItem) {
-  editIdEl.textContent = item.id;
-  editDisplayNumEl.textContent = 'CLOSING';
-  deleteBtn.style.display = 'inline-flex';
-  duplicateBtn.style.display = 'inline-flex';
-  resetFocalBtn.style.display = 'none';
   clActiveEl.checked = !!item.active;
   clLabelEl.value   = item.label   ?? '';
   clTitleEl.value   = item.title   ?? '';
@@ -1439,7 +1480,6 @@ clLogoListEl.addEventListener('click', (e) => {
   renderClosingLogoList();
   onClosingChange();
 });
-// Drag-reorder
 let clDragIdx: number | null = null;
 clLogoListEl.addEventListener('dragstart', (e) => {
   const li = (e.target as HTMLElement).closest<HTMLLIElement>('li');
@@ -1470,7 +1510,6 @@ clLogoListEl.addEventListener('drop', (e) => {
   renderClosingLogoList();
   onClosingChange();
 });
-// Upload
 clLogoUploadEl.addEventListener('change', async () => {
   const files = Array.from(clLogoUploadEl.files || []);
   if (!files.length) return;
@@ -1492,206 +1531,8 @@ clLogoUploadEl.addEventListener('change', async () => {
 });
 [clActiveEl, clLabelEl, clTitleEl, clTaglineEl, clColsEl]
   .forEach(el => el.addEventListener('input', onClosingChange));
-clSaveBtn.addEventListener('click', async () => {
-  if (!selectedId) return;
-  const patch = readClosingForm();
-  try {
-    statusEl.textContent = 'Gemmer closing…';
-    const updated = await api(`/api/lots/${encodeURIComponent(selectedId)}`, {
-      method: 'PUT',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify(patch),
-    });
-    const idx = itemsBank.findIndex(i => i.id === selectedId);
-    if (idx >= 0) itemsBank[idx] = updated;
-    setDirty(false);
-    renderList();
-    refreshPreview();
-    statusEl.textContent = 'Gemt';
-  } catch (e: any) {
-    statusEl.textContent = 'Save failed: ' + e.message;
-  }
-});
 
-// ---- Contest / lodtrækning form ----
-const CONTEST_MAX_BLOCKS = 4;
-function populateContestForm(item: ContestItem) {
-  editIdEl.textContent = item.id;
-  editDisplayNumEl.textContent = 'KONKURRENCE';
-  deleteBtn.style.display = 'inline-flex';
-  duplicateBtn.style.display = 'inline-flex';
-  resetFocalBtn.style.display = 'none';
-  ctActiveEl.checked = !!item.active;
-  ctLabelEl.value    = item.label    ?? '';
-  ctTitleEl.value    = item.title    ?? '';
-  ctSubtitleEl.value = item.subtitle ?? '';
-  ctBlocks = (item.blocks || []).map(b => ({
-    src: b.src ?? null,
-    heading: b.heading ?? '',
-    lines: Array.isArray(b.lines) ? b.lines.slice(0, 3) : [],
-  }));
-  renderContestBlockList();
-}
-function readContestForm(): Partial<ContestItem> {
-  return {
-    active:   ctActiveEl.checked,
-    label:    ctLabelEl.value,
-    title:    ctTitleEl.value,
-    subtitle: ctSubtitleEl.value,
-    blocks:   ctBlocks.map(b => ({
-      src: b.src ?? null,
-      heading: b.heading || undefined,
-      lines: (b.lines || []).map(l => l.trim()).filter(Boolean).slice(0, 3),
-    })),
-  };
-}
-function renderContestBlockList() {
-  ctBlockListEl.innerHTML = '';
-  ctBlocks.forEach((b, idx) => {
-    const card = document.createElement('div');
-    card.className = 'ct-block-card';
-    card.draggable = true;
-    card.dataset.idx = String(idx);
-    const lines = b.lines || [];
-    const imgInner = b.src
-      ? `<img src="${escapeHtml(b.src)}" alt="" onerror="this.style.opacity=0.2" />`
-      : `<span class="ct-block-empty">Intet billede</span>`;
-    card.innerHTML = `
-      <div class="ct-block-head"><span class="ct-block-num">Blok ${idx + 1}</span>
-        <button type="button" class="cl-del-btn" data-action="del" title="Fjern blok">✕</button>
-      </div>
-      <div class="ct-block-imgwrap">${imgInner}</div>
-      <label class="ct-block-upload">
-        <input type="file" data-action="img" accept="image/png,image/jpeg,image/webp,image/svg+xml" />
-        <span>Skift billede/logo</span>
-      </label>
-      <input type="text" class="ct-block-field" data-field="heading" placeholder="Overskrift" value="${escapeHtml(b.heading || '')}" />
-      <input type="text" class="ct-block-field" data-field="line0" placeholder="Info linje 1" value="${escapeHtml(lines[0] || '')}" />
-      <input type="text" class="ct-block-field" data-field="line1" placeholder="Info linje 2" value="${escapeHtml(lines[1] || '')}" />
-      <input type="text" class="ct-block-field" data-field="line2" placeholder="Info linje 3" value="${escapeHtml(lines[2] || '')}" />
-    `;
-    ctBlockListEl.appendChild(card);
-  });
-  if (!ctBlocks.length) {
-    const empty = document.createElement('div');
-    empty.className = 'ov-empty';
-    empty.textContent = '(Ingen blokke — tilføj 1–4 nedenfor)';
-    ctBlockListEl.appendChild(empty);
-  }
-  ctAddBlockBtn.disabled = ctBlocks.length >= CONTEST_MAX_BLOCKS;
-}
-function onContestChange() { setDirty(true); refreshPreview(); }
-ctBlockListEl.addEventListener('input', (e) => {
-  const el = e.target as HTMLInputElement;
-  const field = el.dataset.field;
-  if (!field) return;
-  const card = el.closest<HTMLElement>('.ct-block-card');
-  if (!card) return;
-  const idx = parseInt(card.dataset.idx!, 10);
-  const b = ctBlocks[idx];
-  if (!b) return;
-  if (field === 'heading') {
-    b.heading = el.value;
-  } else if (field.startsWith('line')) {
-    const li = parseInt(field.slice(4), 10);
-    if (!b.lines) b.lines = [];
-    b.lines[li] = el.value;
-  }
-  onContestChange();
-});
-ctBlockListEl.addEventListener('click', (e) => {
-  const btn = (e.target as HTMLElement).closest<HTMLButtonElement>('button[data-action="del"]');
-  if (!btn) return;
-  const card = btn.closest<HTMLElement>('.ct-block-card');
-  if (!card) return;
-  const idx = parseInt(card.dataset.idx!, 10);
-  ctBlocks.splice(idx, 1);
-  renderContestBlockList();
-  onContestChange();
-});
-ctBlockListEl.addEventListener('change', async (e) => {
-  const el = e.target as HTMLInputElement;
-  if (el.dataset.action !== 'img' || !el.files?.[0]) return;
-  const card = el.closest<HTMLElement>('.ct-block-card');
-  if (!card) return;
-  const idx = parseInt(card.dataset.idx!, 10);
-  const b = ctBlocks[idx];
-  if (!b) return;
-  const fd = new FormData();
-  fd.append('kind', 'contest');
-  fd.append('file', el.files[0]);
-  try {
-    statusEl.textContent = 'Uploader billede…';
-    const res = await fetch('/api/upload', { method: 'POST', body: fd });
-    const data = await res.json();
-    if (!data.filename) throw new Error('no filename');
-    b.src = `/assets/contest/${data.filename}`;
-    renderContestBlockList();
-    onContestChange();
-    statusEl.textContent = 'Billede uploadet';
-  } catch (err: any) {
-    statusEl.textContent = 'Upload failed: ' + err.message;
-  }
-});
-let ctDragIdx: number | null = null;
-ctBlockListEl.addEventListener('dragstart', (e) => {
-  const card = (e.target as HTMLElement).closest<HTMLElement>('.ct-block-card');
-  if (!card || card.dataset.idx === undefined) return;
-  ctDragIdx = parseInt(card.dataset.idx!, 10);
-  card.classList.add('dragging');
-});
-ctBlockListEl.addEventListener('dragover', (e) => {
-  e.preventDefault();
-  const card = (e.target as HTMLElement).closest<HTMLElement>('.ct-block-card');
-  ctBlockListEl.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
-  if (card && card.dataset.idx !== undefined) card.classList.add('drag-over');
-});
-ctBlockListEl.addEventListener('dragend', () => {
-  ctBlockListEl.querySelectorAll('.ct-block-card').forEach(el => el.classList.remove('dragging', 'drag-over'));
-  ctDragIdx = null;
-});
-ctBlockListEl.addEventListener('drop', (e) => {
-  e.preventDefault();
-  const card = (e.target as HTMLElement).closest<HTMLElement>('.ct-block-card');
-  if (!card || card.dataset.idx === undefined || ctDragIdx === null) return;
-  const targetIdx = parseInt(card.dataset.idx!, 10);
-  if (targetIdx === ctDragIdx) return;
-  const [moved] = ctBlocks.splice(ctDragIdx, 1);
-  ctBlocks.splice(targetIdx, 0, moved);
-  ctDragIdx = null;
-  renderContestBlockList();
-  onContestChange();
-});
-ctAddBlockBtn.addEventListener('click', () => {
-  if (ctBlocks.length >= CONTEST_MAX_BLOCKS) return;
-  ctBlocks.push({ src: null, heading: '', lines: [] });
-  renderContestBlockList();
-  onContestChange();
-});
-[ctActiveEl, ctLabelEl, ctTitleEl, ctSubtitleEl]
-  .forEach(el => el.addEventListener('input', onContestChange));
-ctSaveBtn.addEventListener('click', async () => {
-  if (!selectedId) return;
-  const patch = readContestForm();
-  try {
-    statusEl.textContent = 'Gemmer konkurrence…';
-    const updated = await api(`/api/lots/${encodeURIComponent(selectedId)}`, {
-      method: 'PUT',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify(patch),
-    });
-    const idx = itemsBank.findIndex(i => i.id === selectedId);
-    if (idx >= 0) itemsBank[idx] = updated;
-    setDirty(false);
-    renderList();
-    refreshPreview();
-    statusEl.textContent = 'Gemt';
-  } catch (e: any) {
-    statusEl.textContent = 'Save failed: ' + e.message;
-  }
-});
-
-// ---- Auction-display form (item-level + global team-config) ----
+// ---- Auction-display ----
 const DEFAULT_TEAM_COLORS: Record<string, { base: string; live: string }> = {
   A: { base: '#1f6e34', live: '#3ed170' },
   B: { base: '#a06a14', live: '#f0b048' },
@@ -1700,7 +1541,7 @@ const DEFAULT_TEAM_COLORS: Record<string, { base: string; live: string }> = {
 };
 let adTeamsDraft: AuctionTeam[] = [];
 function defaultTeams(): AuctionTeam[] {
-  return ['A','B','C','D'].map(id => ({
+  return ['A', 'B', 'C', 'D'].map(id => ({
     id: id as any, name: `Hold ${id}`,
     baseColor: DEFAULT_TEAM_COLORS[id].base,
     liveColor: DEFAULT_TEAM_COLORS[id].live,
@@ -1718,23 +1559,20 @@ function renderAdTeamsList() {
     row.className = 'ad-team-row';
     row.innerHTML = `
       <div class="ad-palette-dot" style="background:linear-gradient(135deg,${base} 50%,${live} 50%)"></div>
-      <input type="text" data-idx="${idx}" data-field="name" value="${(tm.name || '').replace(/"/g, '&quot;')}" placeholder="Hold-navn" />
+      <input type="text" class="pp-input" data-idx="${idx}" data-field="name" value="${(tm.name || '').replace(/"/g, '&quot;')}" placeholder="Hold-navn" />
       <span class="ad-color-pair">
         <input type="color" data-idx="${idx}" data-field="baseColor" value="${base}" title="Pre-event farve (mørk)" />
         <input type="color" data-idx="${idx}" data-field="liveColor" value="${live}" title="Live-auktion farve (lys)" />
       </span>
-      <input type="number" data-idx="${idx}" data-field="preAmount" value="${tm.preAmount || 0}" min="0" step="500" placeholder="pre kr" />
+      <input type="number" class="pp-input" data-idx="${idx}" data-field="preAmount" value="${tm.preAmount || 0}" min="0" step="500" placeholder="pre kr" />
       <span class="ad-lot-pair">
         ${(() => {
           const existing = tm.lotIds && tm.lotIds.length ? [...tm.lotIds] : (tm.lotId ? [tm.lotId] : []);
-          // Render every existing lot + one trailing blank slot so the
-          // operator can always add another. Cap to 12 to keep the row
-          // tractable.
           const slotCount = Math.min(12, existing.length + 1);
           let out = '';
           for (let i = 0; i < slotCount; i++) {
             const current = existing[i] || '';
-            out += `<select data-idx="${idx}" data-field="lotSlot" data-slot="${i}">
+            out += `<select class="pp-input" data-idx="${idx}" data-field="lotSlot" data-slot="${i}">
               <option value="">(lot ${i + 1})</option>
               ${lots.map(l => `<option value="${l.id}" ${current === l.id ? 'selected' : ''}>${(l.title || l.id).slice(0, 22)}</option>`).join('')}
             </select>`;
@@ -1742,8 +1580,8 @@ function renderAdTeamsList() {
           return out;
         })()}
       </span>
-      <input type="text" class="ad-lot-title" data-idx="${idx}" data-field="lotTitle" value="${(tm.lot?.title || '').replace(/"/g, '&quot;')}" placeholder="Lot-titel (vises i pause/auction)" />
-      <input type="text" class="ad-lot-desc" data-idx="${idx}" data-field="lotDesc" value="${(tm.lot?.description || '').replace(/"/g, '&quot;')}" placeholder="Lot-beskrivelse" />
+      <input type="text" class="pp-input ad-lot-title" data-idx="${idx}" data-field="lotTitle" value="${(tm.lot?.title || '').replace(/"/g, '&quot;')}" placeholder="Lot-titel (vises i pause/auction)" />
+      <input type="text" class="pp-input ad-lot-desc" data-idx="${idx}" data-field="lotDesc" value="${(tm.lot?.description || '').replace(/"/g, '&quot;')}" placeholder="Lot-beskrivelse" />
     `;
     adTeamsListEl.appendChild(row);
   });
@@ -1764,43 +1602,28 @@ adTeamsListEl.addEventListener('input', (e) => {
     while (current.length <= slot) current.push('');
     current[slot] = t.value;
     tm.lotIds = current.filter(Boolean);
-    tm.lotId = undefined;     // migrate legacy field
-    // Re-render so a fresh trailing empty slot appears once the operator
-    // just picked the previously-blank one.
+    tm.lotId = undefined;
     renderAdTeamsList();
   }
-  else if (field === 'lotId') tm.lotId = t.value || undefined;
   else if (field === 'lotTitle') { tm.lot = { ...(tm.lot || {}), title: t.value }; }
   else if (field === 'lotDesc') { tm.lot = { ...(tm.lot || {}), description: t.value }; }
   setDirty(true);
-  // Don't re-render the whole list on every color tick — that would
-  // destroy the active <input type="color"> popover. Just patch the
-  // palette dot in place.
   if (field === 'baseColor' || field === 'liveColor') {
     const row = (t.closest('.ad-team-row') as HTMLElement | null);
     const dot = row?.querySelector('.ad-palette-dot') as HTMLElement | null;
     if (dot) {
-      const base = tm.baseColor || '#888';
-      const live = tm.liveColor || '#ccc';
-      dot.style.background = `linear-gradient(135deg, ${base} 50%, ${live} 50%)`;
+      dot.style.background = `linear-gradient(135deg, ${tm.baseColor || '#888'} 50%, ${tm.liveColor || '#ccc'} 50%)`;
     }
   }
   refreshPreview();
 });
 function populateAuctionDisplayForm(item: AuctionDisplayItem) {
-  editIdEl.textContent = item.id;
-  editDisplayNumEl.textContent = 'AD';
-  deleteBtn.style.display = 'inline-flex';
-  duplicateBtn.style.display = 'inline-flex';
-  resetFocalBtn.style.display = 'none';
   adActiveEl.checked = !!item.active;
   adLabelEl.value = item.label ?? '';
   adScreenEl.value = item.screen || 'intro';
-  // Teams live globally in EVENT_META (shared across all AD slides).
   const teams = (EVENT_META.teams && EVENT_META.teams.length) ? EVENT_META.teams : defaultTeams();
   adTeamsDraft = teams.map(t => ({ ...t, lot: t.lot ? { ...t.lot } : { title: '', description: '' } }));
   renderAdTeamsList();
-  // State now lives per-item.
   adActiveLotEl.value = String(item.activeLot ?? 0);
   adRevealCountEl.value = String(item.revealCount ?? 0);
   adRankingEl.checked = item.ranking ?? false;
@@ -1819,50 +1642,11 @@ function readAuctionDisplayItem(): Partial<AuctionDisplayItem> {
     showBaseLabel: adShowBaseLabelEl.checked,
   };
 }
-function readAuctionDisplayMeta(): { teams: AuctionTeam[] } {
-  // State now lives on the item itself; meta only holds the global team
-  // roster + lot bindings shared across every AD slide.
-  return { teams: adTeamsDraft };
-}
-function adOnChange() { setDirty(true); refreshPreview(); }
 [adActiveEl, adLabelEl, adScreenEl, adActiveLotEl, adRevealCountEl, adRankingEl, adNamesVisibleEl, adShowBaseLabelEl]
-  .forEach(el => el.addEventListener('input', adOnChange));
-adSaveBtn.addEventListener('click', async () => {
-  if (!selectedId) return;
-  try {
-    statusEl.textContent = 'Gemmer auktion-display + hold-config…';
-    // PUT item
-    const updated = await api(`/api/lots/${encodeURIComponent(selectedId)}`, {
-      method: 'PUT', headers: { 'content-type': 'application/json' },
-      body: JSON.stringify(readAuctionDisplayItem()),
-    });
-    const idx = itemsBank.findIndex(i => i.id === selectedId);
-    if (idx >= 0) itemsBank[idx] = updated;
-    // PUT meta
-    const meta = readAuctionDisplayMeta();
-    console.log('[gen] PUT /api/meta teams', meta.teams.map(t => ({ id: t.id, base: t.baseColor, live: t.liveColor })));
-    await fetch('/api/meta', {
-      method: 'PUT', headers: { 'content-type': 'application/json' },
-      body: JSON.stringify(meta),
-    });
-    // Update local EVENT_META mirror so preview/render stays fresh
-    EVENT_META.teams = meta.teams;
-    setDirty(false);
-    renderList();
-    refreshPreview();
-    statusEl.textContent = 'Gemt';
-  } catch (e: any) {
-    statusEl.textContent = 'Save failed: ' + e.message;
-  }
-});
+  .forEach(el => el.addEventListener('input', () => { setDirty(true); refreshPreview(); }));
 
-// ---- Media form ----
+// ---- Media ----
 function populateMediaForm(item: MediaItem) {
-  editIdEl.textContent = item.id;
-  editDisplayNumEl.textContent = 'MD';
-  deleteBtn.style.display = 'inline-flex';
-  duplicateBtn.style.display = 'inline-flex';
-  resetFocalBtn.style.display = 'none';
   mdActiveEl.checked = !!item.active;
   mdLabelEl.value    = item.label ?? '';
   mdModeEl.value     = item.mode  ?? 'image';
@@ -1909,7 +1693,6 @@ mdUploadEl.addEventListener('change', async () => {
     const data = await res.json();
     if (data && data.filename) {
       mdSrcEl.value = `/assets/media/${data.filename}`;
-      // Auto-detect mode by extension
       if (/\.(mp4|webm|mov|m4v|ogv)$/i.test(data.filename)) mdModeEl.value = 'video';
       else mdModeEl.value = 'image';
       mdOnChange();
@@ -1917,27 +1700,8 @@ mdUploadEl.addEventListener('change', async () => {
   } catch (e: any) { statusEl.textContent = 'Media upload failed: ' + e.message; }
   mdUploadEl.value = '';
 });
-mdSaveBtn.addEventListener('click', async () => {
-  if (!selectedId) return;
-  const patch = readMediaForm();
-  try {
-    statusEl.textContent = 'Gemmer media…';
-    const updated = await api(`/api/lots/${encodeURIComponent(selectedId)}`, {
-      method: 'PUT', headers: { 'content-type': 'application/json' },
-      body: JSON.stringify(patch),
-    });
-    const idx = itemsBank.findIndex(i => i.id === selectedId);
-    if (idx >= 0) itemsBank[idx] = updated;
-    setDirty(false);
-    renderList();
-    refreshPreview();
-    statusEl.textContent = 'Gemt';
-  } catch (e: any) {
-    statusEl.textContent = 'Save failed: ' + e.message;
-  }
-});
 
-// ---- Wish-loop form ----
+// ---- Wish-loop ----
 async function loadApplePool() {
   try {
     const res = await fetch('/api/apples');
@@ -1947,10 +1711,6 @@ async function loadApplePool() {
 }
 function renderWishLoopAppleList() {
   wlAppleListEl.innerHTML = '';
-  // Always render the pool in its native (alphabetical) order so tiles
-  // stay put when clicked — selected state is signalled by colour + the
-  // pick-index badge, not by reordering. Files that are selected but no
-  // longer in the pool are appended at the end so they stay visible.
   const selectedFnames = wlSelectedCards.map(c => (c.src || '').split('/').pop() || '');
   const poolSet = new Set(wlApplePool);
   const orphanSelected = selectedFnames.filter(f => f && !poolSet.has(f));
@@ -1961,6 +1721,7 @@ function renderWishLoopAppleList() {
     const selected = pickIdx >= 0;
     const li = document.createElement('li');
     li.dataset.fname = fname;
+    li.draggable = selected;
     if (selected) li.classList.add('selected');
     const m = fname.match(/^apple-(\d+)-(.+)\.png$/i);
     const num = m ? m[1] : '';
@@ -1974,11 +1735,6 @@ function renderWishLoopAppleList() {
   });
 }
 function populateWishLoopForm(item: WishLoopItem) {
-  editIdEl.textContent = item.id;
-  editDisplayNumEl.textContent = 'ØT';
-  deleteBtn.style.display = 'inline-flex';
-  duplicateBtn.style.display = 'inline-flex';
-  resetFocalBtn.style.display = 'none';
   wlActiveEl.checked = !!item.active;
   wlLabelEl.value     = item.label     ?? '';
   wlSponsorEl.value   = item.sponsorMark ?? 'Ønskeskyen';
@@ -2033,8 +1789,6 @@ function wlOnChange() { setDirty(true); refreshPreview(); }
 wlPerCardEl.addEventListener('input', () => { wlPerCardValEl.textContent = `${wlPerCardEl.value}s`; wlOnChange(); });
 wlBlurEl.addEventListener('input', () => { wlBlurValEl.textContent = `${wlBlurEl.value}px`; wlOnChange(); });
 wlDarkenEl.addEventListener('input', () => { wlDarkenValEl.textContent = parseFloat(wlDarkenEl.value).toFixed(2); wlOnChange(); });
-
-// Apple tile click → toggle selection
 wlAppleListEl.addEventListener('click', (e) => {
   const li = (e.target as HTMLElement).closest<HTMLLIElement>('li');
   if (!li || !li.dataset.fname) return;
@@ -2054,7 +1808,6 @@ wlAppleListEl.addEventListener('click', (e) => {
   renderWishLoopAppleList();
   wlOnChange();
 });
-// Drag-reorder among selected tiles
 let wlDragFname: string | null = null;
 wlAppleListEl.addEventListener('dragstart', (e) => {
   const li = (e.target as HTMLElement).closest<HTMLLIElement>('li.selected');
@@ -2088,7 +1841,6 @@ wlAppleListEl.addEventListener('drop', (e) => {
   renderWishLoopAppleList();
   wlOnChange();
 });
-// Upload æbler til pool
 wlAppleUploadEl.addEventListener('change', async () => {
   const files = Array.from(wlAppleUploadEl.files || []);
   if (!files.length) return;
@@ -2103,15 +1855,11 @@ wlAppleUploadEl.addEventListener('change', async () => {
   await loadApplePool();
   renderWishLoopAppleList();
 });
-// Upload sponsor-logo PNG / SVG (auto-saves to item)
 wlSponsorLogoUploadEl.addEventListener('change', async () => {
   const file = wlSponsorLogoUploadEl.files?.[0];
   if (!file) return;
   const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '-');
   const fd = new FormData();
-  // Multer's destination() runs as soon as the file part arrives; req.body
-  // is only populated from fields parsed *before* the file. Append kind
-  // first so multer sees req.body.kind when it picks a destination.
   fd.append('kind', 'wish-bg');
   fd.append('file', new File([file], safeName, { type: file.type }));
   statusEl.textContent = `Uploader logo (${safeName})…`;
@@ -2123,15 +1871,13 @@ wlSponsorLogoUploadEl.addEventListener('change', async () => {
       const url = `/assets/wish-loop/${data.filename}`;
       wlSponsorLogoEl.value = url;
       wlSponsorModeEl.value = 'logo';
-      // Persist immediately so the item carries the new logo across reloads.
       if (selectedId) {
         try {
           const updated = await api(`/api/lots/${encodeURIComponent(selectedId)}`, {
             method: 'PUT', headers: { 'content-type': 'application/json' },
             body: JSON.stringify({ sponsorLogo: url, sponsorMode: 'logo' }),
           });
-          const idx = itemsBank.findIndex(i => i.id === selectedId);
-          if (idx >= 0) itemsBank[idx] = updated;
+          syncBank(updated);
         } catch {}
       }
       refreshPreview();
@@ -2144,8 +1890,6 @@ wlSponsorLogoUploadEl.addEventListener('change', async () => {
   }
   wlSponsorLogoUploadEl.value = '';
 });
-
-// Upload baggrundsvideo
 wlVideoUploadEl.addEventListener('change', async () => {
   const file = wlVideoUploadEl.files?.[0];
   if (!file) return;
@@ -2162,86 +1906,9 @@ wlVideoUploadEl.addEventListener('change', async () => {
   } catch (e: any) { statusEl.textContent = 'Video upload failed: ' + e.message; }
   wlVideoUploadEl.value = '';
 });
-wlSaveBtn.addEventListener('click', async () => {
-  if (!selectedId) return;
-  const patch = readWishLoopForm();
-  try {
-    statusEl.textContent = 'Gemmer wish-loop…';
-    const updated = await api(`/api/lots/${encodeURIComponent(selectedId)}`, {
-      method: 'PUT',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify(patch),
-    });
-    const idx = itemsBank.findIndex(i => i.id === selectedId);
-    if (idx >= 0) itemsBank[idx] = updated;
-    setDirty(false);
-    renderList();
-    refreshPreview();
-    statusEl.textContent = 'Gemt';
-  } catch (e: any) {
-    statusEl.textContent = 'Save failed: ' + e.message;
-  }
-});
-loadApplePool();
 
-// ---- Sponsor-index form ----
-// ---- Section form ----
-function populateSectionForm(item: SectionItem) {
-  editIdEl.textContent = item.id;
-  editDisplayNumEl.textContent = 'SEK';
-  deleteBtn.style.display = 'inline-flex';
-  duplicateBtn.style.display = 'none';
-  resetFocalBtn.style.display = 'none';
-  secLabelEl.value = item.label ?? '';
-}
-function readSectionForm(): Partial<SectionItem> {
-  return { label: secLabelEl.value };
-}
-secLabelEl.addEventListener('input', () => setDirty(true));
-secSaveBtn.addEventListener('click', async () => {
-  if (!selectedId) return;
-  try {
-    statusEl.textContent = 'Gemmer sektion…';
-    const updated = await api(`/api/lots/${encodeURIComponent(selectedId)}`, {
-      method: 'PUT',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify(readSectionForm()),
-    });
-    const idx = itemsBank.findIndex(i => i.id === selectedId);
-    if (idx >= 0) itemsBank[idx] = updated;
-    setDirty(false);
-    renderList();
-    statusEl.textContent = 'Gemt';
-  } catch (e: any) {
-    statusEl.textContent = 'Save failed: ' + e.message;
-  }
-});
-newSectionBtn.addEventListener('click', async () => {
-  try {
-    const created = await api('/api/lots', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({
-        kind: 'section',
-        label: `Sektion ${itemsBank.filter(i => itemKind(i) === 'section').length + 1}`,
-      } as any),
-    });
-    itemsBank.push(created);
-    selectedId = created.id;
-    renderList();
-    selectLot(created.id);
-    statusEl.textContent = 'Sektion oprettet — træk den på plads i listen';
-  } catch (e: any) {
-    statusEl.textContent = 'Create failed: ' + e.message;
-  }
-});
-
+// ---- Sponsor-index ----
 function populateSponsorIndexForm(item: SponsorIndexItem) {
-  editIdEl.textContent = item.id;
-  editDisplayNumEl.textContent = 'SI';
-  deleteBtn.style.display = 'inline-flex';
-  duplicateBtn.style.display = 'inline-flex';
-  resetFocalBtn.style.display = 'none';
   siActiveEl.checked = !!item.active;
   siLabelEl.value = item.label ?? '';
   siTitleEl.value = item.title ?? '';
@@ -2255,58 +1922,166 @@ function readSponsorIndexForm(): Partial<SponsorIndexItem> {
 }
 [siActiveEl, siLabelEl, siTitleEl]
   .forEach(el => el.addEventListener('input', () => { setDirty(true); refreshPreview(); }));
-siSaveBtn.addEventListener('click', async () => {
-  if (!selectedId) return;
-  const patch = readSponsorIndexForm();
-  try {
-    statusEl.textContent = 'Gemmer sponsor-indeks…';
-    const updated = await api(`/api/lots/${encodeURIComponent(selectedId)}`, {
-      method: 'PUT',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify(patch),
-    });
-    const idx = itemsBank.findIndex(i => i.id === selectedId);
-    if (idx >= 0) itemsBank[idx] = updated;
-    setDirty(false);
-    renderList();
-    refreshPreview();
-    statusEl.textContent = 'Gemt';
-  } catch (e: any) {
-    statusEl.textContent = 'Save failed: ' + e.message;
-  }
-});
 
-bpSaveBtn.addEventListener('click', async () => {
-  if (!selectedId) return;
-  const patch = readBordplanForm();
-  try {
-    statusEl.textContent = 'Gemmer bordplan…';
-    const updated = await api(`/api/lots/${encodeURIComponent(selectedId)}`, {
-      method: 'PUT',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify(patch),
-    });
-    const idx = itemsBank.findIndex(i => i.id === selectedId);
-    if (idx >= 0) itemsBank[idx] = updated;
-    setDirty(false);
-    renderList();
-    refreshPreview();
-    statusEl.textContent = 'Gemt';
-    bpSaveMetaEl.className = 'gen-save-meta saved';
-    bpSaveMetaEl.textContent = 'GEMT';
-  } catch (e: any) {
-    statusEl.textContent = 'Save failed: ' + e.message;
+// ---- Carousel ----
+function populateCarouselForm(item: CarouselItem) {
+  carActiveEl.checked = !!item.active;
+  carLabelEl.value = item.label ?? '';
+  carImages = (item.images || []).map(im => ({ ...im }));
+  carFadeEl.value = String(item.fadeMs ?? 2000);
+  carFadeVal.textContent = `${carFadeEl.value} ms`;
+  carDefaultSecEl.value = String(item.defaultSeconds ?? 10);
+  carDefaultSecVal.textContent = `${carDefaultSecEl.value} s`;
+  carTickerEl.checked = item.showTicker ?? false;
+  renderCarouselList();
+}
+function readCarouselForm(): Partial<CarouselItem> {
+  return {
+    active: carActiveEl.checked,
+    label: carLabelEl.value,
+    images: carImages,
+    fadeMs: parseInt(carFadeEl.value, 10) || 2000,
+    defaultSeconds: parseInt(carDefaultSecEl.value, 10) || 10,
+    showTicker: carTickerEl.checked,
+  };
+}
+function renderCarouselList() {
+  carListEl.innerHTML = '';
+  carImages.forEach((im, i) => {
+    const cell = document.createElement('div');
+    cell.className = 'gen-gal-item';
+    cell.innerHTML = `
+      <div class="gen-gal-thumb" style="background-image:url('${im.src}')">
+        <button type="button" data-i="${i}" title="Fjern">✕</button>
+      </div>
+      <input type="number" class="pp-input" data-sec="${i}" min="1" max="120" placeholder="sek" value="${im.seconds ?? ''}" title="Skærmtid i sekunder — tom = standard" />
+    `;
+    carListEl.appendChild(cell);
+  });
+  if (!carImages.length) {
+    carListEl.innerHTML = '<span class="pp-hint">INGEN BILLEDER ENDNU</span>';
   }
+}
+carListEl.addEventListener('click', (e) => {
+  const btn = (e.target as HTMLElement).closest<HTMLButtonElement>('button[data-i]');
+  if (!btn) return;
+  carImages.splice(parseInt(btn.dataset.i!, 10), 1);
+  renderCarouselList();
+  setDirty(true); refreshPreview();
 });
+carListEl.addEventListener('input', (e) => {
+  const inp = (e.target as HTMLElement).closest<HTMLInputElement>('input[data-sec]');
+  if (!inp) return;
+  const i = parseInt(inp.dataset.sec!, 10);
+  const v = parseFloat(inp.value);
+  carImages[i].seconds = Number.isFinite(v) ? v : undefined;
+  setDirty(true); refreshPreview();
+});
+carUploadEl.addEventListener('change', async () => {
+  const files = Array.from(carUploadEl.files || []);
+  if (!files.length) return;
+  for (const file of files) {
+    const fd = new FormData();
+    fd.append('kind', 'carousel');
+    fd.append('file', file);
+    try {
+      const res = await fetch('/api/upload', { method: 'POST', body: fd });
+      const data = await res.json();
+      if (data?.filename) carImages.push({ src: `/assets/carousel/${data.filename}` });
+    } catch (e: any) { statusEl.textContent = 'Upload failed: ' + e.message; }
+  }
+  carUploadEl.value = '';
+  renderCarouselList();
+  setDirty(true); refreshPreview();
+});
+carFadeEl.addEventListener('input', () => { carFadeVal.textContent = `${carFadeEl.value} ms`; setDirty(true); refreshPreview(); });
+carDefaultSecEl.addEventListener('input', () => { carDefaultSecVal.textContent = `${carDefaultSecEl.value} s`; setDirty(true); refreshPreview(); });
+[carActiveEl, carLabelEl, carTickerEl].forEach(el => el.addEventListener('input', () => { setDirty(true); refreshPreview(); }));
 
-// ---- Form bindings ----
+// ---- Contest ----
+function populateContestForm(item: ContestItem) {
+  ctActiveEl.checked = !!item.active;
+  ctLabelEl.value = item.label ?? '';
+  ctTitleEl.value = item.title ?? '';
+  ctSubtitleEl.value = item.subtitle ?? '';
+  ctBlocks = (item.blocks || []).map(b => ({ ...b, lines: [...(b.lines || [])] }));
+  renderContestBlocks();
+}
+function readContestForm(): Partial<ContestItem> {
+  return {
+    active: ctActiveEl.checked,
+    label: ctLabelEl.value,
+    title: ctTitleEl.value,
+    subtitle: ctSubtitleEl.value,
+    blocks: ctBlocks,
+  };
+}
+function renderContestBlocks() {
+  ctBlockListEl.innerHTML = '';
+  ctBlocks.forEach((b, i) => {
+    const el = document.createElement('div');
+    el.className = 'gen-ct-block';
+    el.innerHTML = `
+      <div class="gen-gal-thumb" style="background-image:url('${b.src || ''}')">
+        <button type="button" data-del="${i}" title="Fjern blok">✕</button>
+      </div>
+      <input type="text" class="pp-input" data-head="${i}" placeholder="Overskrift" value="${escapeHtml(b.heading || '')}" />
+      <textarea class="pp-input" data-lines="${i}" rows="3" placeholder="1-3 linjer info — én pr. linje">${escapeHtml((b.lines || []).join('\n'))}</textarea>
+    `;
+    ctBlockListEl.appendChild(el);
+  });
+  if (!ctBlocks.length) {
+    ctBlockListEl.innerHTML = '<span class="pp-hint">INGEN BLOKKE ENDNU</span>';
+  }
+}
+ctBlockListEl.addEventListener('click', (e) => {
+  const btn = (e.target as HTMLElement).closest<HTMLButtonElement>('button[data-del]');
+  if (!btn) return;
+  ctBlocks.splice(parseInt(btn.dataset.del!, 10), 1);
+  renderContestBlocks();
+  setDirty(true); refreshPreview();
+});
+ctBlockListEl.addEventListener('input', (e) => {
+  const t = e.target as HTMLInputElement | HTMLTextAreaElement;
+  if (t.dataset.head !== undefined) ctBlocks[parseInt(t.dataset.head!, 10)].heading = t.value;
+  else if (t.dataset.lines !== undefined) ctBlocks[parseInt(t.dataset.lines!, 10)].lines = t.value.split('\n').map(s => s.trim()).filter(Boolean);
+  else return;
+  setDirty(true); refreshPreview();
+});
+ctUploadEl.addEventListener('change', async () => {
+  const files = Array.from(ctUploadEl.files || []);
+  if (!files.length) return;
+  for (const file of files) {
+    if (ctBlocks.length >= 4) break;
+    const fd = new FormData();
+    fd.append('kind', 'contest');
+    fd.append('file', file);
+    try {
+      const res = await fetch('/api/upload', { method: 'POST', body: fd });
+      const data = await res.json();
+      if (data?.filename) ctBlocks.push({ src: `/assets/contest/${data.filename}`, lines: [] });
+    } catch (e: any) { statusEl.textContent = 'Upload failed: ' + e.message; }
+  }
+  ctUploadEl.value = '';
+  renderContestBlocks();
+  setDirty(true); refreshPreview();
+});
+[ctActiveEl, ctLabelEl, ctTitleEl, ctSubtitleEl].forEach(el => el.addEventListener('input', () => { setDirty(true); refreshPreview(); }));
+secLabelEl.addEventListener('input', () => { setDirty(true); refreshPreview(); });
+
+// ---- Lot form bindings ----
 function onFormChange() {
   setDirty(true);
   refreshPreview();
   renderValidation();
+  const cur = lotsBank.find(l => l.id === selectedId);
+  refreshAdvSummary(cur);
 }
-[fActive, fExtra, fExtraSuffix, fTitle, fSubtitle, fSponsor, fBullets, fDonorNames, fLayout, fMirrored, fTitleSize, fSponsorStack]
+[fActive, fExtra, fExtraSuffix, fTitle, fSubtitle, fSponsor, fBullets, fDonorNames, fMirrored, fTitleSize]
   .forEach(el => el.addEventListener('input', onFormChange));
+fActive.addEventListener('change', () => {
+  fActiveHint.textContent = fActive.checked ? '' : '— skjult i viewer og controller';
+});
 fExtra.addEventListener('change', () => {
   rowExtraSuffix.style.display = fExtra.checked ? '' : 'none';
 });
@@ -2319,8 +2094,6 @@ fScale.addEventListener('input', () => {
   fScaleVal.textContent = fScale.value + '%';
   onFormChange();
 });
-// Multi-image: focal/scale/split for every image (image 1 also wired here for
-// its split slider; its focal/scale are wired just above).
 heroCtls.forEach((c, i) => {
   if (i > 0) {
     [c.fx, c.fy].forEach(el => el.addEventListener('input', () => {
@@ -2332,10 +2105,6 @@ heroCtls.forEach((c, i) => {
   }
   c.split.addEventListener('input', () => { c.splitVal.textContent = c.split.value; onFormChange(); });
 });
-fImgCount.addEventListener('change', () => {
-  applyImgCount(parseInt(fImgCount.value, 10) || 1);
-  onFormChange();
-});
 fHorizonCap.addEventListener('input', () => {
   fHorizonCapVal.textContent = `${fHorizonCap.value}in`;
   onFormChange();
@@ -2344,22 +2113,44 @@ fProfilePhoto.addEventListener('input', () => {
   fProfilePhotoVal.textContent = `${fProfilePhoto.value}in`;
   onFormChange();
 });
-// Toggle slider visibility when layout switches.
-fLayout.addEventListener('change', () => {
-  const isHorizon = fLayout.value === 'horizon';
-  rowHorizonCap.style.display = isHorizon ? '' : 'none';
-  rowProfilePhoto.style.display = isHorizon ? 'none' : '';
-  applyImgCount(parseInt(fImgCount.value, 10) || 1);  // refresh side-om-side/stablet hint
+resetFocalBtn.addEventListener('click', () => {
+  fFocalX.value = '50'; fFocalXVal.textContent = '50%';
+  fFocalY.value = '50'; fFocalYVal.textContent = '50%';
+  fScale.value = '100'; fScaleVal.textContent = '100%';
+  onFormChange();
 });
 
-// ---- Save ----
-saveBtn.addEventListener('click', async () => {
+// ---- Save (dispatch by selected kind) ----
+function syncBank(updated: any) {
+  const idx = itemsBank.findIndex(i => i.id === updated.id);
+  if (idx >= 0) itemsBank[idx] = updated;
+  const lotIdx = lotsBank.findIndex(l => l.id === updated.id);
+  if (lotIdx >= 0) lotsBank[lotIdx] = updated;
+}
+async function saveSelected() {
   if (!selectedId) return;
-  if (!renderValidation()) {
+  const item = itemsBank.find(i => i.id === selectedId);
+  if (!item) return;
+  const kind = itemKind(item);
+  if (kind === 'lot' && !renderValidation()) {
     statusEl.textContent = 'Kan ikke gemme — ret fejl først';
+    toast('Kan ikke gemme — ret fejl først');
     return;
   }
-  const patch = readForm();
+  let patch: any;
+  switch (kind) {
+    case 'lot': patch = readForm(); break;
+    case 'bordplan': patch = readBordplanForm(); break;
+    case 'cover': patch = readCoverForm(); break;
+    case 'closing': patch = readClosingForm(); break;
+    case 'sponsor-index': patch = readSponsorIndexForm(); break;
+    case 'wish-loop': patch = readWishLoopForm(); break;
+    case 'media': patch = readMediaForm(); break;
+    case 'auction-display': patch = readAuctionDisplayItem(); break;
+    case 'section': patch = { label: secLabelEl.value }; break;
+    case 'carousel': patch = readCarouselForm(); break;
+    case 'contest': patch = readContestForm(); break;
+  }
   try {
     statusEl.textContent = 'Gemmer…';
     const updated = await api(`/api/lots/${encodeURIComponent(selectedId)}`, {
@@ -2367,453 +2158,145 @@ saveBtn.addEventListener('click', async () => {
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify(patch),
     });
-    // Refresh BOTH banks — selection/populate reads itemsBank, so updating
-    // only lotsBank left a stale copy that reverted edits on re-select.
-    const lotIdx = lotsBank.findIndex(l => l.id === selectedId);
-    if (lotIdx >= 0) lotsBank[lotIdx] = updated;
-    const itemIdx = itemsBank.findIndex(i => i.id === selectedId);
-    if (itemIdx >= 0) itemsBank[itemIdx] = updated;
+    syncBank(updated);
+    if (kind === 'auction-display') {
+      await fetch('/api/meta', {
+        method: 'PUT', headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ teams: adTeamsDraft }),
+      });
+      EVENT_META.teams = adTeamsDraft;
+    }
+    savedAt = nowHHMM();
     setDirty(false);
     renderList();
     refreshPreview();
-    statusEl.textContent = 'Gemt';
+    statusEl.textContent = '';
+    toast('Gemt — broadcastet til controller, viewer og auktionarius');
   } catch (e: any) {
     statusEl.textContent = 'Save failed: ' + e.message;
   }
-});
-
-// ---- New / Delete ----
-// ---- Carousel (billedkarrusel) editor ----
-function populateCarouselForm(item: any) {
-  crActiveEl.checked = item.active ?? true;
-  crLabelEl.value = item.label ?? '';
-  crFadeMsEl.value = String(item.fadeMs ?? 2000);
-  crDefaultSecondsEl.value = String(item.defaultSeconds ?? 10);
-  crBgColorEl.value = (typeof item.bgColor === 'string' && /^#[0-9a-f]{6}$/i.test(item.bgColor))
-    ? item.bgColor
-    : '#000000';
-  crShowTickerEl.checked = !!item.showTicker;
-  crImagesDraft = Array.isArray(item.images)
-    ? item.images.map((im: any) => ({ src: String(im.src || ''), seconds: Number(im.seconds) || undefined, alt: im.alt }))
-    : [];
-  renderCarouselImageList();
 }
-function readCarouselForm(): any {
-  const fadeMs = parseInt(crFadeMsEl.value, 10);
-  const defaultSec = parseFloat(crDefaultSecondsEl.value);
-  return {
-    active: crActiveEl.checked,
-    label: crLabelEl.value.trim() || 'Billedkarrusel',
-    fadeMs: Number.isFinite(fadeMs) && fadeMs > 0 ? fadeMs : 2000,
-    defaultSeconds: Number.isFinite(defaultSec) && defaultSec > 0 ? defaultSec : 10,
-    bgColor: crBgColorEl.value || '#000',
-    showTicker: crShowTickerEl.checked,
-    images: crImagesDraft.map(im => ({
-      src: im.src,
-      ...(Number(im.seconds) > 0 ? { seconds: Number(im.seconds) } : {}),
-      ...(im.alt ? { alt: im.alt } : {}),
-    })),
-  };
+saveBtn.addEventListener('click', saveSelected);
+
+// ---- Template picker ----
+function renderPicker() {
+  tplGrid.innerHTML = '';
+  for (const kind of PICKER_ORDER) {
+    const m = TYPE_META[kind];
+    const btn = document.createElement('button');
+    btn.className = 'gen-tpl-card';
+    btn.innerHTML = `
+      <span class="head"><span class="pp-dot" style="background:${m.dot}"></span><strong>${m.name}</strong></span>
+      <span class="desc">${m.desc}</span>
+    `;
+    btn.addEventListener('click', () => createItem(kind));
+    tplGrid.appendChild(btn);
+  }
 }
-function renderCarouselImageList() {
-  if (!crImagesDraft.length) {
-    crImageListEl.innerHTML = '<div style="font-style:italic;color:rgba(228,223,200,0.7);padding:6px 4px">Ingen billeder endnu — upload nogle nedenfor.</div>';
-    return;
-  }
-  crImageListEl.innerHTML = crImagesDraft.map((im, i) => `
-    <div class="carousel-row" data-idx="${i}" style="display:flex;align-items:center;gap:8px;padding:4px;background:rgba(255,255,255,0.04);border-radius:6px">
-      <img src="${im.src}" alt="" style="width:64px;height:40px;object-fit:contain;background:#000;border-radius:4px" />
-      <span class="carousel-fname" style="flex:1;font-size:11px;opacity:0.8;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${im.src.split('/').pop() || im.src}</span>
-      <label style="font-size:11px;opacity:0.8;display:flex;align-items:center;gap:4px">sek
-        <input type="number" class="carousel-seconds" min="0" max="120" step="0.5" value="${im.seconds ?? ''}" placeholder="auto" style="width:60px" />
-      </label>
-      <button type="button" class="link-btn carousel-up" title="Op">↑</button>
-      <button type="button" class="link-btn carousel-down" title="Ned">↓</button>
-      <button type="button" class="drawer-danger carousel-del" title="Slet">✕</button>
-    </div>
-  `).join('');
-}
-crImageListEl.addEventListener('input', (e) => {
-  const target = e.target as HTMLElement;
-  if (!target.classList.contains('carousel-seconds')) return;
-  const row = target.closest<HTMLElement>('.carousel-row');
-  if (!row) return;
-  const idx = parseInt(row.dataset.idx || '0', 10);
-  const v = parseFloat((target as HTMLInputElement).value);
-  crImagesDraft[idx].seconds = Number.isFinite(v) && v > 0 ? v : undefined;
-  setDirty(true);
-  refreshPreview();
-});
-crImageListEl.addEventListener('click', (e) => {
-  const t = e.target as HTMLElement;
-  const row = t.closest<HTMLElement>('.carousel-row');
-  if (!row) return;
-  const idx = parseInt(row.dataset.idx || '0', 10);
-  if (t.classList.contains('carousel-del')) {
-    crImagesDraft.splice(idx, 1);
-  } else if (t.classList.contains('carousel-up') && idx > 0) {
-    [crImagesDraft[idx - 1], crImagesDraft[idx]] = [crImagesDraft[idx], crImagesDraft[idx - 1]];
-  } else if (t.classList.contains('carousel-down') && idx < crImagesDraft.length - 1) {
-    [crImagesDraft[idx + 1], crImagesDraft[idx]] = [crImagesDraft[idx], crImagesDraft[idx + 1]];
-  } else {
-    return;
-  }
-  renderCarouselImageList();
-  setDirty(true);
-  refreshPreview();
-});
-crImageUploadEl.addEventListener('change', async () => {
-  const files = Array.from(crImageUploadEl.files || []);
-  if (!files.length) return;
-  for (const file of files) {
-    const fd = new FormData();
-    fd.append('kind', 'carousel');
-    fd.append('file', file);
-    try {
-      const res = await fetch('/api/upload', { method: 'POST', body: fd });
-      const data = await res.json();
-      if (data?.filename) crImagesDraft.push({ src: `/assets/carousel/${data.filename}` });
-    } catch (e: any) { statusEl.textContent = 'Upload failed: ' + e.message; }
-  }
-  crImageUploadEl.value = '';
-  renderCarouselImageList();
-  setDirty(true);
-  refreshPreview();
-});
-[crActiveEl, crLabelEl, crFadeMsEl, crDefaultSecondsEl, crBgColorEl, crShowTickerEl]
-  .forEach(el => el.addEventListener('input', () => { setDirty(true); refreshPreview(); }));
-crSaveBtn.addEventListener('click', async () => {
-  if (!selectedId) return;
-  try {
-    statusEl.textContent = 'Gemmer billedkarrusel…';
-    const updated = await api(`/api/lots/${encodeURIComponent(selectedId)}`, {
-      method: 'PUT', headers: { 'content-type': 'application/json' },
-      body: JSON.stringify(readCarouselForm()),
-    });
-    const idx = itemsBank.findIndex(i => i.id === selectedId);
-    if (idx >= 0) itemsBank[idx] = updated;
-    setDirty(false);
-    renderList();
-    refreshPreview();
-    statusEl.textContent = 'Gemt';
-  } catch (e: any) {
-    statusEl.textContent = 'Save failed: ' + e.message;
-  }
+function openPicker() { tplScrim.classList.add('open'); }
+function closePicker() { tplScrim.classList.remove('open'); }
+openPickerBtn.addEventListener('click', openPicker);
+tplClose.addEventListener('click', closePicker);
+tplScrim.addEventListener('click', (e) => { if (e.target === tplScrim) closePicker(); });
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && tplScrim.classList.contains('open')) closePicker();
 });
 
-const newCarouselBtn = document.getElementById('new-carousel')!;
-newCarouselBtn.addEventListener('click', async () => {
-  try {
-    const created = await api('/api/lots', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({
-        kind: 'carousel',
-        active: true,
-        label: `Billedkarrusel ${itemsBank.filter(i => (i as any).kind === 'carousel').length + 1}`,
-        images: [],
-        defaultSeconds: 10,
-        fadeMs: 2000,
-        bgColor: '#000',
-        showTicker: false,
-      } as any),
-    });
-    itemsBank.push(created);
-    selectedId = created.id;
-    renderList();
-    selectLot(created.id);
-    statusEl.textContent = 'Billedkarrusel oprettet';
-  } catch (e: any) {
-    statusEl.textContent = 'Create failed: ' + e.message;
-  }
-});
-
-const newAuctionDisplayBtn = document.getElementById('new-auctiondisplay')!;
-newAuctionDisplayBtn.addEventListener('click', async () => {
-  try {
-    const created = await api('/api/lots', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({
-        kind: 'auction-display',
-        active: true,
-        label: `Auktion-display ${itemsBank.filter(i => (i as any).kind === 'auction-display').length + 1}`,
-        screen: 'intro',
-        activeLot: 0,
-        revealCount: 0,
-        ranking: false,
-        namesVisible: true,
-        showBaseLabel: true,
-      } as any),
-    });
-    itemsBank.push(created);
-    selectedId = created.id;
-    renderList();
-    selectLot(created.id);
-    statusEl.textContent = 'Auktion-display oprettet';
-  } catch (e: any) {
-    statusEl.textContent = 'Create failed: ' + e.message;
-  }
-});
-
-const newMediaBtn = document.getElementById('new-media')!;
-newMediaBtn.addEventListener('click', async () => {
-  try {
-    const created = await api('/api/lots', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({
-        kind: 'media',
-        active: true,
-        label: 'Media',
-        mode: 'image',
-        src: '',
-        fit: 'cover',
-        bgColor: '#000000',
-      } as any),
-    });
-    itemsBank.push(created);
-    selectedId = created.id;
-    renderList();
-    selectLot(created.id);
-    statusEl.textContent = 'Media oprettet';
-  } catch (e: any) {
-    statusEl.textContent = 'Create failed: ' + e.message;
-  }
-});
-
-const newWishLoopBtn = document.getElementById('new-wishloop')!;
-newWishLoopBtn.addEventListener('click', async () => {
-  try {
-    const created = await api('/api/lots', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({
-        kind: 'wish-loop',
-        active: true,
-        label: `Ønske-loop ${itemsBank.filter(i => (i as any).kind === 'wish-loop').length + 1}`,
-        videoSrc: '/assets/wish-loop/bg.mp4',
-        cards: [],
-        direction: 'stack',
-        perCardSeconds: 5,
-        stackDepth: 3,
-        pauseOnHover: true,
-        videoBlur: 36,
-        videoDarken: 0.5,
-        chrome: true,
-        sponsorMark: 'Ønskeskyen',
-      } as any),
-    });
-    itemsBank.push(created);
-    selectedId = created.id;
-    renderList();
-    selectLot(created.id);
-    statusEl.textContent = 'Ønske-loop oprettet';
-  } catch (e: any) {
-    statusEl.textContent = 'Create failed: ' + e.message;
-  }
-});
-
-const newSponsorIndexBtn = document.getElementById('new-sponsorindex')!;
-newSponsorIndexBtn.addEventListener('click', async () => {
-  try {
-    const created = await api('/api/lots', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({
-        kind: 'sponsor-index',
-        active: true,
-        label: 'Sponsor-indeks',
-        title: 'AUKTIONENS SPONSORER',
-      } as any),
-    });
-    itemsBank.push(created);
-    selectedId = created.id;
-    renderList();
-    selectLot(created.id);
-    statusEl.textContent = 'Sponsor-indeks oprettet';
-  } catch (e: any) {
-    statusEl.textContent = 'Create failed: ' + e.message;
-  }
-});
-
-const newClosingBtn = document.getElementById('new-closing')!;
-const DEFAULT_CLOSING_LOGOS_SEED = [
-  { file: 'closing-L-01.png' }, { file: 'closing-L-02.png' }, { file: 'closing-L-03.png' }, { file: 'closing-L-04.png', kind: 'wordmark' },
-  { file: 'closing-L-05.png', kind: 'wordmark' }, { file: 'closing-L-06.png' }, { file: 'closing-L-07.png' }, { file: 'closing-R-01.png' },
-  { file: 'closing-L-09.png', kind: 'wordmark' }, { file: 'closing-L-10.png', kind: 'wordmark' }, { file: 'closing-L-11.png' }, { file: 'closing-R-10.png' },
-  { file: 'closing-L-13.png', kind: 'wordmark' }, { file: 'closing-M-01.png' }, { file: 'closing-M-02.png', kind: 'wordmark' }, { file: 'closing-M-03.png' },
-  { file: 'closing-M-04.png' }, { file: 'closing-M-05.png' }, { file: 'closing-M-06.png' }, { file: 'closing-M-07.png', kind: 'wordmark' },
-  { file: 'closing-M-08.png', kind: 'wordmark' }, { file: 'closing-M-09.png', kind: 'wordmark' }, { file: 'closing-M-10.png' }, { file: 'closing-M-11.png', kind: 'wordmark' },
-  { file: 'closing-M-12.png', kind: 'wordmark' }, { file: 'closing-M-13.png' }, { file: 'closing-M-14.png' }, { file: 'closing-L-12.png', kind: 'wordmark' },
-  { file: 'closing-R-02.png', kind: 'wordmark' }, { file: 'closing-R-03.png' }, { file: 'closing-R-04.png' }, { file: 'closing-R-05.png', kind: 'wordmark' },
-  { file: 'closing-R-06.png', kind: 'wordmark' }, { file: 'closing-R-07.png' }, { file: 'closing-R-08.png' }, { file: 'closing-R-09.png' },
-  { file: 'closing-L-08.png' }, { file: 'closing-R-11.png' }, { file: 'closing-R-12.png', kind: 'wordmark' }, { file: 'closing-R-13.png' },
-];
-newClosingBtn.addEventListener('click', async () => {
-  try {
-    const created = await api('/api/lots', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({
-        kind: 'closing',
-        active: true,
-        label: 'Closing',
-        title: 'TAK TIL ALLE VORES SPONSORER',
-        tagline: '@KIDSAIDDK · KIDSAID DANMARK',
-        cols: 8,
-        logos: DEFAULT_CLOSING_LOGOS_SEED,
-      } as any),
-    });
-    itemsBank.push(created);
-    selectedId = created.id;
-    renderList();
-    selectLot(created.id);
-    statusEl.textContent = 'Closing oprettet';
-  } catch (e: any) {
-    statusEl.textContent = 'Create closing failed: ' + e.message;
-  }
-});
-
-const newCoverBtn = document.getElementById('new-cover')!;
-newCoverBtn.addEventListener('click', async () => {
-  try {
-    const created = await api('/api/lots', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({
-        kind: 'cover',
-        active: true,
-        label: 'Cover',
-        title: 'AUKTION',
-        subtitle: 'STJERNEGOLF 2026',
-        attribution: 'AUKTION VED KASPER NIELSEN',
-        logoFile: 'artsolo-logo.png',
-      } as any),
-    });
-    itemsBank.push(created);
-    selectedId = created.id;
-    renderList();
-    selectLot(created.id);
-    statusEl.textContent = 'Cover oprettet';
-  } catch (e: any) {
-    statusEl.textContent = 'Create cover failed: ' + e.message;
-  }
-});
-
-const newContestBtn = document.getElementById('new-contest')!;
-newContestBtn.addEventListener('click', async () => {
-  try {
-    const created = await api('/api/lots', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({
-        kind: 'contest',
-        active: true,
-        label: 'Konkurrence',
-        title: 'KONKURRENCE',
-        subtitle: '',
-        blocks: [{ src: null, heading: '', lines: [] }],
-      } as any),
-    });
-    itemsBank.push(created);
-    selectedId = created.id;
-    renderList();
-    selectLot(created.id);
-    statusEl.textContent = 'Konkurrence oprettet';
-  } catch (e: any) {
-    statusEl.textContent = 'Create konkurrence failed: ' + e.message;
-  }
-});
-
-const newBordplanBtn = document.getElementById('new-bordplan')!;
-newBordplanBtn.addEventListener('click', async () => {
-  try {
-    const created = await api('/api/lots', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({
-        kind: 'bordplan',
-        active: true,
-        label: 'Stjernegolf 2026 bordplan',
-        eventName: 'STJERNEGOLF 2026',
-        config: {
-          cols: 9, rows: 11, seatsPerTable: 4,
-          colAislesAfter: [],
-          rowAislesAfter: [3, 6],
-          removedCells: [{ col: 3, row: 10 }, { col: 4, row: 10 }, { col: 5, row: 10 }],
-          numbering: {
-            mode: 'cluster-continuous', origin: 'top-left',
-            direction: 'col-major', clusterDirection: 'col-major',
-            startAt: 1, prefix: '', skip: [],
-          },
+function newItemPayload(kind: Kind): any {
+  switch (kind) {
+    case 'lot': return {
+      title: '', subtitle: 'Pakken inkluderer', sponsor: '', bullets: [],
+      active: false, extra: false, layout: 'horizon', focal: '50% 50%',
+    };
+    case 'section': return { kind: 'section', label: 'Ny sektion' };
+    case 'cover': return {
+      kind: 'cover', active: true, label: 'Cover',
+      title: 'AUKTION', subtitle: 'STJERNEGOLF 2026',
+      attribution: 'AUKTION VED KASPER NIELSEN', logoFile: 'artsolo-logo.png',
+    };
+    case 'bordplan': return {
+      kind: 'bordplan', active: true,
+      label: 'Stjernegolf 2026 bordplan', eventName: 'STJERNEGOLF 2026',
+      config: {
+        cols: 9, rows: 11, seatsPerTable: 4,
+        colAislesAfter: [], rowAislesAfter: [3, 6],
+        removedCells: [],
+        numbering: {
+          mode: 'cluster-continuous', origin: 'top-left',
+          direction: 'col-major', clusterDirection: 'col-major',
+          startAt: 1, prefix: '', skip: [],
         },
-        overrides: {},
-      } as any),
-    });
-    itemsBank.push(created);
-    selectedId = created.id;
-    renderList();
-    selectLot(created.id);
-    statusEl.textContent = 'Bordplan oprettet';
-  } catch (e: any) {
-    statusEl.textContent = 'Create bordplan failed: ' + e.message;
+      },
+      overrides: {},
+    };
+    case 'sponsor-index': return { kind: 'sponsor-index', active: true, label: 'Sponsor-indeks', title: 'AUKTIONENS SPONSORER' };
+    case 'closing': return {
+      kind: 'closing', active: true, label: 'Closing',
+      title: 'TAK TIL ALLE VORES SPONSORER', tagline: '@KIDSAIDDK · KIDSAID DANMARK',
+      cols: 8, logos: [],
+    };
+    case 'wish-loop': return {
+      kind: 'wish-loop', active: true,
+      label: `Ønske-loop ${itemsBank.filter(i => itemKind(i) === 'wish-loop').length + 1}`,
+      videoSrc: '/assets/wish-loop/bg.mp4', cards: [],
+      direction: 'stack', perCardSeconds: 5, stackDepth: 3,
+      pauseOnHover: true, videoBlur: 36, videoDarken: 0.5, chrome: true,
+      sponsorMark: 'Ønskeskyen',
+    };
+    case 'media': return { kind: 'media', active: true, label: 'Media', mode: 'image', src: '', fit: 'cover', bgColor: '#000000' };
+    case 'auction-display': return {
+      kind: 'auction-display', active: true,
+      label: `Auktion-display ${itemsBank.filter(i => itemKind(i) === 'auction-display').length + 1}`,
+      screen: 'intro', activeLot: 0, revealCount: 0,
+      ranking: false, namesVisible: true, showBaseLabel: true,
+    };
+    case 'carousel': return { kind: 'carousel', active: true, label: 'Billedkarrusel', images: [], fadeMs: 2000, defaultSeconds: 10, showTicker: false };
+    case 'contest': return { kind: 'contest', active: true, label: 'Konkurrence', title: 'KONKURRENCE', subtitle: '', blocks: [] };
   }
-});
-
-newLotBtn.addEventListener('click', async () => {
+}
+async function createItem(kind: Kind) {
+  closePicker();
   try {
     const created = await api('/api/lots', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({
-        title: 'Nyt lot', subtitle: '', sponsor: '', bullets: [],
-        active: false, extra: false, layout: 'horizon', focal: '50% 50%',
-      }),
+      body: JSON.stringify(newItemPayload(kind)),
     });
-    lotsBank.push(created);
-    selectedId = created.id;
+    // Insert after the selected item (server appends at the end).
+    itemsBank.push(created);
+    const selIdx = itemsBank.findIndex(i => i.id === selectedId);
+    if (selIdx >= 0 && selIdx < itemsBank.length - 2) {
+      const [moved] = itemsBank.splice(itemsBank.length - 1, 1);
+      itemsBank.splice(selIdx + 1, 0, moved);
+      await api('/api/lots/reorder', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ order: itemsBank.map(i => i.id) }),
+      });
+    }
+    lotsBank = itemsBank.filter(i => itemKind(i) === 'lot') as Lot[];
     renderList();
-    populateForm(created);
-    refreshPreview();
-    statusEl.textContent = 'Oprettet';
+    selectLot(created.id);
+    toast(`${TYPE_META[kind].name} tilføjet — udfyld og gem`);
   } catch (e: any) {
     statusEl.textContent = 'Create failed: ' + e.message;
   }
-});
+}
 
-// ---- Duplicate / Reset focal ----
+// ---- Duplicate / Delete ----
 duplicateBtn.addEventListener('click', async () => {
   if (!selectedId) return;
   const item = itemsBank.find(i => i.id === selectedId);
   if (!item) return;
-  if (dirty && !confirm('Du har ugemte ændringer. Duplicate uden at gemme dem?')) return;
-  let dup: any;
-  if (isBordplanItem(item)) {
-    dup = {
-      kind: 'bordplan',
-      active: false,
-      label: (item.label || 'Bordplan') + ' (kopi)',
-      eventName: item.eventName,
-      org: item.org,
-      config: JSON.parse(JSON.stringify(item.config)),
-      overrides: JSON.parse(JSON.stringify(item.overrides || {})),
-    };
-  } else if (isCoverItem(item)) {
-    dup = {
-      kind: 'cover',
-      active: false,
-      label: (item.label || 'Cover') + ' (kopi)',
-      title: item.title,
-      subtitle: item.subtitle,
-      attribution: item.attribution,
-      logoFile: item.logoFile,
-      logoScale: item.logoScale,
-    };
-  } else {
-    const lot = item as Lot;
-    dup = { ...lot, title: lot.title + ' (kopi)', active: false };
-    delete dup.id;
+  if (dirty && !confirm('Du har ugemte ændringer. Duplikér uden at gemme dem?')) return;
+  const dup: any = JSON.parse(JSON.stringify(item));
+  delete dup.id;
+  if (itemKind(item) === 'lot') {
+    dup.title = ((item as Lot).title || 'Lot') + ' (kopi)';
+    dup.active = false;
+  } else if (dup.label) {
+    dup.label += ' (kopi)';
+    if ('active' in dup) dup.active = false;
   }
   try {
     const created = await api('/api/lots', {
@@ -2822,63 +2305,50 @@ duplicateBtn.addEventListener('click', async () => {
       body: JSON.stringify(dup),
     });
     itemsBank.push(created);
-    selectedId = created.id;
+    lotsBank = itemsBank.filter(i => itemKind(i) === 'lot') as Lot[];
     renderList();
     selectLot(created.id);
-    statusEl.textContent = 'Duplikeret';
+    toast('Duplikeret');
   } catch (e: any) {
     statusEl.textContent = 'Duplicate failed: ' + e.message;
   }
 });
-
-resetFocalBtn.addEventListener('click', () => {
-  fFocalX.value = '50'; fFocalXVal.textContent = '50%';
-  fFocalY.value = '50'; fFocalYVal.textContent = '50%';
-  fScale.value = '100'; fScaleVal.textContent = '100%';
-  onFormChange();
-});
-
 deleteBtn.addEventListener('click', async () => {
   if (!selectedId) return;
   const item = itemsBank.find(i => i.id === selectedId);
-  const name = (item as any)?.title || (item as any)?.label || selectedId;
-  const secNote = itemKind(item) === 'section'
-    ? ' Items i sektionen slettes ikke — de glider op i sektionen ovenfor.' : '';
-  if (!confirm(`Slet "${name}"? Kan ikke fortrydes.${secNote}`)) return;
+  if (!confirm(`Slet "${item ? itemLabel(item) : selectedId}"? Kan ikke fortrydes.`)) return;
   try {
     await api(`/api/lots/${encodeURIComponent(selectedId)}`, { method: 'DELETE' });
+    const idx = itemsBank.findIndex(i => i.id === selectedId);
     itemsBank = itemsBank.filter(i => i.id !== selectedId);
     lotsBank = itemsBank.filter(i => itemKind(i) === 'lot') as Lot[];
-    selectedId = itemsBank[0]?.id ?? null;
+    const next = itemsBank[Math.min(Math.max(0, idx), itemsBank.length - 1)];
+    selectedId = next?.id ?? null;
     renderList();
     if (selectedId) selectLot(selectedId);
-    else { editIdEl.textContent = '—'; previewFrame.innerHTML = ''; deleteBtn.style.display = 'none'; }
-    statusEl.textContent = 'Slettet';
+    else { previewFrame.innerHTML = ''; deleteBtn.style.display = 'none'; duplicateBtn.style.display = 'none'; }
+    toast('Slettet');
   } catch (e: any) {
     statusEl.textContent = 'Delete failed: ' + e.message;
   }
 });
 
-// ---- Uploads ----
-async function uploadFile(kind: 'hero' | 'logo', file: File, imgIndex = 1) {
+// ---- Uploads (hero) ----
+async function uploadFile(kind: 'hero', file: File, imgIndex = 1) {
   if (!selectedId) return;
-  // Order matters — multer parses fields top-down, and the destination
-  // / filename callbacks only see body fields appended BEFORE the file.
   const fd = new FormData();
   fd.append('kind', kind);
   fd.append('lotId', selectedId);
-  if (kind === 'hero' && imgIndex > 1) fd.append('imgIndex', String(imgIndex));
+  if (imgIndex > 1) fd.append('imgIndex', String(imgIndex));
   fd.append('file', file);
   try {
-    statusEl.textContent = `Uploader ${kind}…`;
+    statusEl.textContent = 'Uploader billede…';
     const res = await fetch('/api/upload', { method: 'POST', body: fd });
     const data = await res.json();
-    statusEl.textContent = `${kind} uploadet`;
+    statusEl.textContent = 'Billede uploadet';
     const ext = (data.filename?.split('.').pop()?.toLowerCase()) || 'jpg';
     const lot = lotsBank.find(l => l.id === selectedId);
-    // Sync the uploaded extension onto the in-memory lot so subsequent renders
-    // (and the next save) resolve the right URL without a full reload.
-    if (kind === 'hero' && data.filename) {
+    if (data.filename) {
       if (imgIndex === 1) {
         if (lot) lot.heroExt = ext;
       } else if (lot) {
@@ -2888,27 +2358,11 @@ async function uploadFile(kind: 'hero' | 'logo', file: File, imgIndex = 1) {
       }
     }
     const v = Date.now();
-    if (kind === 'hero' && imgIndex === 1) {
+    if (imgIndex === 1) {
       heroPreview.src = `/assets/hero/lot-${selectedId}_FINAL.${lot?.heroExt || 'jpg'}?v=${v}`;
-    } else if (kind === 'hero') {
+    } else {
       heroCtls[imgIndex - 1].preview.src = `/assets/hero/lot-${selectedId}_FINAL${imgIndex}.${ext}?v=${v}`;
       setDirty(true);
-    } else if (kind === 'logo' && data.filename) {
-      // Server now preserves the uploaded extension (so SVG stays SVG).
-      // Persist the new URL onto the lot so the renderer uses it instead
-      // of the legacy logo-lot-<id>.png default.
-      const newUrl = `/assets/logo/${data.filename}`;
-      logoPreview.src = `${newUrl}?v=${v}`;
-      try {
-        const updated = await api(`/api/lots/${encodeURIComponent(selectedId)}`, {
-          method: 'PUT', headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ sponsorLogoSrc: newUrl }),
-        });
-        const idx = itemsBank.findIndex(i => i.id === selectedId);
-        if (idx >= 0) itemsBank[idx] = updated;
-        const lotIdx = lotsBank.findIndex(l => l.id === selectedId);
-        if (lotIdx >= 0) lotsBank[lotIdx] = updated;
-      } catch {}
     }
     refreshPreview();
   } catch (e: any) {
@@ -2916,17 +2370,33 @@ async function uploadFile(kind: 'hero' | 'logo', file: File, imgIndex = 1) {
   }
 }
 fHero.addEventListener('change', () => { if (fHero.files?.[0]) uploadFile('hero', fHero.files[0]); });
-fLogo.addEventListener('change', () => { if (fLogo.files?.[0]) uploadFile('logo', fLogo.files[0]); });
-// Image 2 & 3 uploads (index 1/2 of heroCtls -> image 2/3).
 heroCtls.forEach((c, i) => {
   if (i === 0) return;
   c.upload.addEventListener('change', () => { if (c.upload.files?.[0]) uploadFile('hero', c.upload.files[0], i + 1); });
 });
 
-// ---- Open controller in new window ----
-openCtrlBtn.addEventListener('click', () => {
-  window.open('/controller.html', '_blank', 'noopener,noreferrer');
+// ---- Topbar tabs ----
+document.getElementById('tab-controller')!.addEventListener('click', () => {
+  if (dirty && !confirm('Du har ugemte ændringer. Forlad Generator?')) return;
+  window.location.href = '/controller.html';
+});
+document.getElementById('tab-output')!.addEventListener('click', () => {
+  window.open('/', '_blank', 'noopener,noreferrer');
+});
+document.getElementById('tab-auctioneer')!.addEventListener('click', () => {
+  window.open('/auctioneer.html', '_blank', 'noopener,noreferrer');
+});
+
+// ---- Resize: refit preview ----
+window.addEventListener('resize', () => {
+  const slideEl = previewFrame.querySelector<HTMLElement>('.slide-canvas');
+  const wrap = previewFrame.querySelector<HTMLElement>('.slide-frame');
+  if (slideEl && wrap) fitToViewport(wrap, slideEl);
 });
 
 // ---- Boot ----
+renderPicker();
+applyBpMode();
+setDirty(false);
+loadApplePool();
 loadBank();

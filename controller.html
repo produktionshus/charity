@@ -6,336 +6,373 @@
   <title>Controller — StjerneGolf 2026</title>
   <link rel="stylesheet" href="/src/styles.css" />
   <link rel="stylesheet" href="/src/slides.css" />
-  <link rel="stylesheet" href="/src/chrome.css" />
+  <link rel="stylesheet" href="/src/paper.css" />
   <link rel="stylesheet" href="/src/controller.css" />
 </head>
-<body class="controller">
-<div class="app">
+<body class="paper controller">
+  <div class="ctl-app">
 
-  <header class="topbar">
-    <div class="brand">
-      <div class="brand-mark">K</div>
-      <div class="brand-text">
-        <strong>KidsAid x Luminance</strong>
-        <small>CONTROLLER · STJERNEGOLF 2026</small>
-      </div>
-    </div>
-
-    <div class="status-pill" id="status-pill"><span class="status-dot"></span>Live · Connected</div>
-
-    <div class="topbar-spacer"></div>
-
-    <div id="open-buttons" style="display:flex;gap:6px;">
-      <button class="link-btn" data-open="/" title="Open viewer in new window">Viewer ↗</button>
-      <button class="link-btn" data-open="/auctioneer.html" title="Open auctioneer in new window">Auctioneer ↗</button>
-      <button class="link-btn" data-open="/generator.html" title="Lot generator">Generator ↗</button>
-    </div>
-
-    <div class="nav-group">
-      <span class="nav-progress"><b id="nav-current">01</b><span class="total"> / <span id="nav-total">24</span></span></span>
-      <button class="nav-btn" id="prev" title="Forrige">‹</button>
-      <button class="nav-btn primary" id="next" title="Næste">Næste ›</button>
-    </div>
-  </header>
-
-  <main class="main">
-
-    <!-- NUVÆRENDE -->
-    <section class="panel live">
-      <div class="panel-head">
-        <span class="label current"><span class="swatch"></span>Nuværende</span>
-        <div class="right">
-          <button class="share-bar" data-share="/" data-target="qr-viewer">Share viewer ↗ QR</button>
+    <!-- ============ TOPBAR (delt IA) ============ -->
+    <header class="pp-topbar">
+      <div class="pp-brand">
+        <img src="/assets/Logo-firkant-gron-med-farve.png" alt="KidsAid" />
+        <div class="pp-brand-text">
+          <strong>Lot Generator</strong>
+          <span>STJERNEGOLF 2026</span>
         </div>
       </div>
-      <div class="lot-card lot-card-stage" id="current-card"></div>
-      <div class="qr-panel" id="qr-viewer">
-        <canvas class="qr-canvas"></canvas>
-        <div class="qr-url"></div>
+      <nav class="pp-tabs">
+        <button class="pp-tab active" id="tab-controller">Controller</button>
+        <button class="pp-tab" id="tab-output">Output</button>
+        <button class="pp-tab" id="tab-auctioneer">Auktionarius</button>
+        <div class="pp-tab-divider"></div>
+        <button class="pp-tab" id="tab-generator">Generator</button>
+      </nav>
+      <div class="pp-flex-spacer"></div>
+      <span class="pp-topbar-status" id="status-pill">FORBINDER…</span>
+    </header>
+
+    <!-- ============ TOOLBAR ============ -->
+    <div class="ctl-toolbar">
+      <span class="pp-hint">CONTROLLER-LAYOUT</span>
+      <div class="pp-seg ctl-layout-seg" id="seg-oplayout">
+        <button type="button" data-val="konsol">A · Konsol</button>
+        <button type="button" data-val="launchpad">B · Launchpad</button>
       </div>
-    </section>
+      <button class="pp-btn" id="open-settings">Indstillinger</button>
+      <button class="pp-btn" id="open-history">Historik · <span id="hist-count">0</span></button>
+      <div class="pp-flex-spacer"></div>
+      <span class="ctl-total-label pp-mono">Auktionens total</span>
+      <span class="ctl-total pp-mono pp-tabular" id="ctl-total">0 kr</span>
+      <div class="pp-vdivider"></div>
+      <span class="ctl-clock pp-mono pp-tabular" id="ctl-clock">00:00:00</span>
+    </div>
 
-    <!-- NÆSTE -->
-    <section class="panel zone-next">
-      <div class="panel-head">
-        <span class="label next"><span class="swatch"></span>Næste</span>
-      </div>
-      <div class="lot-card" id="next-card"></div>
-    </section>
-
-    <!-- LIVE AUCTION (bid panel) -->
-    <section class="panel zone-bid">
-      <div class="panel-head">
-        <span class="label live"><span class="swatch"></span>Live auktion</span>
-      </div>
-
-      <!-- Drawers — left edge split (Sound top / Settings bottom), right edge = History -->
-      <button class="drawer-tab drawer-tab--left drawer-tab--top" id="drawer-tab-sound" title="Sound"><span>Sound</span></button>
-      <button class="drawer-tab drawer-tab--left drawer-tab--bottom" id="drawer-tab-settings" title="Settings"><span>Settings</span></button>
-      <button class="drawer-tab drawer-tab--right" id="drawer-tab-history" title="Auktions historik"><span>Historik</span></button>
-
-      <div class="drawer drawer--left" id="drawer-settings">
-        <h3>Settings</h3>
-        <p class="drawer-hint">Event-meta gemmes i lots.json (deles på tværs af clients). Reset og visning er lokale.</p>
-        <div class="setting-section">
-          <span class="setting-section-label">Event</span>
-          <label class="meta-label">Titel
-            <input type="text" id="meta-event-name" placeholder="STJERNEGOLF" />
-          </label>
-          <label class="meta-label">Undertitel
-            <input type="text" id="meta-event-subtitle" placeholder="KidsAid Auktion 2026" />
-          </label>
-          <label class="meta-label">Dato
-            <input type="date" id="meta-event-date" />
-          </label>
-          <button class="link-btn" id="meta-event-save" style="font-size:11px">Gem event-info</button>
+    <!-- ============ A · KONSOL ============ -->
+    <div class="ctl-konsol" id="view-konsol">
+      <div class="ctl-left">
+        <div class="ctl-now-eyebrow">
+          <span class="pp-live-dot"></span>
+          <span id="now-eyebrow">PÅ SKÆRMEN NU</span>
         </div>
-        <div class="setting-section">
-          <span class="setting-section-label">Tema</span>
-          <div class="theme-options">
-            <label class="theme-opt"><input type="radio" name="theme" value="forest" /><span>Forest</span></label>
-            <label class="theme-opt"><input type="radio" name="theme" value="marine" /><span>Marine</span></label>
-            <label class="theme-opt"><input type="radio" name="theme" value="dark" /><span>Dark</span></label>
-            <label class="theme-opt"><input type="radio" name="theme" value="kidsaid" /><span>KidsAid</span></label>
+        <div class="ctl-now-card" id="now-card">
+          <div class="preview-mount" id="now-mount"></div>
+          <div class="ctl-sold-overlay" id="now-sold" style="display:none">
+            <div class="ctl-sold-card">
+              <span class="sold-label">🔨 SOLGT</span>
+              <span class="sold-amt" id="now-sold-amt"></span>
+            </div>
           </div>
         </div>
-        <div class="setting-section">
-          <span class="setting-section-label">Brand-farver (override)</span>
-          <div class="color-row">
-            <label class="color-opt"><input type="color" id="color-primary" value="#3FA34D" /><span>Primær</span></label>
-            <label class="color-opt"><input type="color" id="color-gold" value="#D9BF8C" /><span>Guld</span></label>
-            <label class="color-opt"><input type="color" id="color-ink" value="#2A2A2A" /><span>Ink</span></label>
+        <div class="ctl-under-row">
+          <div class="ctl-next-wrap">
+            <span class="ctl-sub-eyebrow" id="next-eyebrow">NÆSTE</span>
+            <div class="ctl-next-card" id="next-card">
+              <div class="preview-mount" id="next-mount"></div>
+            </div>
           </div>
-          <button class="link-btn" id="color-reset" style="font-size:11px">Nulstil til tema-farver</button>
+          <div class="ctl-auct-wrap">
+            <span class="ctl-sub-eyebrow">AUKTIONARIUS SER</span>
+            <div class="ctl-auct-card" id="auct-stage">
+              <div class="auct-bg" id="auct-bg"></div>
+              <div class="auct-head">
+                <span class="auct-num" id="auct-lotnum">—</span>
+                <span class="auct-title" id="auct-title-text">—</span>
+              </div>
+              <span class="auct-clock" id="auct-clock-mirror">00:00:00</span>
+              <span class="auct-donor" id="auct-donor" style="display:none"></span>
+              <div class="auct-foot">
+                <span class="auct-bid-label" id="auct-bid-label">NUVÆRENDE BUD</span>
+                <span class="auct-bid" id="auct-bid">—<span class="kr"> kr</span></span>
+              </div>
+            </div>
+          </div>
         </div>
-        <label class="setting-toggle">
-          <input type="checkbox" id="toggle-lot-num" />
-          <span>Vis lotnummer-overlay i Nuværende + Næste</span>
-        </label>
-        <div class="setting-section">
-          <span class="setting-section-label">Standard lyde</span>
-          <p class="drawer-hint">Bruges på alle lots medmindre lottet selv har en lyd sat.</p>
-          <label class="sound-row">
-            <span>Init (default)</span>
-            <input type="file" id="default-init-upload" accept="audio/*" class="sound-upload" />
-            <span class="sound-row-current" id="default-init-current">—</span>
+      </div>
+
+      <div class="ctl-right">
+        <div class="ctl-counter pp-mono" id="ctl-counter">ITEM — / —</div>
+        <button class="ctl-go" id="go-btn">
+          <span class="go-big">GO ▸</span>
+          <span class="go-hint" id="go-hint"></span>
+        </button>
+        <button class="pp-btn ctl-prev" id="prev-btn">◂ Forrige</button>
+
+        <div class="ctl-bp-collapse" id="konsol-bp-collapse">
+          <div class="ctl-bidpanel pp-card">
+            <div class="bp-head">
+              <span class="pp-eyebrow">NUVÆRENDE BUD</span>
+              <div class="pp-flex-spacer"></div>
+              <span class="bp-lot pp-mono"></span>
+            </div>
+            <div class="bp-amount pp-mono pp-tabular idle">—<span class="kr"> kr</span></div>
+            <div class="bp-history pp-mono">Ingen bud endnu</div>
+            <div class="bp-presets"></div>
+            <div class="bp-row">
+              <input type="number" class="pp-input pp-input--mono bp-input" placeholder="Beløb" />
+              <button class="pp-btn pp-btn--green bp-set">Sæt bud</button>
+            </div>
+            <div class="bp-row">
+              <button class="pp-btn pp-btn--ghost bp-undo">Fortryd</button>
+              <button class="pp-btn pp-btn--gold bp-sold">🔨 Solgt <span class="bp-sold-amt"></span></button>
+            </div>
+          </div>
+        </div>
+
+        <div class="ctl-items" id="ctl-items"></div>
+        <div class="ctl-progress">
+          <div class="bar"><div class="fill" id="progress-fill"></div></div>
+          <span class="pp-hint" id="progress-counter"></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ B · LAUNCHPAD ============ -->
+    <div class="ctl-launchpad" id="view-launchpad" style="display:none">
+      <div class="lp-nubar">
+        <div class="lp-mini" id="lp-mini">
+          <div class="preview-mount" id="lp-mount"></div>
+          <div class="ctl-sold-overlay lp-sold" id="lp-sold" style="display:none">
+            <span class="lp-sold-text pp-mono" id="lp-sold-amt"></span>
+          </div>
+        </div>
+        <div class="lp-info">
+          <span class="lp-eyebrow"><span class="pp-live-dot"></span><span class="pp-mono" id="lp-now-label">NU</span></span>
+          <span class="lp-title" id="lp-title">—</span>
+          <span class="lp-next" id="lp-next"></span>
+        </div>
+        <div class="pp-flex-spacer"></div>
+        <div class="lp-bid-collapse" id="lp-bp-collapse">
+          <div class="lp-bidcluster pp-card">
+            <div class="lp-bid-col">
+              <span class="pp-eyebrow">NUVÆRENDE BUD</span>
+              <span class="bp-amount pp-mono pp-tabular idle">—<span class="kr"> kr</span></span>
+              <span class="bp-history pp-mono">Ingen bud endnu</span>
+            </div>
+            <div class="bp-presets lp-presets"></div>
+            <div class="lp-bid-inputs">
+              <input type="number" class="pp-input pp-input--mono bp-input" placeholder="Beløb" />
+              <button class="pp-btn pp-btn--green bp-set">Sæt bud</button>
+            </div>
+            <button class="pp-btn pp-btn--ghost bp-undo lp-undo">Fortryd</button>
+          </div>
+          <button class="pp-btn pp-btn--gold bp-sold lp-sold-btn">🔨 Solgt <span class="bp-sold-amt"></span></button>
+        </div>
+        <button class="pp-btn lp-prev" id="lp-prev">◂</button>
+        <button class="ctl-go lp-go" id="lp-go">GO ▸</button>
+      </div>
+      <div class="lp-tiles" id="lp-tiles"></div>
+    </div>
+  </div>
+
+  <!-- ============ SKUFFER ============ -->
+  <div class="pp-drawer-scrim" id="drawer-scrim">
+    <div class="pp-drawer">
+      <div class="pp-drawer-head">
+        <strong id="drawer-title">Indstillinger</strong>
+        <div class="pp-flex-spacer"></div>
+        <button class="pp-btn pp-btn--ghost" id="drawer-close">✕</button>
+      </div>
+
+      <!-- ===== INDSTILLINGER ===== -->
+      <div class="ctl-drawer-body" id="drawer-settings-content">
+        <p class="pp-note">Live-indstillingerne bor stadig her — kun slide-indhold er flyttet til Generator.</p>
+
+        <div class="pp-card">
+          <span class="pp-eyebrow">TEMA · SLIDE-LOOK</span>
+          <p class="pp-note">Gælder alle auktionslots på alle skærme — previewet opdaterer live. Varierer pr. event.</p>
+          <div class="pp-label">Accent · lotnummer + bold i titel
+            <div class="pp-swatches" id="th-num-row"></div>
+          </div>
+          <div class="pp-label">Accent · "Doneret af" + bullets
+            <div class="pp-swatches" id="th-acc-row"></div>
+          </div>
+          <div class="pp-label">Font · display + body
+            <div class="pp-seg" id="seg-thfont">
+              <button type="button" data-val="jakarta">Jakarta</button>
+              <button type="button" data-val="serif" style="font-family:Georgia,serif">Serif</button>
+              <button type="button" data-val="system" style="font-family:system-ui,sans-serif">System</button>
+            </div>
+          </div>
+          <div class="pp-label">Baggrund · gradient-type
+            <div class="pp-seg" id="seg-gradtype">
+              <button type="button" data-val="linear">Lineær</button>
+              <button type="button" data-val="radial">Radial</button>
+            </div>
+          </div>
+          <label class="pp-label pp-label--slider" id="th-angle-row">Vinkel · <span id="th-angle-val">180°</span>
+            <input type="range" id="th-angle" min="0" max="360" step="5" value="180" />
           </label>
-          <label class="sound-row">
-            <span>Init volume (%)</span>
-            <div class="sound-knob-row">
+          <div class="pp-label">Baggrund · farve A → B
+            <div class="pp-swatches" id="th-grada-row"></div>
+            <div class="pp-swatches" id="th-gradb-row"></div>
+          </div>
+        </div>
+
+        <div class="pp-card">
+          <span class="pp-eyebrow">EVENT</span>
+          <label class="pp-label">Titel
+            <input type="text" class="pp-input" id="meta-event-name" />
+          </label>
+          <label class="pp-label">Undertitel
+            <input type="text" class="pp-input" id="meta-event-subtitle" />
+          </label>
+          <label class="pp-label">Dato
+            <input type="date" class="pp-input" id="meta-event-date" />
+          </label>
+          <button class="pp-btn pp-btn--green" id="meta-event-save">Gem event-info</button>
+        </div>
+
+        <div class="pp-card">
+          <span class="pp-eyebrow">BUD-PRÆSETS · + KNAPPER</span>
+          <input type="text" class="pp-input pp-input--mono" id="bid-presets" />
+          <p class="pp-note">Kommasepareret — opdaterer preset-grid'et i budpanelet med det samme.</p>
+          <button class="pp-btn pp-btn--green" id="bid-presets-save">Gem præsets</button>
+        </div>
+
+        <div class="pp-card">
+          <span class="pp-eyebrow">LYD · AKTUELT LOT <span class="pp-mono" id="sound-lot-num">—</span></span>
+          <div class="gen-2col">
+            <label class="pp-label">Init-lyd
+              <select class="pp-input pp-input--mono" id="sound-init-file"></select>
+            </label>
+            <label class="pp-label">Hammer-lyd
+              <select class="pp-input pp-input--mono" id="sound-hammer-file"></select>
+            </label>
+          </div>
+          <div class="ctl-knob-grid">
+            <label class="pp-label pp-label--slider">Init-offset · sek
+              <input type="range" id="sound-init-offset-knob" min="0" max="60" step="0.5" value="0" />
+              <input type="number" class="pp-input pp-input--mono" id="sound-init-offset-num" min="0" step="0.5" value="0" />
+            </label>
+            <label class="pp-label pp-label--slider">Fade-in · sek
+              <input type="range" id="sound-fadein-knob" min="0" max="10" step="0.5" value="0" />
+              <input type="number" class="pp-input pp-input--mono" id="sound-fadein-num" min="0" step="0.5" value="0" />
+            </label>
+            <label class="pp-label pp-label--slider">Fade-out · sek
+              <input type="range" id="sound-fadeout-knob" min="0" max="10" step="0.5" value="0" />
+              <input type="number" class="pp-input pp-input--mono" id="sound-fadeout-num" min="0" step="0.5" value="0" />
+            </label>
+            <label class="pp-label pp-label--slider">Init-volume · %
+              <input type="range" id="sound-init-vol-knob" min="0" max="150" step="1" value="100" />
+              <input type="number" class="pp-input pp-input--mono" id="sound-init-vol-num" min="0" max="150" value="100" />
+            </label>
+            <label class="pp-label pp-label--slider">Hammer-volume · %
+              <input type="range" id="sound-hammer-vol-knob" min="0" max="150" step="1" value="100" />
+              <input type="number" class="pp-input pp-input--mono" id="sound-hammer-vol-num" min="0" max="150" value="100" />
+            </label>
+          </div>
+          <div class="ctl-btn-row">
+            <button class="pp-btn" id="sound-play-init">▶ Init</button>
+            <button class="pp-btn" id="sound-play-hammer">▶ Hammer</button>
+            <button class="pp-btn" id="sound-stop">■ Stop</button>
+            <button class="pp-btn pp-btn--ghost" id="sound-preview-init" title="Lokal prøve">Prøv init</button>
+            <button class="pp-btn pp-btn--ghost" id="sound-preview-hammer" title="Lokal prøve">Prøv hammer</button>
+            <button class="pp-btn pp-btn--ghost" id="sound-refresh">↻</button>
+          </div>
+          <div class="gen-2col">
+            <label class="pp-upload pp-upload--dashed">+ Upload init-lyd (dette lot)
+              <input type="file" id="sound-init-upload" accept="audio/*" />
+            </label>
+            <label class="pp-upload pp-upload--dashed">+ Upload hammer-lyd (dette lot)
+              <input type="file" id="sound-hammer-upload" accept="audio/*" />
+            </label>
+          </div>
+        </div>
+
+        <div class="pp-card">
+          <span class="pp-eyebrow">LYD · STANDARD FOR ALLE LOTS</span>
+          <div class="gen-2col">
+            <div class="pp-label">Init: <span class="pp-mono" id="default-init-current">—</span></div>
+            <div class="pp-label">Hammer: <span class="pp-mono" id="default-hammer-current">—</span></div>
+          </div>
+          <div class="ctl-knob-grid">
+            <label class="pp-label pp-label--slider">Init-volume · %
               <input type="range" id="default-init-vol-knob" min="0" max="150" step="1" value="100" />
-              <input type="number" id="default-init-vol-num" min="0" max="150" step="1" value="100" />
-            </div>
-          </label>
-          <label class="sound-row">
-            <span>Hammerslag (default)</span>
-            <input type="file" id="default-hammer-upload" accept="audio/*" class="sound-upload" />
-            <span class="sound-row-current" id="default-hammer-current">—</span>
-          </label>
-          <label class="sound-row">
-            <span>Hammer volume (%)</span>
-            <div class="sound-knob-row">
+              <input type="number" class="pp-input pp-input--mono" id="default-init-vol-num" min="0" max="150" value="100" />
+            </label>
+            <label class="pp-label pp-label--slider">Hammer-volume · %
               <input type="range" id="default-hammer-vol-knob" min="0" max="150" step="1" value="100" />
-              <input type="number" id="default-hammer-vol-num" min="0" max="150" step="1" value="100" />
-            </div>
-          </label>
+              <input type="number" class="pp-input pp-input--mono" id="default-hammer-vol-num" min="0" max="150" value="100" />
+            </label>
+          </div>
+          <div class="gen-2col">
+            <label class="pp-upload pp-upload--dashed">+ Upload standard-init
+              <input type="file" id="default-init-upload" accept="audio/*" />
+            </label>
+            <label class="pp-upload pp-upload--dashed">+ Upload standard-hammer
+              <input type="file" id="default-hammer-upload" accept="audio/*" />
+            </label>
+          </div>
         </div>
-        <div class="setting-section">
-          <span class="setting-section-label">Bud-præsets (+ knapper)</span>
-          <p class="drawer-hint">Kommasepareret liste. Default <code>500, 1000, 2000, 3000, 5000, 10000, 20000, 50000, 100000</code> (3×3 grid).</p>
-          <input type="text" id="bid-presets" />
-          <button class="link-btn" id="bid-presets-save" style="font-size:11px">Gem præsets</button>
+
+        <div class="pp-card">
+          <span class="pp-eyebrow">SPONSOR-TICKER</span>
+          <label class="pp-switch-row">
+            <input type="checkbox" id="ticker-enabled" />
+            <span class="pp-switch"></span>
+            <span class="txt">Vis ticker på output</span>
+          </label>
+          <label class="pp-label">Intro-tekst
+            <input type="text" class="pp-input" id="ticker-prefix" />
+          </label>
+          <label class="pp-label">Sponsorer · én pr. linje eller kommasepareret
+            <textarea class="pp-input" id="ticker-sponsors" rows="4"></textarea>
+          </label>
+          <label class="pp-label">Sekunder pr. loop
+            <input type="number" class="pp-input pp-input--mono gen-narrow" id="ticker-speed" min="10" max="600" value="60" />
+          </label>
+          <button class="pp-btn pp-btn--green" id="ticker-save">Gem ticker</button>
         </div>
-        <div class="setting-section">
-          <span class="setting-section-label">Sponsor-ticker (på ønske-loop + media)</span>
-          <p class="drawer-hint">Rullende tekst-bånd nederst på wish-loop og media-slides. Global toggle.</p>
-          <label class="setting-toggle"><input type="checkbox" id="ticker-enabled" /><span>Aktiv</span></label>
-          <label class="meta-label">Prefix-tekst
-            <input type="text" id="ticker-prefix" placeholder="Vi takker vores dejlige sponsorer:" />
-          </label>
-          <label class="meta-label">Sponsor-navne (én pr linje — eller paste CSV/komma-sepa)
-            <textarea id="ticker-sponsors" rows="6" style="background:var(--bg-input);border:1px solid var(--line-2);border-radius:6px;padding:6px 8px;color:var(--text);font:inherit;font-size:12px;resize:vertical"></textarea>
-          </label>
-          <label class="meta-label">Hastighed (sek pr loop)
-            <input type="number" id="ticker-speed" min="20" max="240" step="5" value="60" />
-          </label>
-          <button class="link-btn" id="ticker-save" style="font-size:11px">Gem sponsor-ticker</button>
-        </div>
-        <div class="setting-section">
-          <span class="setting-section-label">Ekstra-donation til hold</span>
-          <p class="drawer-hint">Lægges på holdets live-segment (folder med bud-vokst).</p>
+
+        <div class="pp-card">
+          <span class="pp-eyebrow">BONUS-DONATIONER · HOLD</span>
           <div id="bonus-team-list"></div>
         </div>
-        <p class="drawer-hint" style="margin-top:0.6rem">Advanced — affects all connected clients:</p>
-        <button id="reset-auctions" class="drawer-danger">Reset all auctions</button>
-      </div>
 
-      <div class="drawer drawer--left" id="drawer-sound">
-        <h3>Sound — lot <span id="sound-lot-num">—</span></h3>
-        <p class="drawer-hint">Drop .mp3/.wav files into <code>web/public/sounds/</code>.</p>
-        <label class="sound-row">
-          <span>Init sound</span>
-          <select id="sound-init-file"><option value="">(none)</option></select>
-          <input type="file" id="sound-init-upload" accept="audio/*" class="sound-upload" />
-        </label>
-        <label class="sound-row">
-          <span>Init start offset (sec)</span>
-          <div class="sound-knob-row">
-            <input type="range" id="sound-init-offset-knob" min="0" max="30" step="0.1" value="0" />
-            <input type="number" id="sound-init-offset-num" min="0" max="600" step="0.1" value="0" />
+        <div class="pp-card">
+          <span class="pp-eyebrow">ÅBN &amp; DEL</span>
+          <div class="ctl-btn-row" id="open-buttons">
+            <button class="pp-btn" data-open="/">Output ↗</button>
+            <button class="pp-btn" data-open="/auctioneer.html">Auktionarius ↗</button>
+            <button class="pp-btn" data-open="/generator.html">Generator ↗</button>
           </div>
-        </label>
-        <label class="sound-row">
-          <span>Init volume (%)</span>
-          <div class="sound-knob-row">
-            <input type="range" id="sound-init-vol-knob" min="0" max="150" step="1" value="100" />
-            <input type="number" id="sound-init-vol-num" min="0" max="150" step="1" value="100" />
-          </div>
-        </label>
-        <label class="sound-row">
-          <span>Hammerslag sound</span>
-          <select id="sound-hammer-file"><option value="">(none)</option></select>
-          <input type="file" id="sound-hammer-upload" accept="audio/*" class="sound-upload" />
-        </label>
-        <label class="sound-row">
-          <span>Hammer volume (%)</span>
-          <div class="sound-knob-row">
-            <input type="range" id="sound-hammer-vol-knob" min="0" max="150" step="1" value="100" />
-            <input type="number" id="sound-hammer-vol-num" min="0" max="150" step="1" value="100" />
-          </div>
-        </label>
-        <label class="sound-row">
-          <span>Fade in (sec)</span>
-          <div class="sound-knob-row">
-            <input type="range" id="sound-fadein-knob" min="0" max="10" step="0.1" value="0" />
-            <input type="number" id="sound-fadein-num" min="0" max="30" step="0.1" value="0" />
-          </div>
-        </label>
-        <label class="sound-row">
-          <span>Fade out (sec)</span>
-          <div class="sound-knob-row">
-            <input type="range" id="sound-fadeout-knob" min="0" max="10" step="0.1" value="0" />
-            <input type="number" id="sound-fadeout-num" min="0" max="30" step="0.1" value="0" />
-          </div>
-        </label>
-        <div class="sound-play-row">
-          <button id="sound-play-init" class="sound-play">▶ Init</button>
-          <button id="sound-play-hammer" class="sound-play">▶ Hammer</button>
-          <button id="sound-stop" class="sound-stop">■ Stop</button>
+          <button class="pp-btn share-bar" data-share="/" data-target="qr-output">QR · Output</button>
+          <div class="ctl-qr-panel" id="qr-output"><canvas class="qr-canvas"></canvas><div class="qr-url pp-mono"></div></div>
+          <button class="pp-btn share-bar" data-share="/auctioneer.html" data-target="qr-auct">QR · Auktionarius</button>
+          <div class="ctl-qr-panel" id="qr-auct"><canvas class="qr-canvas"></canvas><div class="qr-url pp-mono"></div></div>
         </div>
-        <div class="sound-preview-row">
-          <button id="sound-preview-init">Preview init</button>
-          <button id="sound-preview-hammer">Preview hammer</button>
-          <button id="sound-refresh">Refresh files</button>
+
+        <div class="pp-card">
+          <span class="pp-eyebrow" style="color:var(--pp-danger)">RESET</span>
+          <p class="pp-note">Nulstiller alle bud, hammerslag og bonus-donationer.</p>
+          <button class="pp-btn pp-btn--danger" id="reset-auctions">Nulstil alle auktioner</button>
         </div>
       </div>
 
-      <div class="drawer drawer--right" id="drawer-history">
-        <h3>Auktions historik</h3>
-        <p class="drawer-hint">Solgte lots i kronologisk rækkefølge — så du kan slå op hvad fx lot 03 gik for når du er nået til lot 12.</p>
-        <ol class="history-sold-list" id="history-sold-list"></ol>
-        <div class="history-foot">
-          <span class="history-foot-label">Total</span>
-          <span class="history-foot-amount" id="history-foot-amount">0 kr</span>
+      <!-- ===== HISTORIK ===== -->
+      <div class="ctl-drawer-body" id="drawer-history-content" style="display:none">
+        <p class="pp-note">Solgte lots — så du kan slå op hvad fx lot 03 gik for, når du er nået til lot 12.</p>
+        <ul class="ctl-hist-list" id="history-sold-list"></ul>
+        <div class="ctl-hist-total">
+          <span class="pp-eyebrow pp-eyebrow--muted">TOTAL</span>
+          <div class="pp-flex-spacer"></div>
+          <span class="pp-mono pp-tabular" id="history-foot-amount">0 kr</span>
         </div>
-      </div>
-
-      <div class="bid-panel-wrap">
-        <div class="bid-hero">
-          <div>
-            <div class="bid-amount-label">Nuværende bud</div>
-            <div class="bid-amount idle" id="bid-amount-display">—<span class="currency">kr</span></div>
-          </div>
-          <div class="bid-lot">
-            <div class="bid-lot-label">Lot</div>
-            <div class="bid-lot-num" id="bid-lot-num">—</div>
-            <div class="bid-lot-cat" id="bid-lot-cat"></div>
-          </div>
-        </div>
-
-        <div class="bid-input-row">
-          <div class="bid-input">
-            <span class="prefix">kr</span>
-            <input type="number" id="bid-input" placeholder="0" step="500" />
-          </div>
-          <button class="btn-primary" id="bid-add">Tilføj bud</button>
-        </div>
-
-        <div class="preset-grid">
-          <button class="preset-btn" data-inc="500">500</button>
-          <button class="preset-btn" data-inc="1000">1.000</button>
-          <button class="preset-btn" data-inc="2500">2.500</button>
-          <button class="preset-btn" data-inc="5000">5.000</button>
-          <button class="preset-btn" data-inc="10000">10.000</button>
-          <button class="preset-btn" data-inc="25000">25.000</button>
-        </div>
-
-        <div class="sold-bar">
-          <button class="btn-undo" id="undo-bid" title="Fortryd sidste bud (eller rul salg tilbage)">Fortryd</button>
-          <button class="btn-sold" id="hammerslag"><span class="hammer">🔨</span><span>Solgt</span><span class="amount" id="hammer-amount"></span></button>
-        </div>
-      </div>
-    </section>
-
-    <!-- AUCTIONEER VIEW (F treatment, mirrors what the auctioneer sees) -->
-    <section class="panel auct-panel">
-      <div class="panel-head">
-        <span class="label mirror"><span class="swatch"></span>Auctioneer view</span>
-        <div class="right">
-          <button class="share-bar" data-share="/auctioneer.html" data-target="qr-auctioneer">Share auctioneer ↗ QR</button>
-        </div>
-      </div>
-      <div class="auct-stage" id="auct-stage">
-        <div class="auct-frame">
-          <div class="auct-bg" id="auct-bg"></div>
-          <div class="auct-vignette"></div>
-          <div class="auct-clock" id="auct-clock-mirror">00:00:00</div>
-          <div class="auct-header">
-            <div class="auct-lotnum" id="auct-lotnum">—</div>
-            <div class="auct-title">
-              <span id="auct-title-text"></span>
-              <span class="auct-donor" id="auct-donor"></span>
-            </div>
-          </div>
-          <img class="auct-artsolo" src="/assets/artsolo-logo.png" alt="artsolo" />
-          <div class="auct-bid-wrap">
-            <div class="auct-bid-label">Nuværende bud</div>
-            <div class="auct-bid idle" id="auct-bid">—<span class="kr">kr</span></div>
-          </div>
-          <div class="sound-countdown-f" id="ctrl-sound-countdown">
-            <span class="label">Sound</span>
-            <span class="file" id="ctrl-sound-file"></span>
-            <div class="bar"><div class="bar-fill" id="ctrl-sound-bar-fill"></div></div>
-            <span class="remaining" id="ctrl-sound-remaining">0.0s</span>
-          </div>
-        </div>
-      </div>
-      <div class="qr-panel" id="qr-auctioneer">
-        <canvas class="qr-canvas"></canvas>
-        <div class="qr-url"></div>
-      </div>
-    </section>
-
-  </main>
-
-  <!-- SIDEBAR (280px) -->
-  <aside class="sidebar">
-    <div class="sidebar-head">
-      <div class="title">AUKTION 2026 · STJERNEGOLF</div>
-      <div class="progress-track"><div class="progress-fill" id="progress-fill"></div></div>
-      <div class="progress-meta">
-        <span id="progress-pct">0%</span>
-        <span id="progress-counter">0/21 solgt</span>
       </div>
     </div>
-    <div class="lot-list" id="lot-list"></div>
-    <div class="sidebar-foot">
-      <span class="total-label">Auktionens total</span>
-      <span class="total-amount" id="sidebar-total">0 kr</span>
-    </div>
-  </aside>
+  </div>
 
-</div>
-<script type="module" src="/src/controller.ts"></script>
+  <!-- Sound countdown mirror -->
+  <div class="ctl-sound-countdown" id="ctrl-sound-countdown">
+    <span class="pp-mono" id="ctrl-sound-file"></span>
+    <div class="bar"><div class="fill" id="ctrl-sound-bar-fill"></div></div>
+    <span class="pp-mono" id="ctrl-sound-remaining"></span>
+  </div>
+
+  <!-- Toast -->
+  <div class="pp-toast" id="ctl-toast"></div>
+
+  <script type="module" src="/src/controller.ts"></script>
 </body>
 </html>

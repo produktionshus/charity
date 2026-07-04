@@ -412,6 +412,26 @@ app.put('/api/meta', (req, res) => {
     if (typeof b[k] === 'string') m[k] = b[k];
     else if (b[k] === null) delete m[k];
   }
+  // Slide look (v2 controller theme drawer) — shallow-validated passthrough;
+  // null clears back to the built-in default theme.
+  if (b.slideTheme && typeof b.slideTheme === 'object') {
+    const t = {};
+    for (const k of ['numColor', 'accentColor', 'gradA', 'gradB']) {
+      if (typeof b.slideTheme[k] === 'string') t[k] = b.slideTheme[k];
+    }
+    if (['jakarta', 'serif', 'system'].includes(b.slideTheme.font)) t.font = b.slideTheme.font;
+    if (['linear', 'radial'].includes(b.slideTheme.gradType)) t.gradType = b.slideTheme.gradType;
+    if (Number.isFinite(b.slideTheme.gradAngle)) t.gradAngle = Math.max(0, Math.min(360, Number(b.slideTheme.gradAngle)));
+    if (b.slideTheme.customColors && typeof b.slideTheme.customColors === 'object') {
+      t.customColors = {};
+      for (const [k, arr] of Object.entries(b.slideTheme.customColors)) {
+        if (Array.isArray(arr)) t.customColors[k] = arr.filter(c => typeof c === 'string').slice(-3);
+      }
+    }
+    m.slideTheme = { ...(m.slideTheme || {}), ...t };
+  } else if (b.slideTheme === null) {
+    delete m.slideTheme;
+  }
   if (b.sponsorTicker && typeof b.sponsorTicker === 'object') {
     m.sponsorTicker = m.sponsorTicker || {};
     if (typeof b.sponsorTicker.enabled === 'boolean') m.sponsorTicker.enabled = b.sponsorTicker.enabled;
@@ -608,6 +628,12 @@ app.put('/api/lots/:id', (req, res) => {
   if (!lot) return res.status(404).json({ error: 'Not found' });
   Object.assign(lot, req.body);   // shallow merge of provided fields
   lot.id = req.params.id;          // never let the id be overwritten by body
+  // Per-lot sound override edited in the generator: mirror into the live
+  // auction state (rebuildAuctionState only seeds missing entries).
+  if (req.body && 'sound' in req.body) {
+    state.sounds[lot.id] = { ...(lot.sound || {}) };
+    broadcast();
+  }
   // Propagate shared wish-loop config to every other wish-loop item so the
   // operator only has to tweak look-and-feel once.
   if (lot.kind === 'wish-loop') {

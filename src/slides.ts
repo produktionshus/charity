@@ -189,6 +189,11 @@ export interface Lot {
   // length === 1 + heroImages.length. Absent -> equal split.
   heroSplit?: number[];
   sound?: SoundConfig;              // per-lot sound config (persisted to lots.json)
+  // Primary sponsor-logo list (v2 editor). When the field exists it is THE
+  // list: logos render side by side on the slide and the text sponsor name
+  // is only a fallback for an empty list. Legacy lots without this field
+  // resolve the sponsorLogoSrc / default-path / extraSponsorLogos chain.
+  sponsorLogos?: string[];
   // Optional override path for the main sponsor logo (e.g. when using an
   // .svg instead of the default logo-lot-<id>.png).
   sponsorLogoSrc?: string;
@@ -290,6 +295,28 @@ export interface AuctionDisplayState {
   showBaseLabel: boolean;
 }
 
+// Slide look (v2) — applied live to every lot render (preview, konsol,
+// launchpad, viewer). Persisted in lots.json meta, broadcast on save.
+export interface SlideTheme {
+  numColor?: string;                       // lot number + bold title segments
+  accentColor?: string;                    // "DONERET AF" + bullet separators
+  font?: 'jakarta' | 'serif' | 'system';
+  gradType?: 'linear' | 'radial';
+  gradAngle?: number;                      // degrees, linear only
+  gradA?: string;
+  gradB?: string;
+  customColors?: Record<string, string[]>; // last 3 custom picks per swatch key
+}
+export const DEFAULT_SLIDE_THEME: Required<Omit<SlideTheme, 'customColors'>> = {
+  numColor: '#1F4A28',
+  accentColor: '#B8893A',
+  font: 'jakarta',
+  gradType: 'linear',
+  gradAngle: 180,
+  gradA: '#F4ECD8',
+  gradB: '#EFE6CD',
+};
+
 // Event-wide meta (bid presets etc.). Mutated by refreshLotsFromServer.
 export interface EventMeta {
   bidPresets?: number[];
@@ -298,6 +325,7 @@ export interface EventMeta {
   eventSubtitle?: string;
   eventDate?: string;        // ISO YYYY-MM-DD
   theme?: 'forest' | 'marine' | 'dark' | 'kidsaid';
+  slideTheme?: SlideTheme;
   soundDefaults?: SoundConfig;
   teams?: AuctionTeam[];
   sponsorTicker?: {
